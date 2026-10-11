@@ -1,0 +1,407 @@
+<Page
+  x:Class="Aria.Gui.Views.DashboardPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:services="clr-namespace:Aria.Gui.Services"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Mon PC"
+  Foreground="{StaticResource NeonTextBrush}">
+  <Page.Resources>
+    <services:SeverityToBrushConverter x:Key="SeverityBrush" />
+    <fx:ScoreLevelToBrushConverter x:Key="ScoreBrush" />
+
+    <!-- Carte de composant, colonne de gauche : coins haut gauche / bas droite, texte aligné à gauche -->
+    <DataTemplate x:Key="HudCardLeft">
+      <ContentControl Margin="0,0,0,14" fx:Fx.Reveal="True" fx:Fx.RevealDelay="150" Style="{StaticResource HudPanel}">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <ui:SymbolIcon FontSize="16" Foreground="{StaticResource NeonOrangeBrush}" Symbol="{Binding Icon}" />
+            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="{Binding Label}" />
+          </StackPanel>
+          <TextBlock
+            Margin="0,8,0,4"
+            FontFamily="{StaticResource TechFont}"
+            FontSize="19"
+            FontWeight="SemiBold"
+            Foreground="{StaticResource NeonWhiteBrush}"
+            Text="{Binding Main}"
+            TextWrapping="Wrap" />
+          <ItemsControl Focusable="False" ItemsSource="{Binding Details}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Margin="0,1" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding}" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ContentControl>
+    </DataTemplate>
+
+    <!-- Carte de composant, colonne de droite : coins en miroir, texte aligné à droite -->
+    <DataTemplate x:Key="HudCardRight">
+      <ContentControl Margin="0,0,0,14" fx:Fx.Reveal="True" fx:Fx.RevealDelay="150" Style="{StaticResource HudPanelMirror}">
+        <StackPanel>
+          <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+            <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="{Binding Label}" />
+            <ui:SymbolIcon FontSize="16" Foreground="{StaticResource NeonOrangeBrush}" Symbol="{Binding Icon}" />
+          </StackPanel>
+          <TextBlock
+            Margin="0,8,0,4"
+            FontFamily="{StaticResource TechFont}"
+            FontSize="19"
+            FontWeight="SemiBold"
+            Foreground="{StaticResource NeonWhiteBrush}"
+            Text="{Binding Main}"
+            TextAlignment="Right"
+            TextWrapping="Wrap" />
+          <ItemsControl Focusable="False" ItemsSource="{Binding Details}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Margin="0,1" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding}" TextAlignment="Right" TextWrapping="Wrap" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ContentControl>
+    </DataTemplate>
+  </Page.Resources>
+
+  <!-- Largeur limitée et centrée : lisible même sur un écran ultra-large -->
+  <StackPanel MaxWidth="1600" Margin="32,24,32,40">
+
+    <ui:InfoBar
+      Title="Erreur"
+      Margin="0,0,0,12"
+      IsClosable="False"
+      IsOpen="{Binding HasError}"
+      Message="{Binding Error}"
+      Severity="Error" />
+
+    <ui:InfoBar
+      Title="Détection incomplète"
+      Margin="0,0,0,12"
+      IsClosable="True"
+      IsOpen="{Binding HasDetectionWarnings, Mode=OneWay}"
+      Message="{Binding DetectionWarnings}"
+      Severity="Warning" />
+
+    <!-- ===== Cockpit : composants à gauche et à droite, jauge au centre ===== -->
+    <Grid Margin="0,4,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" MinWidth="220" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" MinWidth="220" />
+      </Grid.ColumnDefinitions>
+
+      <ItemsControl
+        Grid.Column="0"
+        VerticalAlignment="Center"
+        Focusable="False"
+        ItemTemplate="{StaticResource HudCardLeft}"
+        ItemsSource="{Binding LeftHardware}" />
+
+      <!-- Centre : identité du PC, jauge, actions -->
+      <StackPanel
+        Grid.Column="1"
+        Width="380"
+        Margin="24,0"
+        VerticalAlignment="Center">
+        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+          <Ellipse
+            Width="8"
+            Height="8"
+            fx:Fx.Pulse="True"
+            Fill="{StaticResource NeonCyanBrush}">
+            <Ellipse.Effect>
+              <DropShadowEffect BlurRadius="10" Opacity="0.9" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
+            </Ellipse.Effect>
+          </Ellipse>
+          <TextBlock
+            Margin="10,0,0,0"
+            VerticalAlignment="Center"
+            Foreground="{StaticResource NeonCyanBrush}"
+            Style="{StaticResource HudCode}"
+            Text="{Binding StatusLine}" />
+        </StackPanel>
+        <TextBlock
+          Margin="0,10,0,4"
+          HorizontalAlignment="Center"
+          FontSize="40"
+          Style="{StaticResource NeonTitle}"
+          Text="{Binding PcName}"
+          TextTrimming="CharacterEllipsis" />
+        <TextBlock
+          HorizontalAlignment="Center"
+          Foreground="{StaticResource NeonMutedBrush}"
+          Text="{Binding SystemLine}"
+          TextAlignment="Center"
+          TextWrapping="Wrap" />
+
+        <!-- Jauge : points conformes / total -->
+        <Grid
+          Width="300"
+          Height="300"
+          Margin="0,18,0,14"
+          fx:Fx.Reveal="True">
+          <Ellipse
+            Margin="-12"
+            fx:Fx.Spin="True"
+            Stroke="#667DF9FF"
+            StrokeDashArray="1 6"
+            StrokeThickness="2" />
+          <fx:NeonRing
+            ArcBrush="{Binding ScoreLevel, Converter={StaticResource ScoreBrush}}"
+            TargetValue="{Binding ConformRatio}"
+            Thickness="15" />
+          <Ellipse Margin="38" Stroke="#995C8BFF" StrokeThickness="1.2" />
+          <Path
+            Data="M59.07,202.5 A105,105 0 0 1 45.4,159.15"
+            Stroke="{StaticResource NeonOrangeBrush}"
+            StrokeEndLineCap="Round"
+            StrokeStartLineCap="Round"
+            StrokeThickness="2.5">
+            <Path.Effect>
+              <DropShadowEffect BlurRadius="8" Opacity="0.9" ShadowDepth="0" Color="{StaticResource NeonOrangeColor}" />
+            </Path.Effect>
+          </Path>
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <!-- Le chiffre prend la couleur du score, le total reste bleu roi -->
+            <TextBlock
+              HorizontalAlignment="Center"
+              FontFamily="{StaticResource TechFont}"
+              FontWeight="SemiBold">
+              <Run FontSize="64" Foreground="{Binding ScoreLevel, Converter={StaticResource ScoreBrush}}" Text="{Binding ConformCount, Mode=OneWay}" /><Run FontSize="32" Foreground="{StaticResource NeonBlueBrush}" Text="{Binding ConformTotalText, Mode=OneWay}" />
+            </TextBlock>
+            <TextBlock HorizontalAlignment="Center" Style="{StaticResource TechLabel}" Text="POINTS CONFORMES" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+          <Button Command="{Binding ReanalyzeCommand}" Content="RÉANALYSER" Style="{StaticResource HudButton}" />
+          <Button
+            Margin="10,0,0,0"
+            Command="{Binding ExportHtmlCommand}"
+            Content="EXPORTER EN HTML"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="Fiche complète du PC, à partager ou imprimer" />
+        </StackPanel>
+        <CheckBox
+          Margin="0,14,0,0"
+          HorizontalAlignment="Center"
+          Content="Masquer les infos personnelles dans la fiche"
+          FontSize="12.5"
+          Foreground="{StaticResource NeonMutedBrush}"
+          IsChecked="{Binding HidePersonalInfo}"
+          ToolTip="Nom du PC et de l'utilisateur remplacés dans la fiche HTML" />
+      </StackPanel>
+
+      <ItemsControl
+        Grid.Column="2"
+        VerticalAlignment="Center"
+        Focusable="False"
+        ItemTemplate="{StaticResource HudCardRight}"
+        ItemsSource="{Binding RightHardware}" />
+    </Grid>
+
+    <!-- ===== Résumé du diagnostic : un clic descend jusqu'à la liste détaillée ===== -->
+    <UniformGrid Margin="0,26,0,0" Columns="3">
+      <Button
+        Margin="0,0,7,0"
+        Background="#14FF8A1F"
+        BorderBrush="#99FF8A1F"
+        Click="OnSummaryClick"
+        Style="{StaticResource HudStat}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource StatValue}" FontSize="36" Text="{Binding ToFixCount}" />
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Foreground="#FFFFC79A" Style="{StaticResource TechLabel}" Text="À CORRIGER" />
+            <TextBlock Margin="0,3,0,0" Text="{Binding ToFixPreview}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Button>
+      <Button
+        Margin="7,0"
+        Background="#145C8BFF"
+        BorderBrush="#995C8BFF"
+        Click="OnSummaryClick"
+        Style="{StaticResource HudStat}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource StatValue}" FontSize="36" Text="{Binding InfoCount}" />
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Foreground="#FFB5C8FF" Style="{StaticResource TechLabel}" Text="POUR INFO" />
+            <TextBlock Margin="0,3,0,0" Text="{Binding InfoPreview}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Button>
+      <Button
+        Margin="7,0,0,0"
+        Background="#0F7DF9FF"
+        BorderBrush="#807DF9FF"
+        Click="OnSummaryClick"
+        Style="{StaticResource HudStat}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource StatValue}" FontSize="36" Text="{Binding ConformCount}" />
+          <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+            <TextBlock Foreground="#FFBFF8FF" Style="{StaticResource TechLabel}" Text="CONFORMES" />
+            <TextBlock Margin="0,3,0,0" Text="{Binding ConformPreview}" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </Grid>
+      </Button>
+    </UniformGrid>
+
+    <!-- ===== Diagnostic ===== -->
+    <ContentControl x:Name="DiagnosticHeader" Content="DIAGNOSTIC" Style="{StaticResource SectionHeader}" />
+    <ItemsControl ItemsSource="{Binding Attention}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <ui:CardExpander Margin="0,0,0,8" fx:Fx.Reveal="True" fx:Fx.RevealDelay="400">
+            <ui:CardExpander.Header>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ui:SymbolIcon
+                  Grid.Column="0"
+                  fx:Fx.Pulse="{Binding IsUrgent}"
+                  FontSize="22"
+                  Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}"
+                  Symbol="{Binding Icon}" />
+                <TextBlock
+                  Grid.Column="1"
+                  Margin="14,0,0,0"
+                  VerticalAlignment="Center"
+                  FontFamily="{StaticResource TechFont}"
+                  FontSize="16"
+                  FontWeight="SemiBold"
+                  Text="{Binding Title}"
+                  TextWrapping="Wrap" />
+              </Grid>
+            </ui:CardExpander.Header>
+            <StackPanel Margin="36,0,0,0">
+              <TextBlock
+                Text="{Binding Detail}"
+                TextWrapping="Wrap"
+                Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibility}}" />
+              <TextBlock
+                Margin="0,14,0,4"
+                Foreground="{StaticResource NeonOrangeBrush}"
+                Style="{StaticResource TechLabel}"
+                Text="QUE FAIRE ?"
+                Visibility="{Binding HasAdvice, Converter={StaticResource BoolToVisibility}}" />
+              <TextBlock
+                Text="{Binding Advice}"
+                TextWrapping="Wrap"
+                Visibility="{Binding HasAdvice, Converter={StaticResource BoolToVisibility}}" />
+              <Border
+                Margin="0,12,0,0"
+                Padding="16,12"
+                Background="#80030812"
+                BorderBrush="#557DF9FF"
+                BorderThickness="1,0,0,0"
+                Visibility="{Binding HasSteps, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl ItemsSource="{Binding Steps}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock
+                        Margin="0,2"
+                        FontFamily="{StaticResource MonoFont}"
+                        Foreground="{StaticResource NeonCyanBrush}"
+                        Text="{Binding}"
+                        TextWrapping="Wrap" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </StackPanel>
+          </ui:CardExpander>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- Accès au BIOS -->
+    <ContentControl
+      Margin="0,4,0,8"
+      fx:Fx.Reveal="True"
+      fx:Fx.RevealDelay="500"
+      Style="{StaticResource NeonPanel}"
+      Visibility="{Binding ShowBiosAccess, Converter={StaticResource BoolToVisibility}}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <Border VerticalAlignment="Top" Style="{StaticResource IconBadge}">
+          <ui:SymbolIcon
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            FontSize="18"
+            Foreground="{StaticResource NeonOrangeBrush}"
+            Symbol="WrenchScrewdriver24" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0,16,0">
+          <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="ACCÈS AU BIOS" />
+          <TextBlock Margin="0,6,0,0" Text="{Binding BiosAccessText}" TextWrapping="Wrap" />
+          <TextBlock
+            Margin="0,4,0,0"
+            Foreground="{StaticResource NeonMutedBrush}"
+            Text="Les chemins peuvent varier selon la version du BIOS : cherchez aussi les autres noms indiqués. Modifiez un réglage à la fois ; en cas de problème, « Load Optimized Defaults » remet tout par défaut."
+            TextWrapping="Wrap" />
+        </StackPanel>
+        <Button
+          Grid.Column="2"
+          VerticalAlignment="Center"
+          Command="{Binding RestartToBiosCommand}"
+          Content="Redémarrer dans le BIOS"
+          IsEnabled="{Binding CanRestartToBios}" Style="{StaticResource HudButton}" />
+      </Grid>
+    </ContentControl>
+
+    <!-- Points conformes -->
+    <ContentControl
+      Margin="0,4,0,0"
+      fx:Fx.Reveal="True"
+      fx:Fx.RevealDelay="600"
+      Style="{StaticResource NeonPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,10" Foreground="{StaticResource NeonTealBrush}" Style="{StaticResource TechLabel}" Text="CONFORME" />
+        <ItemsControl ItemsSource="{Binding Conform}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,4" Orientation="Horizontal">
+                <ui:SymbolIcon
+                  FontSize="16"
+                  Foreground="{StaticResource NeonTealBrush}"
+                  Symbol="CheckmarkCircle24">
+                  <ui:SymbolIcon.Effect>
+                    <DropShadowEffect BlurRadius="8" Opacity="0.7" ShadowDepth="0" Color="{StaticResource NeonTealColor}" />
+                  </ui:SymbolIcon.Effect>
+                </ui:SymbolIcon>
+                <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding Title}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ContentControl>
+  </StackPanel>
+</Page>

@@ -1,0 +1,178 @@
+<ui:FluentWindow
+  x:Class="Aria.Gui.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:services="clr-namespace:Aria.Gui.Services"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  xmlns:views="clr-namespace:Aria.Gui.Views"
+  Title="Aria"
+  Width="1240"
+  Height="820"
+  Icon="pack://application:,,,/Assets/Aria.ico"
+  MinWidth="900"
+  MinHeight="600"
+  Background="{StaticResource SpaceBackgroundBrush}"
+  ExtendsContentIntoTitleBar="True"
+  Foreground="{StaticResource NeonTextBrush}"
+  WindowBackdropType="None"
+  WindowCornerPreference="Round"
+  WindowStartupLocation="CenterScreen">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- ===== Décor : nuit profonde, grille fine et halo bleu au centre ===== -->
+    <Rectangle Grid.RowSpan="2" Fill="{StaticResource SpaceBackgroundBrush}" IsHitTestVisible="False" />
+    <Rectangle Grid.RowSpan="2" Fill="{StaticResource GridBrush}" IsHitTestVisible="False" />
+    <Ellipse
+      Grid.RowSpan="2"
+      Width="1100"
+      Height="900"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center"
+      IsHitTestVisible="False">
+      <Ellipse.Fill>
+        <RadialGradientBrush>
+          <GradientStop Offset="0" Color="#2E5C8BFF" />
+          <GradientStop Offset="1" Color="#005C8BFF" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+    <Ellipse
+      Grid.RowSpan="2"
+      Width="900"
+      Height="700"
+      Margin="0,0,-360,-380"
+      HorizontalAlignment="Right"
+      VerticalAlignment="Bottom"
+      IsHitTestVisible="False">
+      <Ellipse.Fill>
+        <RadialGradientBrush>
+          <GradientStop Offset="0" Color="#16FF8A1F" />
+          <GradientStop Offset="1" Color="#00FF8A1F" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <!-- ===== Barre du haut : logo, onglets, boutons de la fenêtre ===== -->
+    <Border
+      Grid.Row="0"
+      Height="66"
+      Background="#D9020611"
+      BorderBrush="#247DF9FF"
+      BorderThickness="0,0,0,1"
+      MouseLeftButtonDown="OnHeaderMouseDown">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="260" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Margin="22,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+          <views:AriaLogo Width="42" Height="42" />
+          <TextBlock
+            Margin="12,0,0,0"
+            VerticalAlignment="Center"
+            FontSize="26"
+            FontWeight="Bold"
+            Style="{StaticResource NeonTitle}"
+            Text="ARIA" />
+        </StackPanel>
+
+        <!-- Onglets : chacun mène à sa page (Tag = type de la page) -->
+        <StackPanel
+          Grid.Column="1"
+          HorizontalAlignment="Center"
+          Orientation="Horizontal"
+          RadioButton.Checked="OnTabChecked">
+          <RadioButton x:Name="DashboardTab" Content="MON PC" IsChecked="True" Style="{StaticResource HudTab}" Tag="{x:Type views:DashboardPage}" />
+          <RadioButton Content="RÉGLAGES" Style="{StaticResource HudTab}" Tag="{x:Type views:SettingsPage}" />
+          <RadioButton Content="MISES À JOUR" Style="{StaticResource HudTab}" Tag="{x:Type views:UpdatesPage}" />
+          <RadioButton Content="NETTOYAGE" Style="{StaticResource HudTab}" Tag="{x:Type views:CleanupPage}" />
+          <RadioButton Content="RESTAURATION" Style="{StaticResource HudTab}" Tag="{x:Type views:RestorePage}" />
+          <RadioButton Content="RAPPORTS" Style="{StaticResource HudTab}" Tag="{x:Type views:ReportsPage}" />
+        </StackPanel>
+
+        <TextBlock
+          x:Name="VersionText"
+          Grid.Column="2"
+          Margin="0,0,22,10"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Bottom"
+          FontFamily="{StaticResource MonoFont}"
+          FontSize="11"
+          Foreground="#FF5E7290" />
+      </Grid>
+    </Border>
+
+    <!-- Boutons réduire / agrandir / fermer : seuls, en haut à droite, au-dessus de la barre -->
+    <ui:TitleBar
+      Grid.Row="0"
+      Width="190"
+      HorizontalAlignment="Right"
+      VerticalAlignment="Top"
+      Title="" />
+
+    <!--
+      Hôte des pages : un cadre sans barre de navigation, dans un défilement vertical commun à toutes les pages.
+      La barre du haut choisit la page affichée.
+    -->
+    <ui:DynamicScrollViewer
+      x:Name="PageScroller"
+      Grid.Row="1"
+      HorizontalScrollBarVisibility="Disabled"
+      VerticalScrollBarVisibility="Auto">
+      <Frame
+        x:Name="PageHost"
+        Focusable="False"
+        JournalOwnership="OwnsJournal"
+        NavigationUIVisibility="Hidden" />
+    </ui:DynamicScrollViewer>
+
+    <!-- ===== Écran d'analyse ===== -->
+    <Grid
+      Grid.Row="1"
+      fx:Fx.Sweep="True"
+      Background="#E6030812"
+      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid Width="150" Height="150">
+          <Ellipse
+            fx:Fx.Spin="True"
+            Stroke="#997DF9FF"
+            StrokeDashArray="2 6"
+            StrokeThickness="2" />
+          <ui:ProgressRing
+            Width="96"
+            Height="96"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            IsIndeterminate="True" />
+        </Grid>
+        <TextBlock
+          Margin="0,26,0,6"
+          HorizontalAlignment="Center"
+          fx:Fx.Pulse="True"
+          FontFamily="{StaticResource TechFont}"
+          FontSize="20"
+          FontWeight="SemiBold"
+          Foreground="{StaticResource NeonCyanBrush}"
+          Text="{Binding BusyText}" />
+        <TextBlock
+          HorizontalAlignment="Center"
+          Style="{StaticResource HudCode}"
+          Text="LECTURE SEULE · AUCUNE MODIFICATION" />
+      </StackPanel>
+    </Grid>
+
+    <!-- ===== Confirmations, intégrées à la fenêtre (barre de titre laissée libre) ===== -->
+    <views:DialogOverlay
+      Grid.Row="1"
+      DataContext="{x:Static services:DialogService.Current}"
+      Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
+  </Grid>
+</ui:FluentWindow>

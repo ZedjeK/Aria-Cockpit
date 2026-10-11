@@ -1,0 +1,21 @@
+{
+  "brand": "Gigabyte",
+  "match": ["Gigabyte", "GIGA-BYTE", "AORUS"],
+  "setupKey": "Suppr",
+  "advancedModeKey": "F2",
+  "updateTool": "Q-Flash (mise à jour depuis une clé USB)",
+  "options": {
+    "memory_profile.intel": { "path": "Tweaker → Extreme Memory Profile (X.M.P.)", "value": "Profile 1", "alternates": ["XMP"] },
+    "memory_profile.amd":   { "path": "Tweaker → Extreme Memory Profile (X.M.P.) / EXPO", "value": "Profile 1", "alternates": ["AMD EXPO", "EXPO Tweaked"] },
+    "csm":                  { "path": "Boot → CSM Support", "value": "Disabled", "alternates": [] },
+    "above_4g":             { "path": "Settings → IO Ports → Above 4G Decoding", "value": "Enabled", "alternates": [] },
+    "rebar":                { "path": "Settings → IO Ports → Re-Size BAR Support", "value": "Auto (ou Enabled)", "alternates": [] },
+    "secure_boot":          { "path": "Boot → Secure Boot", "value": "Enabled", "alternates": [] },
+    "tpm.intel":            { "path": "Settings → Miscellaneous → Intel Platform Trust Technology (PTT)", "value": "Enabled", "alternates": ["PTT"] },
+    "tpm.amd":              { "path": "Settings → Miscellaneous → AMD CPU fTPM", "value": "Enabled", "alternates": ["fTPM"] },
+    "virtualization.intel": { "path": "Tweaker → Advanced CPU Settings → Intel Virtualization Technology", "value": "Enabled", "alternates": ["VT-x"] },
+    "virtualization.amd":   { "path": "Tweaker → Advanced CPU Settings → SVM Mode", "value": "Enabled", "alternates": [] },
+    "smt.intel":            { "path": "Tweaker → Advanced CPU Settings → Hyper-Threading Technology", "value": "Enabled", "alternates": [] },
+    "smt.amd":              { "path": "Tweaker → Advanced CPU Settings → SMT Mode", "value": "Auto (ou Enabled)", "alternates": [] }
+  }
+}

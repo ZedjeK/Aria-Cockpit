@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Aria.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Tests : accès au remplacement du pilote NVIDIA par un faux pilote -->
+    <InternalsVisibleTo Include="Aria.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Requêtes WMI (inventaire matériel). Incompatible avec le "trimming" : ne pas activer PublishTrimmed. -->
+    <PackageReference Include="System.Management" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Base de connaissances BIOS : intégrée à l'exe, remplaçable par un dossier "bios" placé à côté d'Aria.exe -->
+    <EmbeddedResource Include="..\..\config\bios\*.json" LogicalName="Aria.Bios.%(Filename).json" />
+    <!-- Table nom de carte → identifiant NVIDIA (ZenitH-AT/nvidia-data, domaine public), secours hors ligne -->
+    <EmbeddedResource Include="Updates\nvidia-gpu-data.json" LogicalName="Aria.Nvidia.gpu-data.json" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,70 @@
+# Publication d'une version d'Aria, déclenchée à la main :
+# Actions → Release → Run workflow → numéro de version (identique à Directory.Build.props).
+# Compile les deux exécutables (autonome et léger), les zippe, calcule les empreintes
+# SHA-256 et crée la release « v<version> » avec les notes de .github/release-notes.md.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version à publier (ex. 0.12.1), identique à Directory.Build.props"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Vérifier la version
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') { throw "Version invalide : '$env:VERSION' (attendu : 1.2.3)" }
+          $props = [xml](Get-Content Directory.Build.props -Raw)
+          $declared = ($props.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ }) | Select-Object -First 1
+          if ($declared -ne $env:VERSION) { throw "Directory.Build.props indique $declared, pas $env:VERSION : mets-le à jour avant de publier." }
+          gh release view "v$env:VERSION" 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "La release v$env:VERSION existe déjà." }
+          $global:LASTEXITCODE = 0
+
+      - name: Compiler la version autonome
+        run: dotnet publish src/Aria.Gui -c Release -o out-full
+
+      - name: Compiler la version légère
+        run: dotnet publish src/Aria.Gui -c Release -p:SelfContained=false -o out-light
+
+      - name: Préparer les fichiers
+        run: |
+          New-Item -ItemType Directory -Force assets | Out-Null
+          $full  = "assets/Aria-$env:VERSION-autonome.zip"
+          $light = "assets/Aria-$env:VERSION-leger.zip"
+          Compress-Archive -Path out-full/Aria.exe  -DestinationPath $full
+          Compress-Archive -Path out-light/Aria.exe -DestinationPath $light
+
+          $sums = foreach ($zip in $full, $light) {
+            $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $(Split-Path $zip -Leaf)"
+          }
+          $notes = (Get-Content .github/release-notes.md -Raw -Encoding utf8).Replace('{VERSION}', $env:VERSION).Replace('{REPO_URL}', "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY")
+          $notes += "`n## Empreintes SHA-256`n`n" + '```' + "`n" + ($sums -join "`n") + "`n" + '```' + "`n"
+          Set-Content notes.md $notes -Encoding utf8NoBOM -NoNewline
+          Get-Content notes.md
+
+      - name: Publier la release
+        run: gh release create "v$env:VERSION" (Get-ChildItem assets/*.zip).FullName --title "Aria · PC-Tune $env:VERSION" --notes-file notes.md --target $env:GITHUB_SHA

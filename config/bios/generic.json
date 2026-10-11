@@ -1,0 +1,21 @@
+{
+  "brand": "Générique",
+  "match": [],
+  "setupKey": "Suppr, F2, F10 ou F12 selon le fabricant (affiché au démarrage)",
+  "advancedModeKey": null,
+  "updateTool": "Outil de mise à jour du BIOS du fabricant (voir sa page support)",
+  "options": {
+    "memory_profile.intel": { "path": "Menu Overclocking / Memory / Tweaker", "value": "XMP Profile 1", "alternates": ["Extreme Memory Profile"] },
+    "memory_profile.amd":   { "path": "Menu Overclocking / Memory / Tweaker", "value": "EXPO Profile 1", "alternates": ["XMP", "D.O.C.P.", "A-XMP"] },
+    "csm":                  { "path": "Menu Boot → CSM / Legacy Support", "value": "Disabled (mode UEFI seul)", "alternates": [] },
+    "above_4g":             { "path": "Menu Advanced → PCI / PCIe → Above 4G Decoding", "value": "Enabled", "alternates": [] },
+    "rebar":                { "path": "Menu Advanced → PCI / PCIe → Re-Size BAR Support", "value": "Enabled", "alternates": ["Resizable BAR", "Smart Access Memory"] },
+    "secure_boot":          { "path": "Menu Boot ou Security → Secure Boot", "value": "Enabled", "alternates": [] },
+    "tpm.intel":            { "path": "Menu Security → Intel Platform Trust Technology (PTT)", "value": "Enabled", "alternates": ["TPM"] },
+    "tpm.amd":              { "path": "Menu Security / Advanced → AMD fTPM", "value": "Enabled", "alternates": ["TPM"] },
+    "virtualization.intel": { "path": "Menu CPU / Advanced → Intel Virtualization Technology", "value": "Enabled", "alternates": ["VT-x", "VMX"] },
+    "virtualization.amd":   { "path": "Menu CPU / Advanced → SVM Mode", "value": "Enabled", "alternates": ["AMD-V"] },
+    "smt.intel":            { "path": "Menu CPU / Advanced → Hyper-Threading", "value": "Enabled", "alternates": [] },
+    "smt.amd":              { "path": "Menu CPU / Advanced → SMT", "value": "Enabled", "alternates": [] }
+  }
+}

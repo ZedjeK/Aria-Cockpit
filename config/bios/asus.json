@@ -1,0 +1,21 @@
+{
+  "brand": "ASUS",
+  "match": ["ASUSTeK", "ASUS"],
+  "setupKey": "Suppr ou F2",
+  "advancedModeKey": "F7",
+  "updateTool": "Tool → ASUS EZ Flash (mise à jour depuis une clé USB)",
+  "options": {
+    "memory_profile.intel": { "path": "Ai Tweaker (Extreme Tweaker sur ROG) → Ai Overclock Tuner", "value": "XMP I", "alternates": ["XMP", "XMP Tweaked"] },
+    "memory_profile.amd":   { "path": "Ai Tweaker (Extreme Tweaker sur ROG) → Ai Overclock Tuner", "value": "EXPO I", "alternates": ["D.O.C.P. (anciennes cartes AMD)", "XMP"] },
+    "csm":                  { "path": "Boot → CSM (Compatibility Support Module) → Launch CSM", "value": "Disabled", "alternates": [] },
+    "above_4g":             { "path": "Advanced → PCI Subsystem Settings → Above 4G Decoding", "value": "Enabled", "alternates": [] },
+    "rebar":                { "path": "Advanced → PCI Subsystem Settings → Re-Size BAR Support", "value": "Enabled (ou Auto)", "alternates": [] },
+    "secure_boot":          { "path": "Boot → Secure Boot → OS Type", "value": "Windows UEFI mode", "alternates": [] },
+    "tpm.intel":            { "path": "Advanced → PCH-FW Configuration → PTT", "value": "Enabled", "alternates": ["Intel Platform Trust Technology"] },
+    "tpm.amd":              { "path": "Advanced → AMD fTPM configuration → TPM Device Selection", "value": "Firmware TPM", "alternates": ["fTPM"] },
+    "virtualization.intel": { "path": "Advanced → CPU Configuration → Intel (VMX) Virtualization Technology", "value": "Enabled", "alternates": ["VT-x"] },
+    "virtualization.amd":   { "path": "Advanced → CPU Configuration → SVM Mode", "value": "Enabled", "alternates": [] },
+    "smt.intel":            { "path": "Advanced → CPU Configuration → Hyper-Threading", "value": "Enabled", "alternates": [] },
+    "smt.amd":              { "path": "Advanced → AMD CBS → CPU Common Options → SMT Control", "value": "Auto (ou Enabled)", "alternates": ["SMT Mode"] }
+  }
+}

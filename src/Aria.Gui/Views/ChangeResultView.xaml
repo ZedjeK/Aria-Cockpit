@@ -1,0 +1,128 @@
+<!-- Écran de résultat après application, partagé par les pages Réglages et Restauration. DataContext : un ChangeViewModelBase. -->
+<UserControl
+  x:Class="Aria.Gui.Views.ChangeResultView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:services="clr-namespace:Aria.Gui.Services"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+  <UserControl.Resources>
+    <services:SeverityToBrushConverter x:Key="SeverityBrush" />
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel MaxWidth="1500" Margin="36,24,36,36">
+      <TextBlock Style="{StaticResource NeonTitle}" Text="RÉSULTAT" />
+
+      <StackPanel Margin="0,18,0,0" Orientation="Horizontal">
+        <StackPanel Margin="0,0,44,0">
+          <TextBlock Foreground="{StaticResource NeonGreenBrush}" Style="{StaticResource StatValue}" Text="{Binding AppliedCount}" />
+          <TextBlock Style="{StaticResource TechLabel}" Text="{Binding AppliedLabel}" />
+        </StackPanel>
+        <StackPanel Margin="0,0,44,0">
+          <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource StatValue}" Text="{Binding DeclinedCount}" />
+          <TextBlock Style="{StaticResource TechLabel}" Text="NON RETENUS" />
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource StatValue}" Text="{Binding FailedCount}" />
+          <TextBlock Style="{StaticResource TechLabel}" Text="ÉCHECS" />
+        </StackPanel>
+      </StackPanel>
+
+      <ui:InfoBar
+        Title="Redémarrage requis"
+        Margin="0,18,0,0"
+        IsClosable="False"
+        IsOpen="{Binding NeedsReboot, Mode=OneWay}"
+        Message="Certains réglages ne prendront effet qu'après un redémarrage du PC."
+        Severity="Warning" />
+
+      <ContentControl Content="DÉTAIL" Style="{StaticResource SectionHeader}" />
+      <ItemsControl ItemsSource="{Binding Results}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <ContentControl Margin="0,0,0,8" Padding="16,12" fx:Fx.Reveal="True" Style="{StaticResource NeonPanel}">
+              <StackPanel>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource TechFont}"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Text="{Binding Name}"
+                    TextWrapping="Wrap" />
+                  <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Before}" />
+                    <TextBlock
+                      Margin="10,0"
+                      FontWeight="Bold"
+                      Foreground="{StaticResource NeonOrangeBrush}"
+                      Text="→"
+                      Visibility="{Binding IsChange, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock
+                      FontFamily="{StaticResource MonoFont}"
+                      Foreground="{StaticResource NeonCyanBrush}"
+                      Text="{Binding After}"
+                      Visibility="{Binding IsChange, Converter={StaticResource BoolToVisibility}}" />
+                  </StackPanel>
+                  <TextBlock
+                    Grid.Column="2"
+                    MinWidth="120"
+                    VerticalAlignment="Center"
+                    Foreground="{Binding Tone, Converter={StaticResource SeverityBrush}}"
+                    Style="{StaticResource TechLabel}"
+                    Text="{Binding Status}"
+                    TextAlignment="Right" />
+                </Grid>
+                <TextBlock
+                  Margin="0,6,0,0"
+                  Foreground="{StaticResource NeonRedBrush}"
+                  Text="{Binding Error}"
+                  TextWrapping="Wrap"
+                  Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}" />
+              </StackPanel>
+            </ContentControl>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <ContentControl Content="SÉCURITÉ ET TRAÇABILITÉ" Style="{StaticResource SectionHeader}" />
+      <ContentControl Style="{StaticResource NeonPanel}">
+        <ItemsControl ItemsSource="{Binding ResultNotes}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <TextBlock
+                Margin="0,3"
+                FontFamily="{StaticResource MonoFont}"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="{Binding}"
+                TextWrapping="Wrap" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ContentControl>
+
+      <StackPanel Margin="0,22,0,0" Orientation="Horizontal">
+        <Button
+          Margin="0,0,8,0"
+          Command="{Binding FinishCommand}"
+          Content="Terminer" Style="{StaticResource HudButton}" />
+        <ui:Button
+          Margin="0,0,8,0"
+          Command="{Binding OpenReportCommand}"
+          Content="Ouvrir le rapport"
+          Icon="{ui:SymbolIcon DocumentText24}" />
+        <ui:Button
+          Command="{Binding RestartCommand}"
+          Content="Redémarrer maintenant"
+          Icon="{ui:SymbolIcon Power24}"
+          Visibility="{Binding NeedsReboot, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

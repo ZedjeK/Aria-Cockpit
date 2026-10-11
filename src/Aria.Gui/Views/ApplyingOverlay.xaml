@@ -1,0 +1,46 @@
+<!-- Voile affiché pendant l'application des réglages (Réglages et Restauration). DataContext : un ChangeViewModelBase. -->
+<UserControl
+  x:Class="Aria.Gui.Views.ApplyingOverlay"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+  <Grid fx:Fx.Sweep="True" Background="#EB030812">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+      <TextBlock
+        Margin="0,0,0,18"
+        HorizontalAlignment="Center"
+        Style="{StaticResource HudCode}"
+        Text="OPÉRATION EN COURS · NE PAS ÉTEINDRE LE PC" />
+      <Grid Width="140" Height="140">
+        <Ellipse
+          fx:Fx.Spin="True"
+          Stroke="#997DF9FF"
+          StrokeDashArray="2 6"
+          StrokeThickness="2" />
+        <ui:ProgressRing
+          Width="90"
+          Height="90"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          IsIndeterminate="True" />
+      </Grid>
+      <TextBlock
+        Margin="0,24,0,6"
+        HorizontalAlignment="Center"
+        fx:Fx.Pulse="True"
+        FontFamily="{StaticResource TechFont}"
+        FontSize="20"
+        FontWeight="SemiBold"
+        Foreground="{StaticResource NeonCyanBrush}"
+        Text="{Binding ApplyingTitle}" />
+      <TextBlock HorizontalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding ProgressText}" />
+      <ProgressBar
+        Width="440"
+        Height="6"
+        Margin="0,16,0,0"
+        Maximum="100"
+        Value="{Binding ProgressValue, Mode=OneWay}" />
+    </StackPanel>
+  </Grid>
+</UserControl>

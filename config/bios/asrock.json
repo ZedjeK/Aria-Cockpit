@@ -1,0 +1,21 @@
+{
+  "brand": "ASRock",
+  "match": ["ASRock"],
+  "setupKey": "F2 ou Suppr",
+  "advancedModeKey": "F6",
+  "updateTool": "Tool → Instant Flash (mise à jour depuis une clé USB)",
+  "options": {
+    "memory_profile.intel": { "path": "OC Tweaker → DRAM Configuration → Load XMP Setting", "value": "XMP 1", "alternates": ["DRAM Profile"] },
+    "memory_profile.amd":   { "path": "OC Tweaker → DRAM Configuration → Load EXPO Setting", "value": "EXPO 1", "alternates": ["DRAM Profile", "Load XMP Setting"] },
+    "csm":                  { "path": "Boot → CSM (Compatibility Support Module)", "value": "Disabled", "alternates": [] },
+    "above_4g":             { "path": "Advanced → Chipset Configuration → Above 4G Decoding", "value": "Enabled", "alternates": ["Advanced → PCI Subsystem"] },
+    "rebar":                { "path": "Advanced → Chipset Configuration → Re-Size BAR Support", "value": "Enabled", "alternates": ["Advanced → PCI Subsystem"] },
+    "secure_boot":          { "path": "Security → Secure Boot", "value": "Enabled", "alternates": [] },
+    "tpm.intel":            { "path": "Security → Intel Platform Trust Technology", "value": "Enabled", "alternates": ["PTT"] },
+    "tpm.amd":              { "path": "Advanced → CPU Configuration → AMD fTPM switch", "value": "AMD CPU fTPM", "alternates": ["Security → AMD fTPM switch"] },
+    "virtualization.intel": { "path": "Advanced → CPU Configuration → Intel Virtualization Technology", "value": "Enabled", "alternates": ["VT-x"] },
+    "virtualization.amd":   { "path": "Advanced → CPU Configuration → SVM Mode", "value": "Enabled", "alternates": [] },
+    "smt.intel":            { "path": "Advanced → CPU Configuration → Hyper Threading Technology", "value": "Enabled", "alternates": [] },
+    "smt.amd":              { "path": "Advanced → CPU Configuration → SMT Mode", "value": "Auto (ou Enabled)", "alternates": [] }
+  }
+}

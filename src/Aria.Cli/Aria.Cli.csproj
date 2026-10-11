@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Aria.Cli</RootNamespace>
+    <AssemblyName>Aria.Cli</AssemblyName>
+    <!-- « Description du fichier » dans Windows -->
+    <AssemblyTitle>Aria (console)</AssemblyTitle>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Publication : un seul .exe autonome (pas besoin d'installer .NET sur la machine cible) -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Tableaux et liste à cocher dans la console -->
+    <PackageReference Include="Spectre.Console" Version="0.50.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aria.Core\Aria.Core.csproj" />
+  </ItemGroup>
+
+</Project>

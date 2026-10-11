@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Aria.Gui</RootNamespace>
+    <AssemblyName>Aria</AssemblyName>
+    <!-- « Description du fichier » dans Windows -->
+    <AssemblyTitle>Aria</AssemblyTitle>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Icône de l'exe (Explorateur, barre des tâches) : Assets\aria-icon.svg rendu en 16 à 256 px -->
+    <ApplicationIcon>Assets\Aria.ico</ApplicationIcon>
+
+    <!-- Publication : un seul Aria.exe autonome -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- Pas de compression : un exe qui se décompresse lui-même alerte souvent les antivirus (fichier plus gros, en contrepartie) -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Contrôles au style Windows 11 (Fluent, Mica, thème clair/sombre) -->
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <!-- Liaison interface ↔ logique (MVVM), bibliothèque officielle Microsoft -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Même icône pour la fenêtre -->
+    <Resource Include="Assets\Aria.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aria.Core\Aria.Core.csproj" />
+  </ItemGroup>
+
+</Project>

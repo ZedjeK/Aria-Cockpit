@@ -1,0 +1,135 @@
+using Microsoft.Win32;
+using Aria.Core.Models;
+
+namespace Aria.Core.Diagnostics.Checks;
+
+/// <summary>Jeux installés sur disque dur classique et espace libre du disque système.</summary>
+public sealed class StorageCheck : IDiagnosticCheck
+{
+    public string Name => "stockage";
+
+    public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
+    {
+        var disks = ctx.Hardware.Disks;
+
+        // Bibliothèques de jeux situées sur un disque dur
+        foreach (var (launcher, path) in GameLibraries.Find())
+        {
+            var letter = char.ToUpperInvariant(path.FirstOrDefault());
+            var disk = disks.FirstOrDefault(d => d.DriveLetters.Contains(letter));
+            if (disk?.Media == StorageMedia.Hdd)
+                yield return new("storage.games", $"Jeux {launcher} sur disque dur ({letter}:)", Severity.Warning,
+                    $"Bibliothèque : {path}. Les chargements et l'apparition des textures sont nettement plus lents que sur SSD.",
+                    "Déplacer les jeux les plus joués vers un SSD (les lanceurs proposent une fonction « Déplacer »).");
+        }
+
+        // Espace libre du disque système (cache des shaders, mises à jour…)
+        var root = Path.GetPathRoot(Environment.SystemDirectory);
+        if (root is null) yield break;
+        var drive = new DriveInfo(root);
+        var freeGb = drive.AvailableFreeSpace / 1e9;
+        var freeRatio = (double)drive.AvailableFreeSpace / drive.TotalSize;
+
+        if (freeGb < 20 || freeRatio < 0.10)
+            yield return new("storage.free", $"Disque système presque plein ({freeGb:0} Go libres)", Severity.Warning,
+                "Windows et le pilote graphique ont besoin d'espace (cache des shaders, mises à jour).",
+                "Libérer de l'espace : Paramètres → Système → Stockage → Recommandations de nettoyage.");
+        else
+            yield return new("storage.free", $"Disque système : {freeGb:0} Go libres", Severity.Ok, "");
+    }
+}
+
+/// <summary>Repère les dossiers de jeux de Steam, Epic Games et de l'application Xbox.</summary>
+internal static class GameLibraries
+{
+    public static IEnumerable<(string Launcher, string Path)> Find()
+    {
+        var found = new List<(string, string)>();
+
+        // Steam : libraryfolders.vdf liste toutes les bibliothèques
+        if (Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) is string steam)
+        {
+            var vdf = Path.Combine(steam.Replace('/', '\\'), "steamapps", "libraryfolders.vdf");
+            if (File.Exists(vdf))
+                found.AddRange(GameLibraryParser.SteamPaths(File.ReadAllText(vdf)).Select(p => ("Steam", p)));
+        }
+
+        // Epic : un manifeste .item (JSON) par jeu installé
+        var epicManifests = @"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests";
+        if (Directory.Exists(epicManifests))
+        {
+            foreach (var file in Directory.GetFiles(epicManifests, "*.item"))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
+                    if (doc.RootElement.TryGetProperty("InstallLocation", out var loc) && loc.GetString() is { Length: > 0 } p)
+                        found.Add(("Epic", p));
+                }
+                catch (Exception e) when (e is System.Text.Json.JsonException or IOException) { }
+            }
+        }
+
+        // Xbox / Game Pass : dossier "XboxGames" à la racine d'un lecteur
+        foreach (var drive in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Fixed && d.IsReady))
+        {
+            var xbox = Path.Combine(drive.RootDirectory.FullName, "XboxGames");
+            if (Directory.Exists(xbox)) found.Add(("Xbox", xbox));
+        }
+
+        // Un seul signalement par lanceur et par lecteur
+        return found.DistinctBy(f => (f.Item1, char.ToUpperInvariant(f.Item2.FirstOrDefault())));
+    }
+}
+
+/// <summary>Programmes lancés au démarrage de Windows (information).</summary>
+public sealed class StartupCheck : IDiagnosticCheck
+{
+    public string Name => "programmes au démarrage";
+
+    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    private const string ApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved";
+
+    public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
+    {
+        var names = new List<string>();
+        names.AddRange(ReadRun(Registry.CurrentUser, RunKey, "Run"));
+        names.AddRange(ReadRun(Registry.LocalMachine, RunKey, "Run"));
+        names.AddRange(ReadRun(Registry.LocalMachine, @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "Run32"));
+        names.AddRange(ReadStartupFolder(Environment.GetFolderPath(Environment.SpecialFolder.Startup), Registry.CurrentUser));
+        names.AddRange(ReadStartupFolder(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup), Registry.LocalMachine));
+
+        var list = names.Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+        if (list.Count == 0) yield break;
+
+        yield return new("startup", $"{list.Count} programmes au démarrage", list.Count > 15 ? Severity.Info : Severity.Ok,
+            string.Join(", ", list),
+            list.Count > 15
+                ? "Désactiver ceux dont vous n'avez pas besoin : Gestionnaire des tâches → Applications de démarrage. Garder les pilotes (audio, NVIDIA…)."
+                : null);
+    }
+
+    private static IEnumerable<string> ReadRun(RegistryKey hive, string path, string approvedSubKey)
+    {
+        using var key = hive.OpenSubKey(path);
+        if (key is null) return [];
+        using var approved = hive.OpenSubKey($@"{ApprovedKey}\{approvedSubKey}");
+        return key.GetValueNames().Where(n => n.Length > 0 && IsEnabled(approved, n)).ToList();
+    }
+
+    private static IEnumerable<string> ReadStartupFolder(string folder, RegistryKey hive)
+    {
+        if (!Directory.Exists(folder)) return [];
+        using var approved = hive.OpenSubKey($@"{ApprovedKey}\StartupFolder");
+        return Directory.GetFiles(folder)
+            .Where(f => !f.EndsWith("desktop.ini", StringComparison.OrdinalIgnoreCase))
+            .Select(Path.GetFileName)
+            .Where(n => n is not null && IsEnabled(approved, n))
+            .Select(n => Path.GetFileNameWithoutExtension(n!))
+            .ToList();
+    }
+
+    /// <summary>Le Gestionnaire des tâches note les désactivations ici : 1er octet impair = désactivé.</summary>
+    private static bool IsEnabled(RegistryKey? approved, string name) =>
+        approved?.GetValue(name) is not byte[] { Length: > 0 } state || (state[0] & 1) == 0;
+}

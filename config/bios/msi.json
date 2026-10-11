@@ -1,0 +1,21 @@
+{
+  "brand": "MSI",
+  "match": ["Micro-Star", "MSI"],
+  "setupKey": "Suppr",
+  "advancedModeKey": "F7",
+  "updateTool": "M-Flash (mise à jour depuis une clé USB)",
+  "options": {
+    "memory_profile.intel": { "path": "OC → Extreme Memory Profile (XMP)", "value": "Profile 1", "alternates": ["Bouton XMP en mode simplifié"] },
+    "memory_profile.amd":   { "path": "OC → EXPO / Extreme Memory Profile", "value": "Profile 1", "alternates": ["A-XMP (anciennes cartes AMD)", "Bouton EXPO en mode simplifié"] },
+    "csm":                  { "path": "Settings → Advanced → Windows OS Configuration → BIOS UEFI/CSM Mode", "value": "UEFI", "alternates": ["CSM Support"] },
+    "above_4g":             { "path": "Settings → Advanced → PCI Subsystem Settings → Above 4G memory/Crypto Currency mining", "value": "Enabled", "alternates": ["Above 4G Decoding"] },
+    "rebar":                { "path": "Settings → Advanced → PCI Subsystem Settings → Re-Size BAR Support", "value": "Enabled", "alternates": [] },
+    "secure_boot":          { "path": "Settings → Security → Secure Boot", "value": "Enabled", "alternates": [] },
+    "tpm.intel":            { "path": "Settings → Security → Trusted Computing → Security Device Support", "value": "Enable (PTT)", "alternates": ["Intel Platform Trust Technology"] },
+    "tpm.amd":              { "path": "Settings → Security → Trusted Computing → Security Device Support", "value": "Enable (AMD fTPM)", "alternates": ["AMD fTPM switch"] },
+    "virtualization.intel": { "path": "OC → CPU Features → Intel Virtualization Tech", "value": "Enabled", "alternates": ["VT-x"] },
+    "virtualization.amd":   { "path": "OC → Advanced CPU Configuration → SVM Mode", "value": "Enabled", "alternates": [] },
+    "smt.intel":            { "path": "OC → CPU Features → Hyper-Threading", "value": "Enabled", "alternates": [] },
+    "smt.amd":              { "path": "OC → Advanced CPU Configuration → SMT Mode", "value": "Auto (ou Enabled)", "alternates": [] }
+  }
+}

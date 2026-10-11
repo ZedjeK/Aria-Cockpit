@@ -1,0 +1,86 @@
+<!--
+  Logo d'Aria (icône validée « Néon Glace, onde orange ») en vectoriel : plaque à coins coupés,
+  A en tubes néon dont le sommet est décalé (glitch), onde orange en guise de barre.
+  Les halos sont posés sur des Canvas parents pour ne pas être coupés par les découpes du glitch.
+-->
+<UserControl
+  x:Class="Aria.Gui.Views.AriaLogo"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Focusable="False"
+  IsHitTestVisible="False">
+  <Viewbox Stretch="Uniform">
+    <Canvas Width="160" Height="160">
+      <Polygon Fill="#FF030812" Points="24,0 136,0 160,24 160,136 136,160 24,160 0,136 0,24" />
+      <Polygon
+        Points="26,7 134,7 153,26 153,134 134,153 26,153 7,134 7,26"
+        Stroke="#A64D7CFF"
+        StrokeThickness="2.5" />
+
+      <!-- Jambe gauche : cyan glacé -->
+      <Canvas>
+        <Canvas.Effect>
+          <DropShadowEffect BlurRadius="12" Opacity="0.9" ShadowDepth="0" Color="#FF7DF9FF" />
+        </Canvas.Effect>
+        <Path
+          Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
+          Stroke="#FF7DF9FF"
+          StrokeLineJoin="Round"
+          StrokeThickness="6">
+          <Path.Clip>
+            <RectangleGeometry Rect="0,72,80,90" />
+          </Path.Clip>
+        </Path>
+      </Canvas>
+
+      <!-- Jambe droite : bleu roi -->
+      <Canvas>
+        <Canvas.Effect>
+          <DropShadowEffect BlurRadius="12" Opacity="0.9" ShadowDepth="0" Color="#FF5C8BFF" />
+        </Canvas.Effect>
+        <Path
+          Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
+          Stroke="#FF5C8BFF"
+          StrokeLineJoin="Round"
+          StrokeThickness="6">
+          <Path.Clip>
+            <RectangleGeometry Rect="80,72,80,90" />
+          </Path.Clip>
+        </Path>
+      </Canvas>
+
+      <!-- Sommet blanc, décalé vers la droite : le glitch -->
+      <Canvas>
+        <Canvas.Effect>
+          <DropShadowEffect BlurRadius="12" Opacity="0.8" ShadowDepth="0" Color="#FFFFFFFF" />
+        </Canvas.Effect>
+        <Path
+          Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
+          Stroke="#FFFFFFFF"
+          StrokeLineJoin="Round"
+          StrokeThickness="6">
+          <Path.Clip>
+            <RectangleGeometry Rect="0,0,160,72" />
+          </Path.Clip>
+          <Path.RenderTransform>
+            <TranslateTransform X="7" />
+          </Path.RenderTransform>
+        </Path>
+      </Canvas>
+
+      <!-- Onde orange -->
+      <Canvas>
+        <Canvas.Effect>
+          <DropShadowEffect BlurRadius="12" Opacity="0.9" ShadowDepth="0" Color="#FFFF8A1F" />
+        </Canvas.Effect>
+        <Polyline
+          Points="58,100 66,100 71,89 78,111 85,91 90,100 102,100"
+          Stroke="#FFFF8A1F"
+          StrokeEndLineCap="Round"
+          StrokeLineJoin="Round"
+          StrokeStartLineCap="Round"
+          StrokeThickness="6" />
+      </Canvas>
+    </Canvas>
+  </Viewbox>
+</UserControl>

@@ -1,0 +1,130 @@
+<Page
+  x:Class="Aria.Gui.Views.SettingsPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  xmlns:views="clr-namespace:Aria.Gui.Views"
+  Title="Réglages"
+  Foreground="{StaticResource NeonTextBrush}"
+  ScrollViewer.CanContentScroll="False">
+  <!-- CanContentScroll=False : la page gère son propre défilement, pour garder la barre d'action fixe en bas -->
+  <Page.Resources>
+    <fx:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+
+    <!-- Ligne « nom : valeur » des sections repliables -->
+    <DataTemplate x:Key="SimpleRowTemplate">
+      <Grid Margin="0,4">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" />
+        <TextBlock
+          Grid.Column="1"
+          Margin="16,0,0,0"
+          FontFamily="{StaticResource MonoFont}"
+          Foreground="{StaticResource NeonTealBrush}"
+          Text="{Binding Value}"
+          TextWrapping="Wrap" />
+      </Grid>
+    </DataTemplate>
+  </Page.Resources>
+
+  <Grid>
+    <!-- ================= Liste des réglages ================= -->
+    <Grid Visibility="{Binding ShowResults, Converter={StaticResource InverseBoolToVisibility}}">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="1500" Margin="36,24,36,24">
+          <!-- En-tête -->
+          <Grid>
+            <StackPanel>
+              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="02 · WINDOWS · NVIDIA · CONFIDENTIALITÉ" />
+              <TextBlock Style="{StaticResource NeonTitle}" Text="RÉGLAGES" />
+              <TextBlock
+                Margin="0,4,0,0"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="Aperçu : rien n'est modifié tant que vous ne cliquez pas sur « Appliquer »." />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+              <ui:Button Margin="0,0,8,0" Command="{Binding SelectAllCommand}" Content="Tout cocher" Icon="{ui:SymbolIcon CheckboxChecked24}" />
+              <ui:Button Margin="0,0,8,0" Command="{Binding SelectNoneCommand}" Content="Tout décocher" Icon="{ui:SymbolIcon CheckboxUnchecked24}" />
+              <ui:Button Command="{Binding ReanalyzeCommand}" Content="Réanalyser" Icon="{ui:SymbolIcon ArrowClockwise24}" />
+            </StackPanel>
+          </Grid>
+
+          <ContentControl Content="CHANGEMENTS PROPOSÉS" Style="{StaticResource SectionHeader}" />
+
+          <views:ChecklistView DataContext="{Binding Groups}" Visibility="{Binding DataContext.HasChanges, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BoolToVisibility}}" />
+
+          <!-- Rien à changer -->
+          <ContentControl fx:Fx.Reveal="True" Style="{StaticResource NeonPanel}" Visibility="{Binding HasNoChanges, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <ui:SymbolIcon FontSize="26" Foreground="{StaticResource NeonGreenBrush}" Symbol="CheckmarkCircle24" />
+              <StackPanel Margin="14,0,0,0">
+                <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Tous les réglages sont déjà à la bonne valeur." />
+                <TextBlock Foreground="{StaticResource NeonMutedBrush}" Text="Rien à changer pour le moment." />
+              </StackPanel>
+            </StackPanel>
+          </ContentControl>
+
+          <!-- Autres réglages -->
+          <ContentControl Content="AUTRES RÉGLAGES" Style="{StaticResource SectionHeader}" />
+          <ui:CardExpander Margin="0,0,0,8" Header="{Binding UnchangedHeader}">
+            <ItemsControl ItemTemplate="{StaticResource SimpleRowTemplate}" ItemsSource="{Binding Unchanged}" />
+          </ui:CardExpander>
+          <ui:CardExpander
+            Margin="0,0,0,8"
+            Header="{Binding NotApplicableHeader}"
+            Visibility="{Binding HasNotApplicable, Converter={StaticResource BoolToVisibility}}">
+            <ItemsControl ItemTemplate="{StaticResource SimpleRowTemplate}" ItemsSource="{Binding NotApplicable}" />
+          </ui:CardExpander>
+          <ui:CardExpander
+            Margin="0,0,0,8"
+            Header="{Binding UnreadableHeader}"
+            Visibility="{Binding HasUnreadable, Converter={StaticResource BoolToVisibility}}">
+            <ItemsControl ItemTemplate="{StaticResource SimpleRowTemplate}" ItemsSource="{Binding Unreadable}" />
+          </ui:CardExpander>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Barre d'action, toujours visible en bas -->
+      <Border
+        Grid.Row="1"
+        Padding="36,14"
+        Background="#E6070B14"
+        BorderBrush="{StaticResource NeonLineBrush}"
+        BorderThickness="0,1,0,0"
+        Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility}}">
+        <Grid MaxWidth="1500">
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock
+              FontFamily="{StaticResource TechFont}"
+              FontSize="16"
+              FontWeight="SemiBold"
+              Text="{Binding SelectionText}" />
+            <TextBlock
+              Foreground="{StaticResource NeonMutedBrush}"
+              Text="Sauvegarde et point de restauration créés automatiquement avant toute modification." />
+          </StackPanel>
+          <Button
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Command="{Binding ApplyCommand}"
+            Content="{Binding ApplyText}" Style="{StaticResource HudButton}" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= Résultat ================= -->
+    <views:ChangeResultView Visibility="{Binding ShowResults, Converter={StaticResource BoolToVisibility}}" />
+
+    <!-- ================= Application en cours ================= -->
+    <views:ApplyingOverlay Visibility="{Binding IsApplying, Converter={StaticResource BoolToVisibility}}" />
+  </Grid>
+</Page>

@@ -1,0 +1,14 @@
+<Project>
+  <!-- Informations communes aux exécutables (Propriétés → Détails, Gestionnaire des tâches) : un seul endroit à modifier -->
+  <PropertyGroup>
+    <Product>Aria · PC-Tune</Product>
+    <Version>0.14.1</Version>
+    <Company>Jérémy Zemani</Company>
+    <Authors>Jérémy Zemani</Authors>
+    <Copyright>© 2026 Jérémy Zemani</Copyright>
+    <Description>Optimisation de Windows 11 et des réglages NVIDIA selon le matériel</Description>
+    <NeutralLanguage>fr-FR</NeutralLanguage>
+    <!-- Version affichée sans suffixe technique (« 0.12.1 » et non « 0.12.1+abc123 ») -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>
