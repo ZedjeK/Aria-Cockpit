@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
+using Aria.Core.Updates;
 using Aria.Gui.Services;
 using Aria.Gui.Views;
 using Wpf.Ui.Controls;
@@ -10,6 +11,7 @@ namespace Aria.Gui;
 public partial class MainWindow : FluentWindow
 {
     private readonly PageProvider _pages;
+    private AppUpdate? _update;
 
     public MainWindow(AppState state)
     {
@@ -22,10 +24,33 @@ public partial class MainWindow : FluentWindow
             while (PageHost.CanGoBack) PageHost.RemoveBackEntry();
             PageScroller.ScrollToTop();
         };
-        VersionText.Text = "v" + (Assembly.GetEntryAssembly()?
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?");
-        Loaded += (_, _) => ShowPage(typeof(DashboardPage));
+        VersionText.Text = "v" + CurrentVersionText;
+        Loaded += (_, _) =>
+        {
+            ShowPage(typeof(DashboardPage));
+            _ = CheckForUpdateAsync();
+        };
     }
+
+    private static string CurrentVersionText =>
+        Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
+
+    /// <summary>Au lancement : une version plus récente sur GitHub ? Si oui, bandeau discret. Rien n'est téléchargé.</summary>
+    private async Task CheckForUpdateAsync()
+    {
+        if (!AppUpdateChecker.TryParseVersion(CurrentVersionText, out var current)) return;
+        _update = await AppUpdateChecker.CheckAsync(current);
+        if (_update is null) return;
+        UpdateText.Text = $"Aria {_update.Latest} est disponible (version installée : {current}). Rien n'est installé automatiquement.";
+        UpdateBanner.Visibility = Visibility.Visible;
+    }
+
+    private void OnOpenUpdate(object sender, RoutedEventArgs e)
+    {
+        if (_update is not null) Shell.OpenUnelevated(_update.PageUrl);
+    }
+
+    private void OnCloseUpdate(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;
 
     /// <summary>Un onglet de la barre du haut vient d'être choisi : affiche sa page.</summary>
     private void OnTabChecked(object sender, RoutedEventArgs e)

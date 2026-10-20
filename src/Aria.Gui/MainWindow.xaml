@@ -21,14 +21,15 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
     <!-- ===== Décor : nuit profonde, grille fine et halo bleu au centre ===== -->
-    <Rectangle Grid.RowSpan="2" Fill="{StaticResource SpaceBackgroundBrush}" IsHitTestVisible="False" />
-    <Rectangle Grid.RowSpan="2" Fill="{StaticResource GridBrush}" IsHitTestVisible="False" />
+    <Rectangle Grid.RowSpan="3" Fill="{StaticResource SpaceBackgroundBrush}" IsHitTestVisible="False" />
+    <Rectangle Grid.RowSpan="3" Fill="{StaticResource GridBrush}" IsHitTestVisible="False" />
     <Ellipse
-      Grid.RowSpan="2"
+      Grid.RowSpan="3"
       Width="1100"
       Height="900"
       HorizontalAlignment="Center"
@@ -42,7 +43,7 @@
       </Ellipse.Fill>
     </Ellipse>
     <Ellipse
-      Grid.RowSpan="2"
+      Grid.RowSpan="3"
       Width="900"
       Height="700"
       Margin="0,0,-360,-380"
@@ -117,13 +118,56 @@
       VerticalAlignment="Top"
       Title="" />
 
+    <!-- ===== Bandeau « nouvelle version », affiché seulement si GitHub publie une release plus récente ===== -->
+    <Border
+      x:Name="UpdateBanner"
+      Grid.Row="1"
+      Padding="22,10"
+      Background="#1FFF8A1F"
+      BorderBrush="#66FF8A1F"
+      BorderThickness="0,0,0,1"
+      Visibility="Collapsed">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <TextBlock VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="MISE À JOUR DISPONIBLE" />
+        <TextBlock
+          x:Name="UpdateText"
+          Grid.Column="1"
+          Margin="16,0"
+          VerticalAlignment="Center"
+          Foreground="{StaticResource NeonTextBrush}"
+          TextTrimming="CharacterEllipsis" />
+        <Button
+          Grid.Column="2"
+          MinHeight="32"
+          Padding="20,0"
+          Click="OnOpenUpdate"
+          Content="VOIR LA RELEASE"
+          Style="{StaticResource HudButton}"
+          ToolTip="Ouvre la page de la nouvelle version sur GitHub, dans votre navigateur" />
+        <ui:Button
+          Grid.Column="3"
+          Margin="10,0,0,0"
+          Padding="8"
+          Appearance="Transparent"
+          Click="OnCloseUpdate"
+          Icon="{ui:SymbolIcon Dismiss16}"
+          ToolTip="Masquer jusqu'au prochain lancement" />
+      </Grid>
+    </Border>
+
     <!--
       Hôte des pages : un cadre sans barre de navigation, dans un défilement vertical commun à toutes les pages.
       La barre du haut choisit la page affichée.
     -->
     <ui:DynamicScrollViewer
       x:Name="PageScroller"
-      Grid.Row="1"
+      Grid.Row="2"
       HorizontalScrollBarVisibility="Disabled"
       VerticalScrollBarVisibility="Auto">
       <Frame
@@ -135,7 +179,7 @@
 
     <!-- ===== Écran d'analyse ===== -->
     <Grid
-      Grid.Row="1"
+      Grid.Row="2"
       fx:Fx.Sweep="True"
       Background="#E6030812"
       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
@@ -171,7 +215,7 @@
 
     <!-- ===== Confirmations, intégrées à la fenêtre (barre de titre laissée libre) ===== -->
     <views:DialogOverlay
-      Grid.Row="1"
+      Grid.Row="2"
       DataContext="{x:Static services:DialogService.Current}"
       Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
   </Grid>
