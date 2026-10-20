@@ -27,6 +27,12 @@
               Style="{StaticResource TechLabel}"
               Text="{Binding Header}" />
           </CheckBox>
+          <TextBlock
+            Margin="36,-4,0,12"
+            Foreground="{StaticResource NeonMutedBrush}"
+            Text="{Binding Note}"
+            TextWrapping="Wrap"
+            Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
 
           <ItemsControl ItemsSource="{Binding Items}">
             <ItemsControl.ItemTemplate>

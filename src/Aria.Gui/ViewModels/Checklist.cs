@@ -35,14 +35,19 @@ public sealed class CheckGroup : ObservableObject
 {
     private bool _bulkUpdate;
 
-    public CheckGroup(string title, IEnumerable<CheckItem> items)
+    public CheckGroup(string title, IEnumerable<CheckItem> items, string? note = null)
     {
         Title = title;
+        Note = note ?? "";
         Items = new ObservableCollection<CheckItem>(items);
         foreach (var item in Items) item.PropertyChanged += OnItemChanged;
     }
 
     public string Title { get; }
+
+    /// <summary>Explication commune à tout le groupe, affichée une fois sous son titre.</summary>
+    public string Note { get; }
+    public bool HasNote => Note.Length > 0;
     public ObservableCollection<CheckItem> Items { get; }
     public string Header => $"{Title.ToUpperInvariant()} ({Items.Count})";
 

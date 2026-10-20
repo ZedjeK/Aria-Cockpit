@@ -21,7 +21,8 @@ public enum StartupSource
 /// <param name="Name">Nom de la valeur du registre, ou nom du fichier dans le dossier Démarrage.</param>
 /// <param name="Command">Commande lancée (registre) ou chemin du raccourci (dossier).</param>
 /// <param name="DisplayName">Nom lisible : description de l'exécutable si disponible, sinon <paramref name="Name"/>.</param>
-public sealed record StartupEntry(StartupSource Source, string Name, string Command, string DisplayName, bool Enabled)
+/// <param name="Publisher">Éditeur inscrit dans l'exécutable (« Discord Inc. »), comme l'affiche Windows ; null s'il n'y en a pas.</param>
+public sealed record StartupEntry(StartupSource Source, string Name, string Command, string DisplayName, bool Enabled, string? Publisher = null)
 {
     /// <summary>Composants de sécurité de Windows : jamais proposés à la désactivation.</summary>
     public bool IsProtected => StartupApps.IsProtected(this);
@@ -120,7 +121,8 @@ public static class StartupApps
         foreach (var name in key.GetValueNames().Where(n => n.Length > 0))
         {
             if (key.GetValue(name) is not string command) continue;
-            yield return new StartupEntry(source, name, command, FriendlyName(name, command), IsEnabled(approved?.GetValue(name)));
+            var (display, publisher) = Describe(name, command);
+            yield return new StartupEntry(source, name, command, display, IsEnabled(approved?.GetValue(name)), publisher);
         }
     }
 
@@ -139,8 +141,11 @@ public static class StartupApps
         }
     }
 
-    /// <summary>« Discord » plutôt que « Discord_xyz » : description de l'exécutable quand elle existe.</summary>
-    private static string FriendlyName(string name, string command)
+    /// <summary>
+    /// Nom et éditeur, comme dans Paramètres → Applications → Démarrage : description de l'exécutable
+    /// (à défaut, nom de la valeur) et société inscrite dans le fichier.
+    /// </summary>
+    private static (string Display, string? Publisher) Describe(string name, string command)
     {
         try
         {
@@ -148,15 +153,18 @@ public static class StartupApps
             {
                 var info = FileVersionInfo.GetVersionInfo(exe);
                 var description = (info.FileDescription ?? "").Trim();
-                if (description.Length >= 3 && !description.Equals(Path.GetFileName(exe), StringComparison.OrdinalIgnoreCase))
-                    return description;
+                var publisher = (info.CompanyName ?? "").Trim();
+                var display = description.Length >= 3 && !description.Equals(Path.GetFileName(exe), StringComparison.OrdinalIgnoreCase)
+                    ? description
+                    : name;
+                return (display, publisher.Length > 0 ? publisher : null);
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
         {
             // Nom de la valeur à défaut
         }
-        return name;
+        return (name, null);
     }
 
     private static RegistryKey Hive(StartupSource source) =>

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Aria.Core.Models;
 using Aria.Core.Settings;
+using Aria.Core.Startup;
 using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
@@ -67,7 +68,8 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
         var plan = _analysis.Plan;
         Groups = plan.Where(p => p.NeedsChange)
             .GroupBy(p => p.Setting.Category)
-            .Select(g => new CheckGroup(SettingCategoryNames.Of(g.Key), g.Select(ToCheckItem)))
+            .Select(g => new CheckGroup(SettingCategoryNames.Of(g.Key), g.Select(ToCheckItem),
+                g.Key == SettingCategory.Startup ? StartupAppSetting.GroupNote : null))
             .ToList();
         foreach (var item in AllItems) item.PropertyChanged += (_, e) =>
         {
