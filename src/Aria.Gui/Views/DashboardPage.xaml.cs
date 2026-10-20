@@ -10,6 +10,9 @@ public partial class DashboardPage : Page
     {
         DataContext = viewModel;
         InitializeComponent();
+        // Télémétrie : lectures seulement pendant que la page est affichée
+        Loaded += (_, _) => viewModel.Telemetry.Start();
+        Unloaded += (_, _) => viewModel.Telemetry.Stop();
     }
 
     /// <summary>Un bloc du résumé : descend jusqu'au diagnostic détaillé (titre en haut de l'écran).</summary>

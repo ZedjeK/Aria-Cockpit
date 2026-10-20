@@ -64,6 +64,10 @@ public sealed partial class DashboardViewModel : ObservableObject
     [ObservableProperty] private bool hasDetectionWarnings;
     [ObservableProperty] private string error = "";
     [ObservableProperty] private bool hasError;
+    [ObservableProperty] private string telemetryTitle = "TÉLÉMÉTRIE GPU · EN DIRECT";
+
+    /// <summary>Bandeau de télémétrie en direct, démarré et arrêté par la page.</summary>
+    public GpuTelemetryViewModel Telemetry { get; } = new();
 
     public DashboardViewModel(AppState state)
     {
@@ -111,6 +115,9 @@ public sealed partial class DashboardViewModel : ObservableObject
 
         if (_state.Analysis is not { } analysis) return;
         var hw = analysis.Hardware;
+        TelemetryTitle = hw.NvidiaGpu is { } nvidia
+            ? $"TÉLÉMÉTRIE GPU · {Clean(nvidia.Name).Replace("NVIDIA ", "").ToUpperInvariant()} · EN DIRECT"
+            : "TÉLÉMÉTRIE GPU · EN DIRECT";
 
         // Cockpit : les cartes numérotées, la moitié de chaque côté de la jauge
         Hardware = BuildCards(analysis).Select((c, i) => c with { Label = $"{i + 1:00} · {c.Title.ToUpperInvariant()}" }).ToList();

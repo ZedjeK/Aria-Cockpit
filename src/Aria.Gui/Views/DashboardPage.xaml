@@ -204,6 +204,72 @@
         ItemsSource="{Binding RightHardware}" />
     </Grid>
 
+    <!-- ===== Télémétrie GPU en direct (carte NVIDIA uniquement) ===== -->
+    <ContentControl
+      Margin="0,26,0,0"
+      Style="{StaticResource HudPanel}"
+      Visibility="{Binding Telemetry.IsAvailable, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <Ellipse
+            Width="7"
+            Height="7"
+            fx:Fx.Pulse="True"
+            Fill="{StaticResource NeonOrangeBrush}">
+            <Ellipse.Effect>
+              <DropShadowEffect BlurRadius="8" Opacity="0.9" ShadowDepth="0" Color="{StaticResource NeonOrangeColor}" />
+            </Ellipse.Effect>
+          </Ellipse>
+          <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="{Binding TelemetryTitle}" />
+        </StackPanel>
+        <ItemsControl Margin="0,12,0,0" Focusable="False" ItemsSource="{Binding Telemetry.Readouts}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Rows="1" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Margin="0,0,14,0" Padding="14,4,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
+                <StackPanel>
+                  <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
+                  <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">
+                    <Run x:Name="ValueRun" FontSize="34" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Value, Mode=OneWay}" /><Run FontSize="16" Foreground="{StaticResource NeonBlueBrush}" Text="{Binding Unit, Mode=OneWay, StringFormat=' {0}'}" />
+                  </TextBlock>
+                  <TextBlock
+                    Foreground="{StaticResource NeonMutedBrush}"
+                    FontSize="12"
+                    Text="{Binding Detail}"
+                    TextTrimming="CharacterEllipsis" />
+                  <!-- Jauge : remplie selon la part du maximum (température sur 100 °C, fréquence sur la max…) -->
+                  <Grid Height="4" Margin="0,10,0,0">
+                    <Border Background="#1F7DF9FF" />
+                    <Rectangle x:Name="Bar" RenderTransformOrigin="0,0.5">
+                      <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                          <GradientStop Offset="0" Color="{StaticResource NeonBlueColor}" />
+                          <GradientStop Offset="1" Color="{StaticResource NeonCyanColor}" />
+                        </LinearGradientBrush>
+                      </Rectangle.Fill>
+                      <Rectangle.RenderTransform>
+                        <ScaleTransform ScaleX="{Binding Ratio}" />
+                      </Rectangle.RenderTransform>
+                    </Rectangle>
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Hot}" Value="True">
+                  <Setter TargetName="ValueRun" Property="Foreground" Value="{StaticResource NeonOrangeBrush}" />
+                  <Setter TargetName="Bar" Property="Fill" Value="{StaticResource NeonOrangeBrush}" />
+                </DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ContentControl>
+
     <!-- ===== Résumé du diagnostic : un clic descend jusqu'à la liste détaillée ===== -->
     <UniformGrid Margin="0,26,0,0" Columns="3">
       <Button
