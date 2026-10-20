@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using Aria.Core.Models;
+using Aria.Core.Startup;
 
 namespace Aria.Core.Diagnostics.Checks;
 
@@ -87,49 +88,16 @@ public sealed class StartupCheck : IDiagnosticCheck
 {
     public string Name => "programmes au démarrage";
 
-    private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ApprovedKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved";
-
     public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
     {
-        var names = new List<string>();
-        names.AddRange(ReadRun(Registry.CurrentUser, RunKey, "Run"));
-        names.AddRange(ReadRun(Registry.LocalMachine, RunKey, "Run"));
-        names.AddRange(ReadRun(Registry.LocalMachine, @"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run", "Run32"));
-        names.AddRange(ReadStartupFolder(Environment.GetFolderPath(Environment.SpecialFolder.Startup), Registry.CurrentUser));
-        names.AddRange(ReadStartupFolder(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup), Registry.LocalMachine));
-
-        var list = names.Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+        var list = StartupApps.Scan().Where(e => e.Enabled).Select(e => e.DisplayName)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
         if (list.Count == 0) yield break;
 
         yield return new("startup", $"{list.Count} programmes au démarrage", list.Count > 15 ? Severity.Info : Severity.Ok,
             string.Join(", ", list),
             list.Count > 15
-                ? "Désactiver ceux dont vous n'avez pas besoin : Gestionnaire des tâches → Applications de démarrage. Garder les pilotes (audio, NVIDIA…)."
+                ? "Désactiver ceux dont vous n'avez pas besoin : Réglages → Démarrage (réversible). Garder les pilotes (audio, NVIDIA…)."
                 : null);
     }
-
-    private static IEnumerable<string> ReadRun(RegistryKey hive, string path, string approvedSubKey)
-    {
-        using var key = hive.OpenSubKey(path);
-        if (key is null) return [];
-        using var approved = hive.OpenSubKey($@"{ApprovedKey}\{approvedSubKey}");
-        return key.GetValueNames().Where(n => n.Length > 0 && IsEnabled(approved, n)).ToList();
-    }
-
-    private static IEnumerable<string> ReadStartupFolder(string folder, RegistryKey hive)
-    {
-        if (!Directory.Exists(folder)) return [];
-        using var approved = hive.OpenSubKey($@"{ApprovedKey}\StartupFolder");
-        return Directory.GetFiles(folder)
-            .Where(f => !f.EndsWith("desktop.ini", StringComparison.OrdinalIgnoreCase))
-            .Select(Path.GetFileName)
-            .Where(n => n is not null && IsEnabled(approved, n))
-            .Select(n => Path.GetFileNameWithoutExtension(n!))
-            .ToList();
-    }
-
-    /// <summary>Le Gestionnaire des tâches note les désactivations ici : 1er octet impair = désactivé.</summary>
-    private static bool IsEnabled(RegistryKey? approved, string name) =>
-        approved?.GetValue(name) is not byte[] { Length: > 0 } state || (state[0] & 1) == 0;
 }

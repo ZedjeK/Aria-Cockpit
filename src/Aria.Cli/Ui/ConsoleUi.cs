@@ -106,13 +106,7 @@ internal static class ConsoleUi
 
     private static IRenderable Empty => new Text("");
 
-    private static string CategoryName(SettingCategory category) => category switch
-    {
-        SettingCategory.Windows => "Windows",
-        SettingCategory.Nvidia => "NVIDIA",
-        SettingCategory.Privacy => "Confidentialité",
-        _ => category.ToString()
-    };
+    private static string CategoryName(SettingCategory category) => SettingCategoryNames.Of(category);
 
     private static string ChoiceLabel(PlanItem item) =>
         $"{Markup.Escape(item.Setting.DisplayName)} : {Markup.Escape(item.Current!.Display)} → " +

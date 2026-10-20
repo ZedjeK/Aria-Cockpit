@@ -1,6 +1,6 @@
 namespace Aria.Core.Models;
 
-public enum SettingCategory { Windows, Nvidia, Privacy }
+public enum SettingCategory { Windows, Nvidia, Privacy, Startup }
 
 /// <summary>Nom affiché de chaque groupe de réglages (listes, rapports, fiche PC, console).</summary>
 public static class SettingCategoryNames
@@ -9,6 +9,7 @@ public static class SettingCategoryNames
     {
         SettingCategory.Nvidia => "NVIDIA",
         SettingCategory.Privacy => "Confidentialité",
+        SettingCategory.Startup => "Démarrage",
         _ => "Windows"
     };
 }

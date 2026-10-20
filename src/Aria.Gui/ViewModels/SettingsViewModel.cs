@@ -96,7 +96,7 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
         var badges = new List<Badge>();
         if (p.Setting.RequiresReboot) badges.Add(new Badge("REDÉMARRAGE", BadgeKind.Reboot));
         if (!p.Setting.SelectedByDefault)
-            badges.Add(new Badge(p.Setting.Category == SettingCategory.Privacy ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
+            badges.Add(new Badge(p.Setting.Category is SettingCategory.Privacy or SettingCategory.Startup ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
         return new CheckItem(p.Setting.DisplayName, p.Current!.Display, p.Target!.Value.Display, p.Target.Reason,
             p.Setting.SelectedByDefault, p, badges);
     }

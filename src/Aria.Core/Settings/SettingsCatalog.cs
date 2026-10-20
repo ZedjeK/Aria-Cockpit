@@ -1,6 +1,7 @@
 using Aria.Core.Models;
 using Aria.Core.Nvidia;
 using Aria.Core.Privacy;
+using Aria.Core.Startup;
 using Aria.Core.Windows;
 
 namespace Aria.Core.Settings;
@@ -29,6 +30,9 @@ public static class SettingsCatalog
 
         // Confidentialité : données envoyées à Microsoft, publicités, services inutiles selon le matériel
         settings.AddRange(PrivacySettings.Build(hw));
+
+        // Démarrage : programmes lancés à l'ouverture de session (sauf composants de sécurité de Windows)
+        settings.AddRange(StartupApps.Scan().Where(e => !e.IsProtected).Select(e => new StartupAppSetting(e)));
         return settings;
     }
 }
