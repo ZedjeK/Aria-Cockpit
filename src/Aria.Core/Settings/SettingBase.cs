@@ -10,6 +10,7 @@ public abstract class SettingBase : ISetting
     public abstract SettingCategory Category { get; }
     public virtual bool RequiresReboot => false;
     public virtual bool SelectedByDefault => true;
+    public virtual bool HiddenWhenNotApplicable => false;
 
     public virtual string? WhyNotApplicable(HardwareProfile hardware) => null;
     public abstract SettingValue ReadCurrent(HardwareProfile hardware);

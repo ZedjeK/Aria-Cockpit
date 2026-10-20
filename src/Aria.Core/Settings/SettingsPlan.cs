@@ -24,7 +24,9 @@ public static class SettingsPlanner
 {
     /// <summary>Lit l'état actuel de chaque réglage et calcule sa cible selon le matériel.</summary>
     public static IReadOnlyList<PlanItem> Build(HardwareProfile hw, IEnumerable<ISetting> settings) =>
-        settings.Select(s => Plan(hw, s, () => s.ComputeTarget(hw))).ToList();
+        settings.Select(s => Plan(hw, s, () => s.ComputeTarget(hw)))
+            .Where(p => !(p.NotApplicableReason is not null && p.Setting.HiddenWhenNotApplicable))
+            .ToList();
 
     /// <summary>Plan de restauration : la cible est la valeur sauvegardée.</summary>
     public static PlanItem PlanRestore(HardwareProfile hw, ISetting setting, SettingValue saved, string reason) =>

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Aria.Core.Apps;
 using Aria.Core.Models;
 using Aria.Core.Settings;
 using Aria.Core.Startup;
@@ -69,7 +70,12 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
         Groups = plan.Where(p => p.NeedsChange)
             .GroupBy(p => p.Setting.Category)
             .Select(g => new CheckGroup(SettingCategoryNames.Of(g.Key), g.Select(ToCheckItem),
-                g.Key == SettingCategory.Startup ? StartupAppSetting.GroupNote : null))
+                g.Key switch
+                {
+                    SettingCategory.Startup => StartupAppSetting.GroupNote,
+                    SettingCategory.Apps => StoreApps.GroupNote,
+                    _ => null
+                }))
             .ToList();
         foreach (var item in AllItems) item.PropertyChanged += (_, e) =>
         {
@@ -98,7 +104,7 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
         var badges = new List<Badge>();
         if (p.Setting.RequiresReboot) badges.Add(new Badge("REDÉMARRAGE", BadgeKind.Reboot));
         if (!p.Setting.SelectedByDefault)
-            badges.Add(new Badge(p.Setting.Category is SettingCategory.Privacy or SettingCategory.Startup ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
+            badges.Add(new Badge(p.Setting.Category is SettingCategory.Privacy or SettingCategory.Startup or SettingCategory.Apps ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
         return new CheckItem(p.Setting.DisplayName, p.Current!.Display, p.Target!.Value.Display, p.Target.Reason,
             p.Setting.SelectedByDefault, p, badges);
     }

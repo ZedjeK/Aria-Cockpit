@@ -1,6 +1,6 @@
 namespace Aria.Core.Models;
 
-public enum SettingCategory { Windows, Nvidia, Privacy, Startup }
+public enum SettingCategory { Windows, Nvidia, Privacy, Startup, Apps }
 
 /// <summary>Nom affiché de chaque groupe de réglages (listes, rapports, fiche PC, console).</summary>
 public static class SettingCategoryNames
@@ -10,6 +10,7 @@ public static class SettingCategoryNames
         SettingCategory.Nvidia => "NVIDIA",
         SettingCategory.Privacy => "Confidentialité",
         SettingCategory.Startup => "Démarrage",
+        SettingCategory.Apps => "Applications",
         _ => "Windows"
     };
 }
@@ -53,6 +54,12 @@ public interface ISetting
     bool IsAtTarget(SettingValue current, SettingValue target);
 
     void Apply(HardwareProfile hardware, SettingValue value);
+
+    /// <summary>
+    /// Vrai : non applicable, le réglage disparaît du plan (pas de ligne « non applicable »), tout en restant
+    /// dans le catalogue pour la restauration (ex. une application déjà absente).
+    /// </summary>
+    bool HiddenWhenNotApplicable => false;
 }
 
 public enum SettingStatus

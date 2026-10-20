@@ -1,3 +1,4 @@
+using Aria.Core.Apps;
 using Aria.Core.Models;
 using Aria.Core.Nvidia;
 using Aria.Core.Privacy;
@@ -33,6 +34,9 @@ public static class SettingsCatalog
 
         // Démarrage : programmes lancés à l'ouverture de session (sauf composants de sécurité de Windows)
         settings.AddRange(StartupApps.Scan().Where(e => !e.IsProtected).Select(e => new StartupAppSetting(e)));
+
+        // Applications préinstallées : seules celles présentes sont proposées
+        settings.AddRange(StoreApps.Build());
         return settings;
     }
 }

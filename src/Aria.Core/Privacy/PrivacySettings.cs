@@ -291,6 +291,7 @@ internal static class AppPackages
 
     public static bool IsInstalled(params string[] packageNames)
     {
+        if (!OperatingSystem.IsWindows()) return false;
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(Repository);
