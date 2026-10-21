@@ -69,6 +69,9 @@ public sealed partial class DashboardViewModel : ObservableObject
     /// <summary>Bandeau de télémétrie en direct, démarré et arrêté par la page.</summary>
     public GpuTelemetryViewModel Telemetry { get; } = new();
 
+    /// <summary>Analyse de performance (5 minutes de jeu enregistrées, puis un verdict).</summary>
+    public PerformanceViewModel Performance { get; } = new();
+
     public DashboardViewModel(AppState state)
     {
         _state = state;

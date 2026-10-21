@@ -10,6 +10,7 @@
   <Page.Resources>
     <services:SeverityToBrushConverter x:Key="SeverityBrush" />
     <fx:ScoreLevelToBrushConverter x:Key="ScoreBrush" />
+    <fx:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
 
     <!-- Carte de composant, colonne de gauche : coins haut gauche / bas droite, texte aligné à gauche -->
     <DataTemplate x:Key="HudCardLeft">
@@ -210,18 +211,65 @@
       Style="{StaticResource HudPanel}"
       Visibility="{Binding Telemetry.IsAvailable, Converter={StaticResource BoolToVisibility}}">
       <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <Ellipse
-            Width="7"
-            Height="7"
-            fx:Fx.Pulse="True"
-            Fill="{StaticResource NeonOrangeBrush}">
-            <Ellipse.Effect>
-              <DropShadowEffect BlurRadius="8" Opacity="0.9" ShadowDepth="0" Color="{StaticResource NeonOrangeColor}" />
-            </Ellipse.Effect>
-          </Ellipse>
-          <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="{Binding TelemetryTitle}" />
-        </StackPanel>
+        <Grid>
+          <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+            <Ellipse
+              Width="7"
+              Height="7"
+              fx:Fx.Pulse="True"
+              Fill="{StaticResource NeonOrangeBrush}">
+              <Ellipse.Effect>
+                <DropShadowEffect BlurRadius="8" Opacity="0.9" ShadowDepth="0" Color="{StaticResource NeonOrangeColor}" />
+              </Ellipse.Effect>
+            </Ellipse>
+            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource HudCode}" Text="{Binding TelemetryTitle}" />
+          </StackPanel>
+          <Button
+            HorizontalAlignment="Right"
+            Command="{Binding Performance.StartCommand}"
+            Content="ANALYSER LES PERFORMANCES"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="5 minutes d'enregistrement pendant que vous jouez, puis un verdict. Ne modifie rien."
+            Visibility="{Binding Performance.IsRunning, Converter={StaticResource InverseBoolToVisibility}}" />
+        </Grid>
+
+        <!-- Analyse en cours : progression, consigne, arrêt anticipé -->
+        <Border
+          Margin="0,12,0,0"
+          Padding="14,10"
+          Background="#14FF8A1F"
+          BorderBrush="#99FF8A1F"
+          BorderThickness="1,0,0,0"
+          Visibility="{Binding Performance.IsRunning, Converter={StaticResource BoolToVisibility}}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="{Binding Performance.ProgressText}" />
+              <TextBlock
+                Margin="0,4,0,8"
+                Text="Lancez maintenant un jeu exigeant ou un benchmark et jouez normalement : Aria enregistre en arrière-plan, même réduit. Rien n'est modifié."
+                TextWrapping="Wrap" />
+              <Grid Height="4">
+                <Border Background="#33FF8A1F" />
+                <Rectangle Fill="{StaticResource NeonOrangeBrush}" RenderTransformOrigin="0,0.5">
+                  <Rectangle.RenderTransform>
+                    <ScaleTransform ScaleX="{Binding Performance.Progress}" />
+                  </Rectangle.RenderTransform>
+                </Rectangle>
+              </Grid>
+            </StackPanel>
+            <Button
+              Grid.Column="1"
+              Margin="16,0,0,0"
+              VerticalAlignment="Center"
+              Command="{Binding Performance.StopNowCommand}"
+              Content="ARRÊTER ET ANALYSER"
+              Style="{StaticResource HudButtonGhost}" />
+          </Grid>
+        </Border>
         <ItemsControl Margin="0,12,0,0" Focusable="False" ItemsSource="{Binding Telemetry.Readouts}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -267,6 +315,118 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+      </StackPanel>
+    </ContentControl>
+
+    <!-- ===== Rapport de l'analyse de performance ===== -->
+    <ContentControl
+      Margin="0,14,0,0"
+      fx:Fx.Reveal="True"
+      Style="{StaticResource HudPanelMirror}"
+      Visibility="{Binding Performance.HasReport, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel>
+        <TextBlock Style="{StaticResource HudCode}" Text="{Binding Performance.ReportTitle}" />
+        <TextBlock
+          Margin="0,8,0,0"
+          FontFamily="{StaticResource TechFont}"
+          FontSize="20"
+          FontWeight="SemiBold"
+          Foreground="{StaticResource NeonWhiteBrush}"
+          Text="{Binding Performance.Headline}"
+          TextWrapping="Wrap" />
+
+        <!-- Chiffres clés, avec ceux de l'analyse précédente -->
+        <ItemsControl Margin="0,14,0,0" Focusable="False" ItemsSource="{Binding Performance.Tiles}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Rows="1" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Margin="0,0,14,0" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
+                <StackPanel>
+                  <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
+                  <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">
+                    <Run FontSize="26" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Value, Mode=OneWay}" /><Run FontSize="14" Foreground="{StaticResource NeonBlueBrush}" Text="{Binding Unit, Mode=OneWay, StringFormat=' {0}'}" />
+                  </TextBlock>
+                  <TextBlock
+                    FontSize="12"
+                    Foreground="{StaticResource NeonMutedBrush}"
+                    Text="{Binding Before}"
+                    Visibility="{Binding HasBefore, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Constats -->
+        <ItemsControl Margin="0,16,0,0" Focusable="False" ItemsSource="{Binding Performance.Findings}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ui:SymbolIcon
+                  VerticalAlignment="Top"
+                  FontSize="20"
+                  Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}"
+                  Symbol="{Binding Icon}" />
+                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                  <TextBlock
+                    FontFamily="{StaticResource TechFont}"
+                    FontSize="15"
+                    FontWeight="SemiBold"
+                    Text="{Binding Title}"
+                    TextWrapping="Wrap" />
+                  <TextBlock Margin="0,3,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Detail}" TextWrapping="Wrap" />
+                  <TextBlock
+                    Margin="0,4,0,0"
+                    TextWrapping="Wrap"
+                    Visibility="{Binding HasAdvice, Converter={StaticResource BoolToVisibility}}">
+                    <Run FontWeight="SemiBold" Foreground="{StaticResource NeonOrangeBrush}" Text="Que faire ? " /><Run Text="{Binding Advice, Mode=OneWay}" />
+                  </TextBlock>
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- Optimiser : le scanner officiel de NVIDIA, puis une nouvelle analyse pour comparer -->
+        <Border
+          Margin="0,4,0,0"
+          Padding="14,10"
+          Background="#80030812"
+          BorderBrush="#557DF9FF"
+          BorderThickness="1,0,0,0">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+              <Run FontWeight="SemiBold" Foreground="{StaticResource NeonCyanBrush}" Text="Optimiser la carte : " /><Run Text="le Réglage automatique de NVIDIA App (onglet Système, puis Performances) cherche un overclock stable pour votre carte, sans annuler la garantie. Relancez ensuite l'analyse : les chiffres « avant » permettent de comparer." />
+            </TextBlock>
+            <Button
+              Grid.Column="1"
+              Margin="16,0,0,0"
+              VerticalAlignment="Center"
+              Command="{Binding Performance.OpenNvidiaAppCommand}"
+              Content="OUVRIR NVIDIA APP"
+              Style="{StaticResource HudButton}" />
+            <Button
+              Grid.Column="2"
+              Margin="10,0,0,0"
+              VerticalAlignment="Center"
+              Command="{Binding Performance.StartCommand}"
+              Content="RELANCER"
+              Style="{StaticResource HudButtonGhost}" />
+          </Grid>
+        </Border>
       </StackPanel>
     </ContentControl>
 

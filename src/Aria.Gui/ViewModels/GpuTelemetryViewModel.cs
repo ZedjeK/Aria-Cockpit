@@ -34,7 +34,6 @@ public sealed partial class LiveReadout(string key) : ObservableObject
 public sealed partial class GpuTelemetryViewModel : ObservableObject
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
-    private Task<GpuTelemetry?>? _opening;
     private GpuTelemetry? _telemetry;
     private bool _reading, _active;
 
@@ -48,8 +47,7 @@ public sealed partial class GpuTelemetryViewModel : ObservableObject
     public async void Start()
     {
         _active = true;
-        _opening ??= Task.Run(GpuTelemetry.TryOpen);
-        _telemetry = await _opening;
+        _telemetry = await GpuTelemetry.OpenSharedAsync();
         if (_telemetry is null || !_active) return;
         await TickAsync();
         if (_active) _timer.Start();

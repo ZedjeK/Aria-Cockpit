@@ -15,7 +15,28 @@ public sealed record GpuSample(
     uint? MaxGraphicsClockMHz,
     double? PowerWatts,
     double? PowerLimitWatts,
-    uint? FanPercent);
+    uint? FanPercent,
+    ulong? LimitReasons = null);
+
+/// <summary>Raisons pour lesquelles la carte ne monte pas plus haut en fréquence (masque NVML « clocks event reasons »).</summary>
+[Flags]
+public enum GpuLimitReasons : ulong
+{
+    None = 0,
+    Idle = 0x1,
+    ApplicationClocks = 0x2,
+    PowerCap = 0x4,
+    HardwareSlowdown = 0x8,
+    SyncBoost = 0x10,
+    SoftwareThermal = 0x20,
+    HardwareThermal = 0x40,
+    PowerBrake = 0x80,
+    DisplayClock = 0x100,
+
+    Thermal = SoftwareThermal | HardwareThermal,
+    /// <summary>Ralentissements d'urgence : fréquence divisée par 2 ou plus.</summary>
+    Emergency = HardwareSlowdown | PowerBrake
+}
 
 /// <summary>Une mesure prête à afficher. <see cref="Ratio"/> (0 à 1) remplit la barre ; <see cref="Hot"/> la passe en alerte.</summary>
 public sealed record GpuReadout(string Key, string Label, string Value, string Unit, string Detail, double Ratio, bool Hot);
@@ -44,12 +65,16 @@ public sealed class GpuTelemetry
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int TypedUIntFn(IntPtr device, int type, out uint value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int UtilizationFn(IntPtr device, out Utilization value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int MemoryFn(IntPtr device, out Memory value);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ULongFn(IntPtr device, out ulong value);
+
+    private static readonly Lazy<Task<GpuTelemetry?>> Shared = new(() => Task.Run(TryOpen));
 
     private readonly IntPtr _device;
     private readonly TypedUIntFn _temperature, _clock, _maxClock;
     private readonly UtilizationFn _utilization;
     private readonly MemoryFn _memory;
     private readonly UIntFn _power, _powerLimit, _fan;
+    private readonly ULongFn? _reasons;
     private readonly object _gate = new();
 
     private GpuTelemetry(IntPtr library, IntPtr device)
@@ -63,7 +88,13 @@ public sealed class GpuTelemetry
         _power = Export<UIntFn>(library, "nvmlDeviceGetPowerUsage");
         _powerLimit = Export<UIntFn>(library, "nvmlDeviceGetEnforcedPowerLimit");
         _fan = Export<UIntFn>(library, "nvmlDeviceGetFanSpeed");
+        // Nom actuel (pilotes R535+), sinon l'ancien nom de la même fonction
+        _reasons = OptionalExport<ULongFn>(library, "nvmlDeviceGetCurrentClocksEventReasons")
+                   ?? OptionalExport<ULongFn>(library, "nvmlDeviceGetCurrentClocksThrottleReasons");
     }
+
+    /// <summary>Instance unique pour toute l'application (bandeau et analyse), ouverte une seule fois.</summary>
+    public static Task<GpuTelemetry?> OpenSharedAsync() => Shared.Value;
 
     /// <summary>Ouvre la première carte NVIDIA ; null s'il n'y en a pas ou si NVML est indisponible.</summary>
     public static GpuTelemetry? TryOpen()
@@ -97,8 +128,9 @@ public sealed class GpuTelemetry
             double? power = _power(_device, out var p) == Success ? p / 1000.0 : null;
             double? limit = _powerLimit(_device, out var l) == Success && l > 0 ? l / 1000.0 : null;
             uint? fan = _fan(_device, out var f) == Success ? f : null;
+            ulong? reasons = _reasons is not null && _reasons(_device, out var r) == Success ? r : null;
             return new GpuSample(temperature, load, memoryOk ? m.Used : null, memoryOk ? m.Total : null,
-                clock, maxClock, power, limit, fan);
+                clock, maxClock, power, limit, fan, reasons);
         }
     }
 
@@ -132,6 +164,9 @@ public sealed class GpuTelemetry
 
     private static T Export<T>(IntPtr library, string name) where T : Delegate =>
         Marshal.GetDelegateForFunctionPointer<T>(NativeLibrary.GetExport(library, name));
+
+    private static T? OptionalExport<T>(IntPtr library, string name) where T : Delegate =>
+        NativeLibrary.TryGetExport(library, name, out var address) ? Marshal.GetDelegateForFunctionPointer<T>(address) : null;
 
     /// <summary>
     /// nvml.dll : System32 sur la plupart des pilotes, sinon le dossier NVSMI ou le magasin de pilotes
