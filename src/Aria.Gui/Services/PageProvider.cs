@@ -17,6 +17,7 @@ public sealed class PageProvider(AppState state) : INavigationViewPageProvider
         {
             nameof(DashboardPage) => new DashboardPage(new DashboardViewModel(state)),
             nameof(SettingsPage) => new SettingsPage(new SettingsViewModel(state)),
+            nameof(GpuTuningPage) => new GpuTuningPage(new GpuTuningViewModel()),
             nameof(UpdatesPage) => new UpdatesPage(new UpdatesViewModel(state)),
             nameof(CleanupPage) => new CleanupPage(new CleanupViewModel()),
             nameof(RestorePage) => new RestorePage(new RestoreViewModel(state)),

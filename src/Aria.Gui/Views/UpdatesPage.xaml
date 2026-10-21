@@ -43,7 +43,7 @@
           <!-- En-tête -->
           <Grid>
             <StackPanel>
-              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="03 · WINDOWS UPDATE · APPLICATIONS · PILOTES" />
+              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="04 · WINDOWS UPDATE · APPLICATIONS · PILOTES" />
               <TextBlock Style="{StaticResource NeonTitle}" Text="MISES À JOUR" />
               <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Subtitle}" />
             </StackPanel>

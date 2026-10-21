@@ -71,7 +71,7 @@
         <ColumnDefinition Width="Auto" />
       </Grid.ColumnDefinitions>
       <StackPanel Margin="0,0,24,0">
-        <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="06 · JOURNAL DES OPÉRATIONS" />
+        <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="07 · JOURNAL DES OPÉRATIONS" />
         <TextBlock Style="{StaticResource NeonTitle}" Text="RAPPORTS" />
         <TextBlock
           Margin="0,4,0,0"

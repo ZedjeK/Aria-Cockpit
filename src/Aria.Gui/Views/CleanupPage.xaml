@@ -46,7 +46,7 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Margin="0,0,24,0">
-              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="04 · ESPACE DISQUE" />
+              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="05 · ESPACE DISQUE" />
               <TextBlock Style="{StaticResource NeonTitle}" Text="NETTOYAGE" />
               <TextBlock
                 Margin="0,4,0,0"

@@ -1,0 +1,294 @@
+<Page
+  x:Class="Aria.Gui.Views.GpuTuningPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Réglage GPU"
+  Foreground="{StaticResource NeonTextBrush}">
+  <Page.Resources>
+    <!-- Un curseur : nom, valeur, curseur, explication -->
+    <Style x:Key="SliderLabel" BasedOn="{StaticResource TechLabel}" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource NeonBlueLightBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="SliderValue" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource TechFont}" />
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource NeonWhiteBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style x:Key="SliderHelp" TargetType="TextBlock">
+      <Setter Property="Margin" Value="0,2,0,22" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Foreground" Value="{StaticResource NeonMutedBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </Page.Resources>
+
+  <StackPanel MaxWidth="1500" Margin="36,24,36,40">
+    <!-- En-tête -->
+    <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="03 · NVIDIA · UNDERVOLT · OVERCLOCK" />
+    <TextBlock Style="{StaticResource NeonTitle}" Text="RÉGLAGE GPU" />
+    <TextBlock
+      Margin="0,4,0,0"
+      Foreground="{StaticResource NeonMutedBrush}"
+      Text="Limite de puissance, plafond et décalages de fréquence, via l'interface officielle du pilote NVIDIA (NVML). Le pilote garde la main sur la tension : le matériel ne risque rien, au pire un jeu ou le pilote plante."
+      TextWrapping="Wrap" />
+
+    <!-- Pas de carte réglable -->
+    <ContentControl
+      Margin="0,20,0,0"
+      Style="{StaticResource NeonPanel}"
+      Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel Orientation="Horizontal">
+        <ui:SymbolIcon FontSize="24" Foreground="{StaticResource NeonOrangeBrush}" Symbol="Info24" />
+        <TextBlock
+          Margin="14,0,0,0"
+          VerticalAlignment="Center"
+          Text="Aucune carte NVIDIA réglable : il faut une carte NVIDIA récente avec son pilote installé."
+          TextWrapping="Wrap" />
+      </StackPanel>
+    </ContentControl>
+
+    <StackPanel Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+
+      <!-- Garde-fou : plantages du pilote depuis le réglage -->
+      <Border
+        Margin="0,20,0,0"
+        Padding="16,12"
+        Background="#1FFF3D5A"
+        BorderBrush="{StaticResource NeonRedBrush}"
+        BorderThickness="2,0,0,0"
+        Visibility="{Binding HasCrashes, Converter={StaticResource BoolToVisibility}}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <ui:SymbolIcon VerticalAlignment="Top" FontSize="22" Foreground="{StaticResource NeonRedBrush}" Symbol="ErrorCircle24" />
+          <StackPanel Grid.Column="1" Margin="12,0,16,0">
+            <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="PLANTAGES DU PILOTE DÉTECTÉS" />
+            <TextBlock Margin="0,4,0,0" Text="{Binding CrashText}" TextWrapping="Wrap" />
+          </StackPanel>
+          <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
+        </Grid>
+      </Border>
+
+      <!-- Tâche de démarrage absente ou vers un ancien emplacement -->
+      <Border
+        Margin="0,12,0,0"
+        Padding="16,12"
+        Background="#14FF8A1F"
+        BorderBrush="{StaticResource NeonOrangeBrush}"
+        BorderThickness="2,0,0,0"
+        Visibility="{Binding HasTaskProblem, Converter={StaticResource BoolToVisibility}}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock VerticalAlignment="Center" Text="{Binding TaskText}" TextWrapping="Wrap" />
+          <Button
+            Grid.Column="1"
+            Margin="16,0,0,0"
+            VerticalAlignment="Center"
+            Command="{Binding FixTaskCommand}"
+            Content="METTRE À JOUR"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="Recrée la tâche « Aria\Profil GPU » vers cet Aria.exe" />
+        </Grid>
+      </Border>
+
+      <!-- Résultat de la dernière action -->
+      <Border
+        Margin="0,12,0,0"
+        Padding="16,10"
+        BorderThickness="2,0,0,0"
+        Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}">
+        <Border.Style>
+          <Style TargetType="Border">
+            <Setter Property="Background" Value="#147DF9FF" />
+            <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding MessageIsError}" Value="True">
+                <Setter Property="Background" Value="#1FFF3D5A" />
+                <Setter Property="BorderBrush" Value="{StaticResource NeonRedBrush}" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+      </Border>
+
+      <Grid Margin="0,20,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="24" />
+          <ColumnDefinition Width="360" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== Curseurs ===== -->
+        <ContentControl Style="{StaticResource HudPanel}">
+          <StackPanel>
+            <TextBlock Margin="0,0,0,16" Style="{StaticResource HudCode}" Text="RÉGLAGE" />
+
+            <!-- Limite de puissance -->
+            <Grid>
+              <TextBlock Style="{StaticResource SliderLabel}" Text="LIMITE DE PUISSANCE" />
+              <TextBlock Style="{StaticResource SliderValue}" Text="{Binding PowerText}" />
+            </Grid>
+            <Slider
+              Margin="0,6,0,0"
+              IsSnapToTickEnabled="True"
+              Maximum="{Binding PowerMax}"
+              Minimum="{Binding PowerMin}"
+              TickFrequency="5"
+              Value="{Binding PowerWatts}" />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="Le plafond de consommation de la carte. 80 à 90 % de la valeur d'usine : nettement moins de chauffe et de bruit pour quelques pour cent de performance en moins." />
+
+            <!-- Plafond de fréquence -->
+            <Grid>
+              <CheckBox Content="PLAFOND DE FRÉQUENCE" FontWeight="SemiBold" Foreground="{StaticResource NeonBlueLightBrush}" IsChecked="{Binding CapEnabled}" />
+              <TextBlock Style="{StaticResource SliderValue}" Text="{Binding CapText}" />
+            </Grid>
+            <Slider
+              Margin="0,6,0,0"
+              IsEnabled="{Binding CapEnabled}"
+              IsSnapToTickEnabled="True"
+              Maximum="{Binding CapMax}"
+              Minimum="{Binding CapMin}"
+              TickFrequency="15"
+              Value="{Binding CapMHz}" />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="La carte ne dépasse plus cette fréquence. Combiné à un décalage GPU positif, c'est l'undervolt : la même fréquence, atteinte avec moins de tension. La carte redescend normalement au repos." />
+
+            <!-- Décalage GPU -->
+            <Grid>
+              <TextBlock Style="{StaticResource SliderLabel}" Text="DÉCALAGE GPU" />
+              <TextBlock Style="{StaticResource SliderValue}" Text="{Binding CoreText}" />
+            </Grid>
+            <Slider
+              Margin="0,6,0,0"
+              IsSnapToTickEnabled="True"
+              Maximum="{Binding CoreMax}"
+              Minimum="{Binding CoreMin}"
+              TickFrequency="15"
+              Value="{Binding CoreOffset}" />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="Décale toute la courbe fréquence/tension : à chaque tension, la carte tourne plus vite. Avancez par paliers de 15 à 30 MHz. Aria limite à ±300 MHz." />
+
+            <!-- Décalage mémoire -->
+            <Grid>
+              <TextBlock Style="{StaticResource SliderLabel}" Text="DÉCALAGE MÉMOIRE" />
+              <TextBlock Style="{StaticResource SliderValue}" Text="{Binding MemoryText}" />
+            </Grid>
+            <Slider
+              Margin="0,6,0,0"
+              IsSnapToTickEnabled="True"
+              Maximum="{Binding MemoryMax}"
+              Minimum="{Binding MemoryMin}"
+              TickFrequency="50"
+              Value="{Binding MemoryOffset}" />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="Fréquence de la mémoire vidéo. Gain modeste ; au-delà de +1000 MHz, une mémoire trop poussée ne plante pas mais devient plus lente (elle corrige ses propres erreurs)." />
+
+            <!-- Démarrage -->
+            <CheckBox Content="Garder au démarrage de Windows" IsChecked="{Binding AtStartup}" />
+            <TextBlock
+              Margin="28,2,0,0"
+              FontSize="12.5"
+              Foreground="{StaticResource NeonMutedBrush}"
+              Text="Sinon, le réglage s'efface au prochain redémarrage : idéal pour essayer. Coché, la tâche planifiée « Aria\Profil GPU » le réapplique à chaque ouverture de session."
+              TextWrapping="Wrap" />
+
+            <!-- Actions -->
+            <StackPanel Margin="0,22,0,0" Orientation="Horizontal">
+              <Button Command="{Binding ApplyCommand}" Content="APPLIQUER" Style="{StaticResource HudButton}" />
+              <Button
+                Margin="10,0,0,0"
+                Command="{Binding ResetSlidersCommand}"
+                Content="ANNULER LES MODIFICATIONS"
+                Style="{StaticResource HudButtonGhost}"
+                Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility}}" />
+              <Button
+                Margin="10,0,0,0"
+                Command="{Binding RevertCommand}"
+                Content="REVENIR D'ORIGINE"
+                Style="{StaticResource HudButtonGhost}"
+                Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+          </StackPanel>
+        </ContentControl>
+
+        <!-- ===== Colonne de droite : en direct, état, recettes ===== -->
+        <StackPanel Grid.Column="2">
+          <ContentControl Style="{StaticResource HudPanelMirror}">
+            <StackPanel>
+              <StackPanel Orientation="Horizontal">
+                <Ellipse
+                  Width="7"
+                  Height="7"
+                  fx:Fx.Pulse="True"
+                  Fill="{StaticResource NeonOrangeBrush}" />
+                <TextBlock Margin="10,0,0,0" Style="{StaticResource HudCode}" Text="EN DIRECT" />
+              </StackPanel>
+              <ItemsControl Margin="0,10,0,0" Focusable="False" ItemsSource="{Binding Telemetry.Readouts}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid Margin="0,3">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock x:Name="Label" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
+                      <TextBlock Grid.Column="1" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">
+                        <Run x:Name="ValueRun" FontSize="18" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Value, Mode=OneWay}" /><Run FontSize="12" Foreground="{StaticResource NeonBlueBrush}" Text="{Binding Unit, Mode=OneWay, StringFormat=' {0}'}" />
+                      </TextBlock>
+                    </Grid>
+                    <DataTemplate.Triggers>
+                      <DataTrigger Binding="{Binding Hot}" Value="True">
+                        <Setter TargetName="ValueRun" Property="Foreground" Value="{StaticResource NeonOrangeBrush}" />
+                      </DataTrigger>
+                    </DataTemplate.Triggers>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ContentControl>
+
+          <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
+            <StackPanel>
+              <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="EN PLACE" />
+              <TextBlock Margin="0,4,0,0" Text="{Binding CurrentText}" TextWrapping="Wrap" />
+              <StackPanel Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="ORIGINE (AVANT ARIA)" />
+                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding OriginText}" TextWrapping="Wrap" />
+              </StackPanel>
+            </StackPanel>
+          </ContentControl>
+
+          <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanelMirror}">
+            <StackPanel>
+              <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource TechLabel}" Text="RECETTES" />
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="Silence : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance à 80-90 %, rien d'autre." />
+              </TextBlock>
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="Undervolt : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="plafond à la fréquence habituelle en jeu (lisez-la en direct), puis décalage GPU de +100 à +200 MHz par paliers." />
+              </TextBlock>
+              <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="décalage GPU par paliers de +30 MHz, sans plafond." />
+              </TextBlock>
+              <TextBlock
+                Margin="0,10,0,0"
+                FontSize="12.5"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="Après chaque palier : Mon PC → Analyser les performances, en jeu. Plantage ou artefacts : revenez au palier précédent."
+                TextWrapping="Wrap" />
+            </StackPanel>
+          </ContentControl>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </StackPanel>
+</Page>

@@ -92,6 +92,7 @@
           RadioButton.Checked="OnTabChecked">
           <RadioButton x:Name="DashboardTab" Content="MON PC" IsChecked="True" Style="{StaticResource HudTab}" Tag="{x:Type views:DashboardPage}" />
           <RadioButton Content="RÉGLAGES" Style="{StaticResource HudTab}" Tag="{x:Type views:SettingsPage}" />
+          <RadioButton Content="RÉGLAGE GPU" Style="{StaticResource HudTab}" Tag="{x:Type views:GpuTuningPage}" />
           <RadioButton Content="MISES À JOUR" Style="{StaticResource HudTab}" Tag="{x:Type views:UpdatesPage}" />
           <RadioButton Content="NETTOYAGE" Style="{StaticResource HudTab}" Tag="{x:Type views:CleanupPage}" />
           <RadioButton Content="RESTAURATION" Style="{StaticResource HudTab}" Tag="{x:Type views:RestorePage}" />

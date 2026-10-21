@@ -36,7 +36,7 @@
       <StackPanel MaxWidth="1500" Margin="36,24,36,36">
         <Grid>
           <StackPanel Margin="0,0,140,0">
-            <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="05 · SAUVEGARDES" />
+            <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="06 · SAUVEGARDES" />
             <TextBlock Style="{StaticResource NeonTitle}" Text="RESTAURATION" />
             <TextBlock
               Margin="0,4,0,0"
@@ -152,7 +152,7 @@
           <!-- En-tête -->
           <Grid>
             <StackPanel>
-              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="05 · SAUVEGARDES" />
+              <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="06 · SAUVEGARDES" />
               <TextBlock Style="{StaticResource NeonTitle}" Text="RESTAURATION" />
               <TextBlock
                 Margin="0,6,0,0"
