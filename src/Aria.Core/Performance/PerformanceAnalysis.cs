@@ -104,8 +104,7 @@ public static class PerformanceAnalyzer
                 findings.Add(new("Limitée par sa puissance maximale",
                     $"Pendant {Pct(stats.PowerCapShare)} du temps, la carte a atteint sa limite de puissance" +
                     (stats.PowerLimit is { } limit ? $" ({limit:0} W)" : "") + " : c'est le fonctionnement normal d'une carte poussée à fond.",
-                    "Pour quelques pour cent de plus, le Réglage automatique de NVIDIA App cherche un réglage stable pour votre carte. " +
-                    "À l'inverse, une limite plus basse réduit nettement bruit et chauffe pour une perte faible.",
+                    "Rien à corriger. Une limite de puissance un peu plus basse réduit nettement bruit et chauffe pour une perte de performance faible.",
                     Severity.Info));
         }
         else if (stats.AvgCpuBusiestCore >= 85 || stats.AvgCpuTotal >= 85)

@@ -395,7 +395,7 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Optimiser : le scanner officiel de NVIDIA, puis une nouvelle analyse pour comparer -->
+        <!-- Comparer : relancer après un changement de réglage, les chiffres « avant » s'affichent -->
         <Border
           Margin="0,4,0,0"
           Padding="14,10"
@@ -406,25 +406,17 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
-              <Run FontWeight="SemiBold" Foreground="{StaticResource NeonCyanBrush}" Text="Optimiser la carte : " /><Run Text="le Réglage automatique de NVIDIA App (onglet Système, puis Performances) cherche un overclock stable pour votre carte, sans annuler la garantie. Relancez ensuite l'analyse : les chiffres « avant » permettent de comparer." />
+              <Run FontWeight="SemiBold" Foreground="{StaticResource NeonCyanBrush}" Text="Comparer : " /><Run Text="après un changement (réglage du jeu, nettoyage, ventilation…), relancez l'analyse dans le même jeu : chaque chiffre affichera sa valeur « avant »." />
             </TextBlock>
             <Button
               Grid.Column="1"
               Margin="16,0,0,0"
               VerticalAlignment="Center"
-              Command="{Binding Performance.OpenNvidiaAppCommand}"
-              Content="OUVRIR NVIDIA APP"
-              Style="{StaticResource HudButton}" />
-            <Button
-              Grid.Column="2"
-              Margin="10,0,0,0"
-              VerticalAlignment="Center"
               Command="{Binding Performance.StartCommand}"
               Content="RELANCER"
-              Style="{StaticResource HudButtonGhost}" />
+              Style="{StaticResource HudButton}" />
           </Grid>
         </Border>
       </StackPanel>

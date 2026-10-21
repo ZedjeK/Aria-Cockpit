@@ -172,7 +172,7 @@ public sealed class GpuTelemetry
     /// nvml.dll : System32 sur la plupart des pilotes, sinon le dossier NVSMI ou le magasin de pilotes
     /// (certaines versions ne le copient plus dans System32).
     /// </summary>
-    private static IntPtr LoadLibrary()
+    internal static IntPtr LoadLibrary()
     {
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var candidates = new List<string>

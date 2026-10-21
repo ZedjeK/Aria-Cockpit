@@ -1,9 +1,7 @@
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Aria.Core.Nvidia;
 using Aria.Core.Performance;
-using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
 
@@ -19,8 +17,6 @@ public sealed record StatTile(string Label, string Value, string Unit, string Be
 /// </summary>
 public sealed partial class PerformanceViewModel : ObservableObject
 {
-    private const string NvidiaAppPage = "https://www.nvidia.com/fr-fr/software/nvidia-app/";
-
     private CancellationTokenSource? _stop;
     private PerformanceReport? _previous;
 
@@ -62,10 +58,6 @@ public sealed partial class PerformanceViewModel : ObservableObject
     [RelayCommand]
     private void StopNow() => _stop?.Cancel();
 
-    /// <summary>NVIDIA App (son Réglage automatique), ou sa page de téléchargement si elle n'est pas installée.</summary>
-    [RelayCommand]
-    private static void OpenNvidiaApp() => Shell.OpenUnelevated(FindNvidiaApp() ?? NvidiaAppPage);
-
     private void UpdateProgress(TimeSpan elapsed)
     {
         var total = PerformanceSession.DefaultDuration;
@@ -102,23 +94,4 @@ public sealed partial class PerformanceViewModel : ObservableObject
         before is null ? "" : text(before) is { Length: > 0 } t ? $"avant : {t}" : "";
 
     private static string Gb(ulong bytes) => (bytes / 1073741824.0).ToString("0.0", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"));
-
-    /// <summary>Exécutable de NVIDIA App, sinon son raccourci du menu Démarrer ; null si elle n'est pas installée.</summary>
-    private static string? FindNvidiaApp()
-    {
-        var exe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            "NVIDIA Corporation", "NVIDIA App", "CEF", "NVIDIA App.exe");
-        if (File.Exists(exe)) return exe;
-        try
-        {
-            var programs = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
-            return Directory.Exists(programs)
-                ? Directory.EnumerateFiles(programs, "NVIDIA App*.lnk", SearchOption.AllDirectories).FirstOrDefault()
-                : null;
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
 }
