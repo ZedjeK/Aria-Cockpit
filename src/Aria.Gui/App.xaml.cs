@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Aria.Core.Backup;
+using Aria.Core.Nvidia;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -12,6 +13,14 @@ public partial class App : Application
 {
     private void OnStartup(object sender, StartupEventArgs e)
     {
+        // Lancé par la tâche planifiée à l'ouverture de session : réapplique le réglage GPU, sans fenêtre
+        if (e.Args.Contains(StartupTask.Argument, StringComparer.OrdinalIgnoreCase))
+        {
+            GpuProfile.ApplyAtLogon();
+            Shutdown();
+            return;
+        }
+
         // Thème « cockpit » : sombre imposé (les effets néon ne rendent rien sur fond clair)
         // et accent orange Blade Runner pour le menu, les boutons et les sélections.
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.None, updateAccent: false);

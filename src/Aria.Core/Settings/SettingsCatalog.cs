@@ -37,6 +37,16 @@ public static class SettingsCatalog
 
         // Applications préinstallées : seules celles présentes sont proposées
         settings.AddRange(StoreApps.Build());
+
+        // Réglage GPU (onglet dédié) : présent pour que la page Restauration puisse le remettre
+        settings.Add(new GpuTuningSetting(GuiExePath()));
         return settings;
+    }
+
+    /// <summary>Aria.exe (l'interface), même quand le catalogue est construit depuis la console.</summary>
+    private static string GuiExePath()
+    {
+        var gui = Path.Combine(AppContext.BaseDirectory, "Aria.exe");
+        return File.Exists(gui) ? gui : Environment.ProcessPath ?? gui;
     }
 }
