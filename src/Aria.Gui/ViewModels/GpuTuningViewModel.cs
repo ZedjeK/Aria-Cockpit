@@ -52,7 +52,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     private uint _defaultPower;
 
-    public string PowerText => _defaultPower == 0 ? $"{PowerWatts:0} W" : $"{PowerWatts:0} W · {PowerWatts * 1000 / _defaultPower:0} % de la valeur d'usine";
+    public string PowerText => _defaultPower == 0 ? $"{PowerWatts:0} W" : $"{PowerWatts:0} W · {PowerWatts * 100_000 / _defaultPower:0} % de la valeur d'usine";
     public string CapText => CapEnabled ? $"{CapMHz:0} MHz" : "Aucun plafond";
     public string CoreText => $"{CoreOffset:+0;-0;0} MHz";
     public string MemoryText => $"{MemoryOffset:+0;-0;0} MHz";

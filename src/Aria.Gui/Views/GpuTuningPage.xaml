@@ -160,7 +160,9 @@
               IsSnapToTickEnabled="True"
               Maximum="{Binding CapMax}"
               Minimum="{Binding CapMin}"
-              TickFrequency="15"
+              LargeChange="15"
+              SmallChange="5"
+              TickFrequency="5"
               Value="{Binding CapMHz}" />
             <TextBlock Style="{StaticResource SliderHelp}" Text="La carte ne dépasse plus cette fréquence. Combiné à un décalage GPU positif, c'est l'undervolt : la même fréquence, atteinte avec moins de tension. La carte redescend normalement au repos." />
 
@@ -174,9 +176,11 @@
               IsSnapToTickEnabled="True"
               Maximum="{Binding CoreMax}"
               Minimum="{Binding CoreMin}"
-              TickFrequency="15"
+              LargeChange="15"
+              SmallChange="5"
+              TickFrequency="5"
               Value="{Binding CoreOffset}" />
-            <TextBlock Style="{StaticResource SliderHelp}" Text="Décale toute la courbe fréquence/tension : à chaque tension, la carte tourne plus vite. Avancez par paliers de 15 à 30 MHz. Aria limite à ±300 MHz." />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="Décale toute la courbe fréquence/tension : à chaque tension, la carte tourne plus vite. Avancez par paliers de 15 à 30 MHz (crans de 5 MHz ; les flèches du clavier affinent). Aria limite à ±300 MHz." />
 
             <!-- Décalage mémoire -->
             <Grid>
