@@ -30,7 +30,13 @@ public sealed record PerformanceStats(
 public sealed record PerformanceFinding(string Title, string Detail, string? Advice, Severity Severity);
 
 /// <param name="Conclusive">false si la carte n'a pas assez travaillé pendant l'analyse pour juger.</param>
-public sealed record PerformanceReport(DateTime At, PerformanceStats Stats, bool Conclusive, string Headline, IReadOnlyList<PerformanceFinding> Findings);
+/// <param name="Incidents">Plantages du pilote ou du jeu pendant l'analyse (null : non recherchés).</param>
+public sealed record PerformanceReport(DateTime At, PerformanceStats Stats, bool Conclusive, string Headline, IReadOnlyList<PerformanceFinding> Findings,
+    SessionIncidents? Incidents = null)
+{
+    /// <summary>Un plantage a eu lieu pendant l'analyse : réglage probablement instable.</summary>
+    public bool Unstable => Incidents?.Any == true;
+}
 
 /// <summary>
 /// Transforme les mesures d'une session en verdict. Fonction pure (testable) : ne lit ni ne modifie rien.
@@ -44,6 +50,30 @@ public static class PerformanceAnalyzer
     public const int MinActiveSeconds = 30;
 
     private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
+
+    /// <summary>Verdict complet : plantages en tête (s'il y en a eu), puis l'analyse des mesures.</summary>
+    public static PerformanceReport Analyze(IReadOnlyList<PerfSample> samples, DateTime at, SessionIncidents? incidents)
+    {
+        var report = Analyze(samples, at);
+        if (incidents is null || !incidents.Any) return report with { Incidents = incidents };
+
+        var found = new List<PerformanceFinding>();
+        if (incidents.DriverCrashes.Count > 0)
+            found.Add(new("Le pilote graphique a planté pendant l'analyse",
+                $"Windows a noté {incidents.DriverCrashes.Count} plantage(s) du pilote NVIDIA (le premier à {incidents.DriverCrashes[0]:HH:mm:ss}). " +
+                "L'écran a pu devenir noir quelques secondes avant que Windows ne relance le pilote.",
+                "Si un réglage GPU est actif, il est trop poussé : revenez au palier précédent ou au réglage d'origine (onglet Réglage GPU).",
+                Severity.Critical));
+        if (incidents.GameIncidents.Count > 0)
+        {
+            var hang = incidents.GameIncidents.All(i => i.IsHang);
+            found.Add(new($"{incidents.Game} a {(hang ? "cessé de répondre" : "planté")} pendant l'analyse",
+                $"Windows a noté {incidents.GameIncidents.Count} {(hang ? "gel(s)" : "plantage(s)")} du jeu (le premier à {incidents.GameIncidents[0].At:HH:mm:ss}).",
+                "Avec un réglage GPU actif, c'est probablement lui : revenez au palier précédent. Sans réglage, le jeu lui-même peut être en cause (mise à jour, fichiers à vérifier dans le lanceur).",
+                Severity.Critical));
+        }
+        return report with { Incidents = incidents, Headline = found[0].Title, Findings = [.. found, .. report.Findings] };
+    }
 
     public static PerformanceReport Analyze(IReadOnlyList<PerfSample> samples, DateTime at)
     {

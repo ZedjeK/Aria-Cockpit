@@ -20,6 +20,21 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     public GpuTelemetryViewModel Telemetry { get; } = new();
 
+    /// <summary>Assistant guidé : pendant qu'il travaille, le réglage manuel est en pause.</summary>
+    public TuningAssistantViewModel Assistant { get; }
+
+    public GpuTuningViewModel()
+    {
+        Assistant = new TuningAssistantViewModel(() => _tuner, () => RefreshAsync(resetSliders: true));
+        Assistant.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(TuningAssistantViewModel.IsActive)) return;
+            ApplyCommand.NotifyCanExecuteChanged();
+            RevertCommand.NotifyCanExecuteChanged();
+            ResetSlidersCommand.NotifyCanExecuteChanged();
+        };
+    }
+
     [ObservableProperty] private bool isAvailable;
     [ObservableProperty] private bool isUnavailable;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand))] private bool isBusy;
@@ -143,7 +158,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         (int)Math.Round(MemoryOffset),
         AtStartup);
 
-    private bool CanAct() => IsAvailable && !IsBusy;
+    private bool CanAct() => IsAvailable && !IsBusy && !Assistant.IsActive;
     private bool CanApply() => CanAct() && HasChanges;
 
     protected override void OnPropertyChanged(System.ComponentModel.PropertyChangedEventArgs e)

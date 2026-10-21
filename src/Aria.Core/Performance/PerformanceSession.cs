@@ -16,14 +16,19 @@ public static class PerformanceSession
         IProgress<TimeSpan>? progress = null, CancellationToken stop = default)
     {
         var samples = new List<PerfSample>();
+        var game = new GameTracker();
         using var cpu = await Task.Run(() => new CpuLoadMonitor()).ConfigureAwait(false);
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         var started = DateTime.UtcNow;
+        var startedLocal = DateTime.Now;
         try
         {
             while (DateTime.UtcNow - started < duration && await timer.WaitForNextTickAsync(stop).ConfigureAwait(false))
             {
-                samples.Add(new PerfSample(gpu.Read(), cpu.Read()));
+                var sample = new PerfSample(gpu.Read(), cpu.Read());
+                samples.Add(sample);
+                // Le jeu : le programme qui affiche avec la carte pendant qu'elle travaille
+                game.Observe(gpu.GraphicsProcesses(), sample.Gpu.LoadPercent >= PerformanceAnalyzer.ActiveLoadPercent);
                 progress?.Report(DateTime.UtcNow - started);
             }
         }
@@ -31,6 +36,8 @@ public static class PerformanceSession
         {
             // Arrêt demandé : on analyse ce qui a été enregistré
         }
-        return PerformanceAnalyzer.Analyze(samples, DateTime.Now);
+        // Plantages notés par Windows pendant l'analyse (avec 5 s de marge avant le début)
+        var incidents = await Task.Run(() => SessionIncidents.Collect(startedLocal.AddSeconds(-5), game.Game)).ConfigureAwait(false);
+        return PerformanceAnalyzer.Analyze(samples, DateTime.Now, incidents);
     }
 }

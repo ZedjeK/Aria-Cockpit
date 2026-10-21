@@ -66,6 +66,11 @@ public sealed class GpuTelemetry
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int UtilizationFn(IntPtr device, out Utilization value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int MemoryFn(IntPtr device, out Memory value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ULongFn(IntPtr device, out ulong value);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int ProcessesFn(IntPtr device, ref uint count, [Out] ProcessInfo[]? infos);
+
+    /// <summary>nvmlProcessInfo_t (v2 et v3 identiques) : pid, mémoire utilisée, instances.</summary>
+    [StructLayout(LayoutKind.Sequential)] private struct ProcessInfo { public uint Pid; public ulong UsedMemory; public uint GpuInstance; public uint ComputeInstance; }
+    private const int InsufficientSize = 7;
 
     private static readonly Lazy<Task<GpuTelemetry?>> Shared = new(() => Task.Run(TryOpen));
 
@@ -75,6 +80,7 @@ public sealed class GpuTelemetry
     private readonly MemoryFn _memory;
     private readonly UIntFn _power, _powerLimit, _fan;
     private readonly ULongFn? _reasons;
+    private readonly ProcessesFn? _processes;
     private readonly object _gate = new();
 
     private GpuTelemetry(IntPtr library, IntPtr device)
@@ -89,6 +95,8 @@ public sealed class GpuTelemetry
         _powerLimit = Export<UIntFn>(library, "nvmlDeviceGetEnforcedPowerLimit");
         _fan = Export<UIntFn>(library, "nvmlDeviceGetFanSpeed");
         // Nom actuel (pilotes R535+), sinon l'ancien nom de la même fonction
+        _processes = OptionalExport<ProcessesFn>(library, "nvmlDeviceGetGraphicsRunningProcesses_v3")
+                     ?? OptionalExport<ProcessesFn>(library, "nvmlDeviceGetGraphicsRunningProcesses_v2");
         _reasons = OptionalExport<ULongFn>(library, "nvmlDeviceGetCurrentClocksEventReasons")
                    ?? OptionalExport<ULongFn>(library, "nvmlDeviceGetCurrentClocksThrottleReasons");
     }
@@ -116,6 +124,25 @@ public sealed class GpuTelemetry
     }
 
     /// <summary>Lit toutes les mesures (quelques millisecondes). Une mesure non fournie reste à null.</summary>
+    /// <summary>Programmes qui affichent des images avec la carte (jeux, bureau, navigateurs…) ; vide si illisible.</summary>
+    public IReadOnlyList<uint> GraphicsProcesses()
+    {
+        if (_processes is null) return [];
+        lock (_gate)
+        {
+            uint count = 0;
+            var first = _processes(_device, ref count, null);
+            if (first == Success || count == 0) return [];
+            if (first != InsufficientSize) return [];
+            // Marge : d'autres programmes peuvent apparaître entre les deux appels
+            count = count * 2 + 5;
+            var infos = new ProcessInfo[count];
+            return _processes(_device, ref count, infos) == Success
+                ? infos.Take((int)Math.Min(count, (uint)infos.Length)).Select(i => i.Pid).Where(p => p != 0).Distinct().ToList()
+                : [];
+        }
+    }
+
     public GpuSample Read()
     {
         lock (_gate)

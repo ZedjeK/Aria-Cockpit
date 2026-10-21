@@ -7,6 +7,7 @@
   Title="Réglage GPU"
   Foreground="{StaticResource NeonTextBrush}">
   <Page.Resources>
+    <fx:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
     <!-- Un curseur : nom, valeur, curseur, explication -->
     <Style x:Key="SliderLabel" BasedOn="{StaticResource TechLabel}" TargetType="TextBlock">
       <Setter Property="Foreground" Value="{StaticResource NeonBlueLightBrush}" />
@@ -123,6 +124,149 @@
         <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
       </Border>
 
+      <!-- ===== Assistant guidé ===== -->
+      <ContentControl Margin="0,20,0,0" DataContext="{Binding Assistant}" Style="{StaticResource HudPanelMirror}">
+        <StackPanel>
+          <Grid>
+            <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="ASSISTANT GUIDÉ" />
+            <TextBlock HorizontalAlignment="Right" Style="{StaticResource HudCode}" Text="{Binding Title}" />
+          </Grid>
+
+          <!-- Choix de l'objectif -->
+          <StackPanel Visibility="{Binding IsIdle, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock
+              Margin="0,8,0,14"
+              Foreground="{StaticResource NeonMutedBrush}"
+              Text="Aria mesure votre jeu au réglage d'origine, puis essaie un palier à la fois (3 minutes de jeu chacun). Plantage détecté ou artefacts signalés : retour au dernier palier stable. Rien n'est gardé sans votre accord."
+              TextWrapping="Wrap" />
+            <UniformGrid Columns="3">
+              <Border Margin="0,0,10,0" Padding="16,12" Background="#0F7DF9FF" BorderBrush="#557DF9FF" BorderThickness="1,0,0,0">
+                <StackPanel>
+                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Silence" />
+                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Limite de puissance plus basse, palier par palier : moins de bruit et de chauffe." TextWrapping="Wrap" />
+                  <Button HorizontalAlignment="Left" Command="{Binding StartSilenceCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
+                </StackPanel>
+              </Border>
+              <Border Margin="5,0" Padding="16,12" Background="#14FF8A1F" BorderBrush="#99FF8A1F" BorderThickness="1,0,0,0">
+                <StackPanel>
+                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Undervolt (recommandé)" />
+                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Même fréquence avec moins de tension : moins de watts et de degrés, sans perte." TextWrapping="Wrap" />
+                  <Button HorizontalAlignment="Left" Command="{Binding StartUndervoltCommand}" Content="COMMENCER" Style="{StaticResource HudButton}" />
+                </StackPanel>
+              </Border>
+              <Border Margin="10,0,0,0" Padding="16,12" Background="#145C8BFF" BorderBrush="#995C8BFF" BorderThickness="1,0,0,0">
+                <StackPanel>
+                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Performance" />
+                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Décalage GPU croissant, sans plafond : quelques pour cent de fréquence en plus." TextWrapping="Wrap" />
+                  <Button HorizontalAlignment="Left" Command="{Binding StartPerformanceCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
+                </StackPanel>
+              </Border>
+            </UniformGrid>
+          </StackPanel>
+
+          <!-- Mesure en cours -->
+          <StackPanel Margin="0,10,0,0" Visibility="{Binding IsMeasuring, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding Instruction}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,12,0,6" Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="{Binding ProgressText}" />
+            <Grid Height="4">
+              <Border Background="#33FF8A1F" />
+              <Rectangle Fill="{StaticResource NeonOrangeBrush}" RenderTransformOrigin="0,0.5">
+                <Rectangle.RenderTransform>
+                  <ScaleTransform ScaleX="{Binding Progress}" />
+                </Rectangle.RenderTransform>
+              </Rectangle>
+            </Grid>
+            <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+              <Button Command="{Binding StopMeasureCommand}" Content="ARRÊTER LA MESURE" Style="{StaticResource HudButtonGhost}" ToolTip="Juger ce palier sur ce qui a déjà été enregistré" />
+              <Button Margin="10,0,0,0" Command="{Binding CancelAllCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" ToolTip="Retour au réglage de départ" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Chiffres clés (verdict d'un palier, ou résultat final) -->
+          <ItemsControl Margin="0,14,0,0" Focusable="False" ItemsSource="{Binding Tiles}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Rows="1" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Margin="0,0,14,0" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
+                  <StackPanel>
+                    <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
+                    <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">
+                      <Run FontSize="24" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Value, Mode=OneWay}" /><Run FontSize="13" Foreground="{StaticResource NeonBlueBrush}" Text="{Binding Unit, Mode=OneWay, StringFormat=' {0}'}" />
+                    </TextBlock>
+                    <TextBlock FontSize="12" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Before}" Visibility="{Binding HasBefore, Converter={StaticResource BoolToVisibility}}" />
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.Style>
+              <Style TargetType="ItemsControl">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsReview}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsDone}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </ItemsControl.Style>
+          </ItemsControl>
+
+          <!-- Verdict d'un palier -->
+          <StackPanel Margin="0,14,0,0" Visibility="{Binding IsReview, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock FontFamily="{StaticResource TechFont}" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Headline}" TextWrapping="Wrap" />
+            <ItemsControl Margin="0,8,0,0" Focusable="False" ItemsSource="{Binding Incidents}" Visibility="{Binding HasIncidents, Converter={StaticResource BoolToVisibility}}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="0,0,0,8">
+                    <TextBlock FontWeight="SemiBold" Foreground="{StaticResource NeonRedBrush}" Text="{Binding Title}" TextWrapping="Wrap" />
+                    <TextBlock Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Detail}" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock
+              Margin="0,8,0,0"
+              Text="Pendant ce palier, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?"
+              TextWrapping="Wrap"
+              Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+            <WrapPanel Margin="0,12,0,0">
+              <Button Margin="0,0,10,8" Command="{Binding StableCommand}" Content="NON, TOUT ÉTAIT NORMAL" Style="{StaticResource HudButton}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding GoBackCommand}" Content="OUI, REVENIR AU PALIER STABLE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding KeepThisCommand}" Content="GARDER CE PALIER ET TERMINER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding GoBackCommand}" Content="REVENIR AU PALIER STABLE ET TERMINER" Style="{StaticResource HudButton}" Visibility="{Binding ShowGoBack, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding RetryCommand}" Content="REFAIRE LA MESURE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowRetry, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" />
+            </WrapPanel>
+          </StackPanel>
+
+          <!-- Mémoire facultative -->
+          <StackPanel Margin="0,10,0,0" Visibility="{Binding IsMemoryPrompt, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding Instruction}" TextWrapping="Wrap" />
+            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+              <Button Command="{Binding TestMemoryCommand}" Content="TESTER LA MÉMOIRE" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="10,0,0,0" Command="{Binding SkipMemoryCommand}" Content="TERMINER" Style="{StaticResource HudButton}" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Résultat -->
+          <StackPanel Margin="0,14,0,0" Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding DoneText}" TextWrapping="Wrap" />
+            <WrapPanel Margin="0,12,0,0">
+              <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButton}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
+            </WrapPanel>
+          </StackPanel>
+        </StackPanel>
+      </ContentControl>
+
       <Grid Margin="0,20,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -133,7 +277,7 @@
         <!-- ===== Curseurs ===== -->
         <ContentControl Style="{StaticResource HudPanel}">
           <StackPanel>
-            <TextBlock Margin="0,0,0,16" Style="{StaticResource HudCode}" Text="RÉGLAGE" />
+            <TextBlock Margin="0,0,0,16" Style="{StaticResource HudCode}" Text="RÉGLAGE MANUEL" />
 
             <!-- Limite de puissance -->
             <Grid>
