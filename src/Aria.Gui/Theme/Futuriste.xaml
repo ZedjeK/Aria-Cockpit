@@ -552,7 +552,7 @@
               </Rectangle.Fill>
             </Rectangle>
             <ContentPresenter
-              Margin="18,0"
+              Margin="15,0"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               RecognizesAccessKey="True" />

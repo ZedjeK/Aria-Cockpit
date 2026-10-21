@@ -68,12 +68,12 @@
       MouseLeftButtonDown="OnHeaderMouseDown">
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="260" />
+          <ColumnDefinition Width="200" />
         </Grid.ColumnDefinitions>
 
-        <StackPanel Margin="22,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+        <StackPanel Margin="22,0,24,0" VerticalAlignment="Center" Orientation="Horizontal">
           <views:AriaLogo Width="42" Height="42" />
           <TextBlock
             Margin="12,0,0,0"
@@ -84,10 +84,15 @@
             Text="ARIA" />
         </StackPanel>
 
-        <!-- Onglets : chacun mène à sa page (Tag = type de la page) -->
-        <StackPanel
+        <!-- Onglets : chacun mène à sa page (Tag = type de la page).
+             Fenêtre trop étroite pour les 7 onglets : ils rétrécissent au lieu d'être coupés. -->
+        <Viewbox
           Grid.Column="1"
           HorizontalAlignment="Center"
+          Stretch="Uniform"
+          StretchDirection="DownOnly">
+        <StackPanel
+          Height="65"
           Orientation="Horizontal"
           RadioButton.Checked="OnTabChecked">
           <RadioButton x:Name="DashboardTab" Content="MON PC" IsChecked="True" Style="{StaticResource HudTab}" Tag="{x:Type views:DashboardPage}" />
@@ -98,6 +103,7 @@
           <RadioButton Content="RESTAURATION" Style="{StaticResource HudTab}" Tag="{x:Type views:RestorePage}" />
           <RadioButton Content="RAPPORTS" Style="{StaticResource HudTab}" Tag="{x:Type views:ReportsPage}" />
         </StackPanel>
+        </Viewbox>
 
         <TextBlock
           x:Name="VersionText"
