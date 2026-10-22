@@ -23,8 +23,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private GpuTuningState _start = new(0, 0, 0, 0, false);
     private GpuTuningState _lastStable = new(0, 0, 0, 0, false);
     private PerformanceReport? _baseline, _lastStableReport, _current;
-    private IReadOnlyList<GpuTuningState> _steps = [];
-    private int _index = -1;
+    /// <summary>Recherche en cours ; null pendant la mesure de départ.</summary>
+    private TuningSearch? _search;
     private bool _memoryPhase, _aborted;
     private CancellationTokenSource? _stop;
 
@@ -43,6 +43,9 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private IReadOnlyList<FindingItem> incidents = [];
     [ObservableProperty] private bool hasIncidents;
     [ObservableProperty] private bool showQuestion;
+    [ObservableProperty] private string questionText = "";
+    [ObservableProperty] private string yesText = "";
+    [ObservableProperty] private string noText = "";
     [ObservableProperty] private bool showRetry;
     [ObservableProperty] private bool showGoBack;
     [ObservableProperty] private string doneText = "";
@@ -62,11 +65,17 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private async Task Begin(TuningGoal goal)
     {
         if (tuner() is not { } t) return;
-        var (name, what) = goal switch
+        var (name, what, verdict) = goal switch
         {
-            TuningGoal.Silence => ("Silence", "baisser la limite de puissance par paliers (90 %, 85 %, 80 %…) pour réduire bruit et chauffe"),
-            TuningGoal.Undervolt => ("Undervolt", "plafonner la carte à sa fréquence habituelle en jeu, puis augmenter le décalage GPU par paliers de 30 MHz : même fréquence, moins de watts"),
-            _ => ("Performance", "augmenter le décalage GPU par paliers de 30 MHz, sans plafond")
+            TuningGoal.Silence => ("Silence",
+                "baisser la limite de puissance : grands pas (environ 10 %), puis pas moyens (environ 5 %) dès que vous trouvez la perte trop grande, puis un dernier affinage",
+                "fluidité qui baisse trop → pas plus fin"),
+            TuningGoal.Undervolt => ("Undervolt",
+                "plafonner la carte à sa fréquence habituelle en jeu, puis augmenter le décalage GPU : +100 MHz par palier, +30 après le premier problème, puis un affinage de 15 MHz",
+                "artefacts ou plantage → pas plus fin"),
+            _ => ("Performance",
+                "augmenter le décalage GPU sans plafond : +100 MHz par palier, +30 après le premier problème, puis un affinage de 15 MHz",
+                "artefacts ou plantage → pas plus fin")
         };
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
                 Title: $"Assistant · {name}",
@@ -76,32 +85,35 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 [
                     new("1. Mesure de départ", "réglage d'origine, 3 min de jeu"),
                     new("2. Un palier à la fois", "3 min de jeu chacun, même jeu, même scène"),
-                    new("3. Votre verdict", "artefacts ou plantage → retour au palier stable"),
+                    new("3. Votre verdict", verdict),
                     new("4. À la fin", "vous choisissez de garder ou d'annuler")
                 ],
                 Warnings: ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."],
-                Note: "Aria émet un son à la fin de chaque mesure : revenez alors dans Aria (Alt+Tab).",
+                Note: "Chaque mesure démarre dès qu'Aria voit le jeu en action, et un son retentit à la fin : revenez alors dans Aria (Alt+Tab).",
                 IsRisky: true)))
             return;
 
         _goal = goal;
         _memoryPhase = false;
         _aborted = false;
+        _search = null;
         var origin = GpuProfile.Origin ?? await Task.Run(() => GpuProfile.ReadCurrent(t));
         _start = TuningPlan.Start(origin);
         _lastStable = _start;
-        _index = -1;
         if (await ApplyAsync(_start)) await MeasureAsync();
     }
 
     private async Task MeasureAsync()
     {
         if (await GpuTelemetry.OpenSharedAsync() is not { } gpu) return;
-        var step = _index < 0 ? null : _steps[_index];
-        Title = step is null ? "MESURE DE DÉPART" : $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_index + 1}/{_steps.Count}";
+        var step = _search?.Current;
+        Title = _search is null ? "MESURE DE DÉPART" : $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_search.Tested + 1} · {_search.StageName}";
+        var watch = _goal == TuningGoal.Silence && !_memoryPhase
+            ? "Jugez la fluidité et le bruit."
+            : "Surveillez bandes, scintillements ou couleurs bizarres.";
         Instruction = step is null
             ? $"Réglage d'origine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
-            : $"Palier en place : {step.Describe()}. Retournez dans le jeu, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Surveillez bandes, scintillements ou couleurs bizarres.";
+            : $"Palier en place : {step.Describe()}. Retournez dans le jeu, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}";
         Phase = AssistantPhase.Measuring;
         Progress = 0;
         IsWaiting = true;
@@ -158,7 +170,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     private void Review(PerformanceReport report)
     {
-        var isBaseline = _index < 0;
+        var isBaseline = _search is null;
         Incidents = report.Findings.Where(f => report.Unstable && f.Severity == Severity.Critical)
             .Select(f => new FindingItem(f.Title, f.Detail, f.Advice, [], f.Severity)).ToList();
         HasIncidents = Incidents.Count > 0;
@@ -169,17 +181,33 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             // Mesure de départ réussie : on enchaîne directement sur le premier palier
             _baseline = report;
             _lastStableReport = report;
-            _steps = tuner() is { } t ? TuningPlan.Steps(_goal, _start, t.Limits, report.Stats) : [];
-            if (_steps.Count == 0)
+            if (tuner() is not { } t) return;
+            if (_goal == TuningGoal.Undervolt && TuningPlan.UndervoltCap(report.Stats, t.Limits) is null)
+            {
+                _ = FinishAsync("Fréquence habituelle en jeu introuvable dans la mesure de départ : impossible de placer le plafond de l'undervolt.");
+                return;
+            }
+            _search = _goal switch
+            {
+                TuningGoal.Silence => TuningSearch.Silence(_start, t.Limits),
+                TuningGoal.Undervolt => TuningSearch.Core(_goal, _start, t.Limits, TuningPlan.UndervoltCap(report.Stats, t.Limits)!.Value),
+                _ => TuningSearch.Core(_goal, _start, t.Limits, 0)
+            };
+            if (_search.Finished)
             {
                 _ = FinishAsync("Aucun palier à proposer pour cet objectif avec ce réglage de départ.");
                 return;
             }
-            _index = 0;
             _ = NextStepAsync();
             return;
         }
 
+        var silence = _search?.Goal == TuningGoal.Silence;
+        QuestionText = silence
+            ? "Le jeu vous paraît-il toujours aussi fluide, et la baisse de fréquence acceptable ?"
+            : "Pendant ce palier, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
+        YesText = silence ? "OUI, CONTINUER" : "NON, TOUT ÉTAIT NORMAL";
+        NoText = silence ? "NON, C'EST TROP" : "OUI, J'AI VU UN PROBLÈME";
         Headline = report.Unstable ? "Plantage détecté pendant ce palier"
             : !report.Conclusive ? "Mesure non concluante : la carte n'a pas assez travaillé"
             : report.Headline;
@@ -191,48 +219,59 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     private async Task NextStepAsync()
     {
-        if (await ApplyAsync(_steps[_index])) await MeasureAsync();
+        if (_search is { Finished: false } search && await ApplyAsync(search.Current)) await MeasureAsync();
     }
 
-    /// <summary>« Non, tout était normal » : ce palier est stable, on passe au suivant.</summary>
+    /// <summary>Palier jugé bon : la recherche continue (même pas, ou fin si la borne est atteinte).</summary>
     [RelayCommand]
     private async Task Stable()
     {
-        _lastStable = _steps[_index];
+        if (_search is null) return;
+        _search.Report(true);
+        _lastStable = _search.LastStable;
         _lastStableReport = _current;
-        _index++;
-        if (_index < _steps.Count) await NextStepAsync();
-        else await EndPhaseAsync();
+        await ContinueAsync();
     }
 
-    /// <summary>Artefacts, plantage, ou mesure ratée : retour au dernier palier stable.</summary>
+    /// <summary>Artefacts, plantage, perte jugée trop grande : la recherche repart du dernier palier stable, avec un pas plus fin.</summary>
     [RelayCommand]
-    private async Task GoBack()
+    private async Task Unstable()
     {
-        if (await ApplyAsync(_lastStable)) await EndPhaseAsync();
+        if (_search is null) return;
+        _search.Report(false);
+        await ContinueAsync();
+    }
+
+    private async Task ContinueAsync()
+    {
+        if (_search is { Finished: false }) await NextStepAsync();
+        else if (await ApplyAsync(_lastStable)) await EndPhaseAsync();
     }
 
     /// <summary>« Garder ce palier » : terminer ici avec le palier en place.</summary>
     [RelayCommand]
     private Task KeepThis()
     {
-        _lastStable = _steps[_index];
-        _lastStableReport = _current;
+        if (_search is not null)
+        {
+            _lastStable = _search.Current;
+            _lastStableReport = _current;
+        }
         return FinishAsync(null);
     }
 
     /// <summary>Refaire la mesure. Un plantage du pilote efface le réglage : le palier est donc réappliqué.</summary>
     [RelayCommand]
-    private Task Retry() => _index < 0 ? MeasureAsync() : NextStepAsync();
+    private Task Retry() => _search is null ? MeasureAsync() : NextStepAsync();
 
     [RelayCommand]
     private async Task TestMemory()
     {
         if (tuner() is not { } t) return;
         _memoryPhase = true;
-        _steps = TuningPlan.MemorySteps(_lastStable, t.Limits);
-        _index = 0;
-        await NextStepAsync();
+        _search = TuningSearch.Memory(_lastStable, t.Limits);
+        if (_search.Finished) await FinishAsync(null);
+        else await NextStepAsync();
     }
 
     [RelayCommand]
@@ -240,7 +279,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     private Task EndPhaseAsync()
     {
-        if (!_memoryPhase && _goal != TuningGoal.Silence && tuner() is { } t && TuningPlan.MemorySteps(_lastStable, t.Limits).Count > 0)
+        if (!_memoryPhase && _goal != TuningGoal.Silence && tuner() is { } t && !TuningSearch.Memory(_lastStable, t.Limits).Finished)
         {
             Title = "MÉMOIRE VIDÉO (FACULTATIF)";
             Instruction = $"Réglage stable retenu : {_lastStable.Describe()}. Tester aussi la mémoire, par paliers de +250 MHz jusqu'à +1000 MHz ? " +

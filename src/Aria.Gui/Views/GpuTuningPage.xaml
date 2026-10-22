@@ -137,13 +137,13 @@
             <TextBlock
               Margin="0,8,0,14"
               Foreground="{StaticResource NeonMutedBrush}"
-              Text="Aria mesure votre jeu au réglage d'origine, puis essaie un palier à la fois (3 minutes de jeu chacun). Plantage détecté ou artefacts signalés : retour au dernier palier stable. Rien n'est gardé sans votre accord."
+              Text="Aria mesure votre jeu au réglage d'origine, puis cherche le meilleur palier : grands pas tant que ça tient, puis pas plus fins à partir du dernier palier stable (3 minutes de jeu chacun). Rien n'est gardé sans votre accord."
               TextWrapping="Wrap" />
             <UniformGrid Columns="3">
               <Border Margin="0,0,10,0" Padding="16,12" Background="#0F7DF9FF" BorderBrush="#557DF9FF" BorderThickness="1,0,0,0">
                 <StackPanel>
                   <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Silence" />
-                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Limite de puissance plus basse, palier par palier : moins de bruit et de chauffe." TextWrapping="Wrap" />
+                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Limite de puissance plus basse, jusqu'à la perte de fluidité que vous jugez acceptable : moins de bruit et de chauffe." TextWrapping="Wrap" />
                   <Button HorizontalAlignment="Left" Command="{Binding StartSilenceCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
                 </StackPanel>
               </Border>
@@ -248,14 +248,14 @@
             </ItemsControl>
             <TextBlock
               Margin="0,8,0,0"
-              Text="Pendant ce palier, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?"
+              Text="{Binding QuestionText}"
               TextWrapping="Wrap"
               Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
             <WrapPanel Margin="0,12,0,0">
-              <Button Margin="0,0,10,8" Command="{Binding StableCommand}" Content="NON, TOUT ÉTAIT NORMAL" Style="{StaticResource HudButton}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
-              <Button Margin="0,0,10,8" Command="{Binding GoBackCommand}" Content="OUI, REVENIR AU PALIER STABLE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding StableCommand}" Content="{Binding YesText}" Style="{StaticResource HudButton}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding UnstableCommand}" Content="{Binding NoText}" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepThisCommand}" Content="GARDER CE PALIER ET TERMINER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowQuestion, Converter={StaticResource BoolToVisibility}}" />
-              <Button Margin="0,0,10,8" Command="{Binding GoBackCommand}" Content="REVENIR AU PALIER STABLE ET TERMINER" Style="{StaticResource HudButton}" Visibility="{Binding ShowGoBack, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding UnstableCommand}" Content="PASSER À UN PALIER PLUS PRUDENT" Style="{StaticResource HudButton}" ToolTip="Repart du dernier palier stable avec un pas plus fin" Visibility="{Binding ShowGoBack, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding RetryCommand}" Content="REFAIRE LA MESURE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding ShowRetry, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" />
             </WrapPanel>
