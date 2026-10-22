@@ -10,6 +10,30 @@ public static class PerformanceSession
 {
     public static readonly TimeSpan DefaultDuration = TimeSpan.FromMinutes(5);
 
+    /// <summary>Secondes d'affilée où le jeu doit être vu en action avant que la mesure démarre (écarte menus et chargements).</summary>
+    public const int GameConfirmSeconds = 5;
+
+    /// <summary>
+    /// Attend qu'un jeu tourne vraiment : un programme hors bureau, navigateurs et lanceurs affiche avec la carte
+    /// pendant qu'elle travaille, <see cref="GameConfirmSeconds"/> secondes d'affilée. Renvoie son nom.
+    /// Lève <see cref="OperationCanceledException"/> si l'attente est annulée.
+    /// </summary>
+    public static async Task<string> WaitForGameAsync(GpuTelemetry gpu, CancellationToken stop = default)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        string? candidate = null;
+        var streak = 0;
+        while (await timer.WaitForNextTickAsync(stop).ConfigureAwait(false))
+        {
+            var active = gpu.Read().LoadPercent >= PerformanceAnalyzer.ActiveLoadPercent;
+            var game = active ? GameTracker.Current(gpu.GraphicsProcesses()) : null;
+            streak = game is not null && string.Equals(game, candidate, StringComparison.OrdinalIgnoreCase) ? streak + 1 : game is null ? 0 : 1;
+            candidate = game;
+            if (streak >= GameConfirmSeconds && candidate is not null) return candidate;
+        }
+        throw new OperationCanceledException(stop);
+    }
+
     /// <param name="stop">Arrêt anticipé : le verdict porte alors sur les secondes déjà enregistrées.</param>
     /// <param name="progress">Appelé à chaque seconde avec le temps écoulé.</param>
     public static async Task<PerformanceReport> RunAsync(GpuTelemetry gpu, TimeSpan duration,

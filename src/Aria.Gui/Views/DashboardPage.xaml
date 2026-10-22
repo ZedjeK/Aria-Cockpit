@@ -247,10 +247,13 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel>
-              <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="{Binding Performance.ProgressText}" />
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="{Binding Performance.ProgressText}" />
+                <TextBlock Margin="16,0,0,0" Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource HudCode}" Text="{Binding Performance.GameText}" />
+              </StackPanel>
               <TextBlock
                 Margin="0,4,0,8"
-                Text="Lancez maintenant un jeu exigeant ou un benchmark et jouez normalement : Aria enregistre en arrière-plan, même réduit. Rien n'est modifié."
+                Text="Lancez un jeu exigeant ou un benchmark et jouez normalement : la mesure démarre dès qu'Aria voit le jeu en action, puis enregistre en arrière-plan, même réduit. Rien n'est modifié."
                 TextWrapping="Wrap" />
               <Grid Height="4">
                 <Border Background="#33FF8A1F" />
@@ -266,8 +269,22 @@
               Margin="16,0,0,0"
               VerticalAlignment="Center"
               Command="{Binding Performance.StopNowCommand}"
-              Content="ARRÊTER ET ANALYSER"
-              Style="{StaticResource HudButtonGhost}" />
+              Style="{StaticResource HudButtonGhost}">
+              <Button.Content>
+                <TextBlock>
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="ARRÊTER ET ANALYSER" />
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding Performance.IsWaiting}" Value="True">
+                          <Setter Property="Text" Value="ANNULER" />
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </Button.Content>
+            </Button>
           </Grid>
         </Border>
         <ItemsControl Margin="0,12,0,0" Focusable="False" ItemsSource="{Binding Telemetry.Readouts}">

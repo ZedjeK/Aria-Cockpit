@@ -23,6 +23,8 @@ public sealed partial class PerformanceViewModel : ObservableObject
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(StartCommand))] private bool isRunning;
     [ObservableProperty] private double progress;
     [ObservableProperty] private string progressText = "";
+    [ObservableProperty] private bool isWaiting;
+    [ObservableProperty] private string gameText = "";
     [ObservableProperty] private bool hasReport;
     [ObservableProperty] private string reportTitle = "";
     [ObservableProperty] private string headline = "";
@@ -34,12 +36,35 @@ public sealed partial class PerformanceViewModel : ObservableObject
     private async Task Start()
     {
         if (await GpuTelemetry.OpenSharedAsync() is not { } gpu) return;
-        _stop = new CancellationTokenSource();
         IsRunning = true;
         Progress = 0;
-        UpdateProgress(TimeSpan.Zero);
         try
         {
+            // 1. Attendre que le jeu tourne : le chrono ne démarre pas pendant le chargement ou dans le menu
+            IsWaiting = true;
+            GameText = "";
+            ProgressText = "EN ATTENTE D'UN JEU · LANCEZ-LE, LA MESURE DÉMARRERA TOUTE SEULE";
+            using (var wait = new CancellationTokenSource())
+            {
+                _stop = wait;
+                try
+                {
+                    GameText = $"JEU DÉTECTÉ : {(await PerformanceSession.WaitForGameAsync(gpu, wait.Token)).ToUpperInvariant()}";
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+                finally
+                {
+                    _stop = null;
+                }
+            }
+            IsWaiting = false;
+
+            // 2. Mesurer
+            _stop = new CancellationTokenSource();
+            UpdateProgress(TimeSpan.Zero);
             var report = await PerformanceSession.RunAsync(gpu, PerformanceSession.DefaultDuration,
                 new Progress<TimeSpan>(UpdateProgress), _stop.Token);
             Show(report);
@@ -47,14 +72,15 @@ public sealed partial class PerformanceViewModel : ObservableObject
         finally
         {
             IsRunning = false;
-            _stop.Dispose();
+            IsWaiting = false;
+            _stop?.Dispose();
             _stop = null;
         }
     }
 
     private bool CanStart() => !IsRunning;
 
-    /// <summary>Arrêt anticipé : le verdict porte sur ce qui a déjà été enregistré.</summary>
+    /// <summary>Arrêt anticipé : le verdict porte sur ce qui a déjà été enregistré (en attente du jeu : annulation).</summary>
     [RelayCommand]
     private void StopNow() => _stop?.Cancel();
 

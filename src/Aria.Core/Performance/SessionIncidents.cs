@@ -64,7 +64,8 @@ public sealed class GameTracker
         "steam", "steamwebhelper", "EpicGamesLauncher", "EpicWebHelper", "Battle.net", "EADesktop", "EABackgroundService",
         "UbisoftConnect", "upc", "GalaxyClient", "RiotClientServices", "RiotClientUx",
         "NVIDIA Overlay", "NVIDIA App", "NVIDIA Share", "nvcontainer", "NVDisplay.Container", "nvsphelper64",
-        "MSIAfterburner", "RTSS", "EncoderServer", "Code", "devenv", "Photoshop", "Lightroom"
+        "MSIAfterburner", "RTSS", "EncoderServer", "Code", "devenv", "Photoshop", "Lightroom",
+        "wallpaper32", "wallpaper64", "Lively", "Rainmeter", "SignalRgb", "iCUE", "ArmouryCrate", "LGHUB"
     };
 
     private readonly Dictionary<string, int> _activeSeconds = new(StringComparer.OrdinalIgnoreCase);
@@ -84,6 +85,30 @@ public sealed class GameTracker
 
     /// <summary>Nom du jeu (sans .exe) ; null si aucun candidat.</summary>
     public string? Game => Pick(_activeSeconds);
+
+    /// <summary>
+    /// Le jeu à cet instant : parmi les programmes qui affichent avec la carte, hors liste d'exclusion,
+    /// celui qui occupe le plus de mémoire (un jeu dépasse largement les petits utilitaires). null si aucun.
+    /// </summary>
+    public static string? Current(IReadOnlyList<uint> processes)
+    {
+        string? best = null;
+        long bestMemory = -1;
+        foreach (var pid in processes)
+        {
+            try
+            {
+                using var p = Process.GetProcessById((int)pid);
+                if (IsNotGame(p.ProcessName) || p.WorkingSet64 <= bestMemory) continue;
+                best = p.ProcessName;
+                bestMemory = p.WorkingSet64;
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        }
+        return best;
+    }
+
+    internal static bool IsNotGame(string name) => NotGames.Contains(name);
 
     internal static string? Pick(IReadOnlyDictionary<string, int> activeSeconds) =>
         activeSeconds.Where(p => !NotGames.Contains(p.Key) && p.Value > 0)

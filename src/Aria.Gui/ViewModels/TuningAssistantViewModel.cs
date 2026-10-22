@@ -36,6 +36,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private string instruction = "";
     [ObservableProperty] private double progress;
     [ObservableProperty] private string progressText = "";
+    [ObservableProperty] private bool isWaiting;
+    [ObservableProperty] private string gameText = "";
     [ObservableProperty] private string headline = "";
     [ObservableProperty] private IReadOnlyList<StatTile> tiles = [];
     [ObservableProperty] private IReadOnlyList<FindingItem> incidents = [];
@@ -98,12 +100,38 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         var step = _index < 0 ? null : _steps[_index];
         Title = step is null ? "MESURE DE DÉPART" : $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_index + 1}/{_steps.Count}";
         Instruction = step is null
-            ? $"Réglage d'origine en place ({_start.Describe()}). Lancez votre jeu et jouez normalement pendant 3 minutes, toujours dans la même scène pour les paliers suivants."
-            : $"Palier en place : {step.Describe()}. Retournez dans le jeu, même scène, pendant 3 minutes. Surveillez bandes, scintillements ou couleurs bizarres.";
+            ? $"Réglage d'origine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
+            : $"Palier en place : {step.Describe()}. Retournez dans le jeu, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Surveillez bandes, scintillements ou couleurs bizarres.";
         Phase = AssistantPhase.Measuring;
         Progress = 0;
+        IsWaiting = true;
+        GameText = "";
+        ProgressText = "EN ATTENTE D'UN JEU · LANCEZ-LE OU REPRENEZ LA PARTIE";
+
+        // 1. Attendre que le jeu tourne (pas de chrono pendant le chargement ou dans le menu)
+        string game;
+        using (var wait = new CancellationTokenSource())
+        {
+            _stop = wait;
+            try
+            {
+                game = await PerformanceSession.WaitForGameAsync(gpu, wait.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            finally
+            {
+                _stop = null;
+            }
+        }
+        if (_aborted) return;
+        IsWaiting = false;
+        GameText = $"JEU DÉTECTÉ : {game.ToUpperInvariant()}";
         UpdateProgress(TimeSpan.Zero);
 
+        // 2. Mesurer
         _stop = new CancellationTokenSource();
         PerformanceReport report;
         try
