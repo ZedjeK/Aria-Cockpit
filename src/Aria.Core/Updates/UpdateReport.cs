@@ -2,7 +2,7 @@ using Aria.Core.Reporting;
 
 namespace Aria.Core.Updates;
 
-/// <summary>Rapport texte d'une installation de mises à jour, dans C:\ProgramData\Aria\Rapports.</summary>
+/// <summary>Rapport texte d'une installation de mises à jour, dans C:\ProgramData\AriaCockpit\Rapports.</summary>
 public static class UpdateReport
 {
     public static string Save(InstallOutcome outcome, int notSelected, NvidiaDriverCheck? nvidia)
@@ -17,7 +17,7 @@ public static class UpdateReport
 
     public static void Write(TextWriter w, InstallOutcome outcome, int notSelected, NvidiaDriverCheck? nvidia, DateTime at)
     {
-        w.WriteLine($"Aria — mises à jour du {at:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
+        w.WriteLine($"Aria Cockpit — mises à jour du {at:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
         w.WriteLine();
         w.WriteLine($"Point de restauration : {outcome.RestorePointMessage}");
         if (outcome.ClosedApps is { Count: > 0 } closed)

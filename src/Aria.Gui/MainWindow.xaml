@@ -6,10 +6,10 @@
   xmlns:services="clr-namespace:Aria.Gui.Services"
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
   xmlns:views="clr-namespace:Aria.Gui.Views"
-  Title="Aria"
+  Title="Aria Cockpit"
   Width="1240"
   Height="820"
-  Icon="pack://application:,,,/Assets/Aria.ico"
+  Icon="pack://application:,,,/Assets/Aria-Cockpit.ico"
   MinWidth="900"
   MinHeight="600"
   Background="{StaticResource SpaceBackgroundBrush}"
@@ -75,13 +75,20 @@
 
         <StackPanel Margin="22,0,24,0" VerticalAlignment="Center" Orientation="Horizontal">
           <views:AriaLogo Width="42" Height="42" />
-          <TextBlock
-            Margin="12,0,0,0"
-            VerticalAlignment="Center"
-            FontSize="26"
-            FontWeight="Bold"
-            Style="{StaticResource NeonTitle}"
-            Text="ARIA" />
+          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+            <TextBlock
+              FontSize="24"
+              FontWeight="Bold"
+              Style="{StaticResource NeonTitle}"
+              Text="ARIA" />
+            <TextBlock
+              Margin="1,-3,0,0"
+              FontFamily="{StaticResource TechFont}"
+              FontSize="11.5"
+              FontWeight="SemiBold"
+              Foreground="{StaticResource NeonOrangeBrush}"
+              Text="C O C K P I T" />
+          </StackPanel>
         </StackPanel>
 
         <!-- Onglets : chacun mène à sa page (Tag = type de la page).

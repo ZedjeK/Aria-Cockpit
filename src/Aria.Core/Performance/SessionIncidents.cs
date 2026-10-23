@@ -58,7 +58,7 @@ public sealed class GameTracker
     {
         "dwm", "explorer", "csrss", "ShellExperienceHost", "StartMenuExperienceHost", "SearchHost", "SearchApp",
         "TextInputHost", "ApplicationFrameHost", "SystemSettings", "Widgets", "WidgetService", "LockApp", "RuntimeBroker",
-        "ctfmon", "PhoneExperienceHost", "msedgewebview2", "Aria", "Aria-diagnostic-gpu",
+        "ctfmon", "PhoneExperienceHost", "msedgewebview2", "Aria", "Aria-Cockpit", "Aria-diagnostic-gpu",
         "chrome", "msedge", "firefox", "opera", "brave", "vivaldi",
         "Discord", "Teams", "ms-teams", "Spotify", "obs64", "obs32", "Medal", "XboxPcApp", "GameBar", "GameBarFTServer",
         "steam", "steamwebhelper", "EpicGamesLauncher", "EpicWebHelper", "Battle.net", "EADesktop", "EABackgroundService",

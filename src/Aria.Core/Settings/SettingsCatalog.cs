@@ -43,10 +43,10 @@ public static class SettingsCatalog
         return settings;
     }
 
-    /// <summary>Aria.exe (l'interface), même quand le catalogue est construit depuis la console.</summary>
+    /// <summary>Aria-Cockpit.exe (l'interface), même quand le catalogue est construit depuis la console.</summary>
     private static string GuiExePath()
     {
-        var gui = Path.Combine(AppContext.BaseDirectory, "Aria.exe");
+        var gui = Path.Combine(AppContext.BaseDirectory, "Aria-Cockpit.exe");
         return File.Exists(gui) ? gui : Environment.ProcessPath ?? gui;
     }
 }

@@ -41,7 +41,7 @@ public partial class MainWindow : FluentWindow
         if (!AppUpdateChecker.TryParseVersion(CurrentVersionText, out var current)) return;
         _update = await AppUpdateChecker.CheckAsync(current);
         if (_update is null) return;
-        UpdateText.Text = $"Aria {_update.Latest} est disponible (version installée : {current}). Rien n'est installé automatiquement.";
+        UpdateText.Text = $"Aria Cockpit {_update.Latest} est disponible (version installée : {current}). Rien n'est installé automatiquement.";
         UpdateBanner.Visibility = Visibility.Visible;
     }
 

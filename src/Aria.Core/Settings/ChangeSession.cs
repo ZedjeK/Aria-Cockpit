@@ -48,7 +48,7 @@ public static class ChangeSession
 
         // 2. Point de restauration (filet de sécurité supplémentaire, non bloquant)
         progress?.Report(new ApplyStep(1, total, "Création d'un point de restauration Windows…"));
-        var (created, message) = RestorePoint.TryCreate($"Aria - {reason}");
+        var (created, message) = RestorePoint.TryCreate($"Aria Cockpit - {reason}");
 
         // 3. Application, puis vérification de chaque réglage
         var results = new List<SettingResult>();

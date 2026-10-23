@@ -311,7 +311,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 Title: "Garder au démarrage",
                 ConfirmText: "Garder",
                 Message: $"Réglage gardé : {_lastStable.Describe()}.",
-                Warnings: ["La tâche planifiée « Aria\\Profil GPU » réappliquera ce réglage à chaque ouverture de session, avec les droits administrateur, sans fenêtre."],
+                Warnings: ["La tâche planifiée « Aria Cockpit\\Profil GPU » réappliquera ce réglage à chaque ouverture de session, avec les droits administrateur, sans fenêtre."],
                 Note: "Revenir d'origine (onglet Réglage GPU ou Restauration) supprime la tâche.")))
             return;
         if (await ApplyAsync(_lastStable with { AtStartup = true })) Phase = AssistantPhase.Idle;
@@ -339,7 +339,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (tuner() is not { } t) return false;
         try
         {
-            var exe = Environment.ProcessPath ?? "Aria.exe";
+            var exe = Environment.ProcessPath ?? "Aria-Cockpit.exe";
             await Task.Run(() => GpuProfile.Apply(t, state, exe));
             return true;
         }

@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+<!-- Logo d'Aria Cockpit : le A glitché néon de la famille Aria, avec le compteur orange.
+     À rendre avec un navigateur (Chromium) : tous les convertisseurs ne gèrent pas le filtre de halo. -->
 <defs><pattern id="S" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1.5" fill="#7DF9FF" opacity="0.07"/></pattern>
 <polygon id="A" points="30,130 70,30 90,30 130,130 110,130 80,54 50,130"/>
 <clipPath id="BL"><rect x="0" y="72" width="80" height="90"/></clipPath>
@@ -12,5 +14,5 @@
 <g clip-path="url(#BL)" fill="none" stroke="#7DF9FF" stroke-width="5"><use href="#A"/></g>
 <g clip-path="url(#BR)" fill="none" stroke="#5C8BFF" stroke-width="5"><use href="#A"/></g>
 <g transform="translate(7,0)"><g clip-path="url(#T)" fill="none" stroke="#FFFFFF" stroke-width="5"><use href="#A"/></g></g>
-<polyline points="58,100 66,100 71,89 78,111 85,91 90,100 102,100" fill="none" stroke="#FF8A1F" stroke-width="5" stroke-linecap="round"/>
+<g><path d="M58,114 A22,22 0 0 1 102,114 Z" fill="#FF8A1F"/><path d="M65,114 A15,15 0 0 1 95,114 Z" fill="#030812" opacity="0.85"/><polygon points="78.5,113 81.5,115 93,98" fill="#FF8A1F"/><circle cx="80" cy="114" r="4" fill="#FF8A1F"/><rect x="58" y="115" width="44" height="5" rx="2" fill="#FF8A1F"/></g></g>
 </g></svg>

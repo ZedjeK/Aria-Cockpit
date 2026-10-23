@@ -24,7 +24,7 @@ public sealed class BiosBrandGuide
 /// <summary>
 /// Indique où trouver chaque option dans le BIOS selon la marque de la carte mère.
 /// Les données viennent de config/bios/*.json (intégrés à l'exe). Un dossier "bios" placé
-/// à côté d'Aria.exe remplace les fichiers du même nom, sans recompiler.
+/// à côté d'Aria-Cockpit.exe remplace les fichiers du même nom, sans recompiler.
 /// </summary>
 public sealed class BiosGuide
 {

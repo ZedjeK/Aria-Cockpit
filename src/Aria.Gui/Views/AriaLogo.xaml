@@ -1,6 +1,6 @@
 <!--
-  Logo d'Aria (icône validée « Néon Glace, onde orange ») en vectoriel : plaque à coins coupés,
-  A en tubes néon dont le sommet est décalé (glitch), onde orange en guise de barre.
+  Logo d'Aria Cockpit en vectoriel (même dessin que Assets/logo.svg) : plaque à coins coupés,
+  A en tubes néon dont le sommet est décalé (glitch), compteur orange au pied du A.
   Les halos sont posés sur des Canvas parents pour ne pas être coupés par les découpes du glitch.
 -->
 <UserControl
@@ -68,18 +68,16 @@
         </Path>
       </Canvas>
 
-      <!-- Onde orange -->
+      <!-- Compteur orange : l'emblème d'Aria Cockpit -->
       <Canvas>
         <Canvas.Effect>
           <DropShadowEffect BlurRadius="12" Opacity="0.9" ShadowDepth="0" Color="#FFFF8A1F" />
         </Canvas.Effect>
-        <Polyline
-          Points="58,100 66,100 71,89 78,111 85,91 90,100 102,100"
-          Stroke="#FFFF8A1F"
-          StrokeEndLineCap="Round"
-          StrokeLineJoin="Round"
-          StrokeStartLineCap="Round"
-          StrokeThickness="6" />
+        <Path Data="M58,114 A22,22 0 0 1 102,114 Z" Fill="#FFFF8A1F" />
+        <Path Data="M65,114 A15,15 0 0 1 95,114 Z" Fill="#FF030812" Opacity="0.85" />
+        <Polygon Fill="#FFFF8A1F" Points="78.5,113 81.5,115 93,98" />
+        <Ellipse Canvas.Left="76" Canvas.Top="110" Width="8" Height="8" Fill="#FFFF8A1F" />
+        <Rectangle Canvas.Left="58" Canvas.Top="115" Width="44" Height="5" Fill="#FFFF8A1F" RadiusX="2" RadiusY="2" />
       </Canvas>
     </Canvas>
   </Viewbox>

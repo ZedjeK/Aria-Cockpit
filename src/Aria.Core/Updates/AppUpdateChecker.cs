@@ -2,18 +2,18 @@ using System.Text.Json;
 
 namespace Aria.Core.Updates;
 
-/// <summary>Une version d'Aria plus récente que celle installée, publiée sur GitHub.</summary>
+/// <summary>Une version d'Aria Cockpit plus récente que celle installée, publiée sur GitHub.</summary>
 public sealed record AppUpdate(Version Latest, string PageUrl);
 
 /// <summary>
-/// Vérifie s'il existe une release d'Aria plus récente sur GitHub (dernière release publiée du dépôt).
+/// Vérifie s'il existe une release d'Aria Cockpit plus récente sur GitHub (dernière release publiée du dépôt).
 /// Ne télécharge et n'installe rien : il renvoie seulement la version et l'adresse de sa page.
 /// Toute erreur (pas de réseau, GitHub indisponible, réponse inattendue) donne « pas de mise à jour ».
 /// </summary>
 public static class AppUpdateChecker
 {
-    public const string RepositoryUrl = "https://github.com/ZedjeK/Aria-PC-Tune";
-    private const string LatestReleaseApi = "https://api.github.com/repos/ZedjeK/Aria-PC-Tune/releases/latest";
+    public const string RepositoryUrl = "https://github.com/ZedjeK/Aria-Cockpit";
+    private const string LatestReleaseApi = "https://api.github.com/repos/ZedjeK/Aria-Cockpit/releases/latest";
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -74,7 +74,7 @@ public static class AppUpdateChecker
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(8) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Aria-PC-Tune");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Aria-Cockpit");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         return client;
     }

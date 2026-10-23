@@ -99,7 +99,7 @@
             Command="{Binding FixTaskCommand}"
             Content="METTRE À JOUR"
             Style="{StaticResource HudButtonGhost}"
-            ToolTip="Recrée la tâche « Aria\Profil GPU » vers cet Aria.exe" />
+            ToolTip="Recrée la tâche « Aria Cockpit\Profil GPU » vers cet exe" />
         </Grid>
       </Border>
 
@@ -362,7 +362,7 @@
               Margin="28,2,0,0"
               FontSize="12.5"
               Foreground="{StaticResource NeonMutedBrush}"
-              Text="Sinon, le réglage s'efface au prochain redémarrage : idéal pour essayer. Coché, la tâche planifiée « Aria\Profil GPU » le réapplique à chaque ouverture de session."
+              Text="Sinon, le réglage s'efface au prochain redémarrage : idéal pour essayer. Coché, la tâche planifiée « Aria Cockpit\Profil GPU » le réapplique à chaque ouverture de session."
               TextWrapping="Wrap" />
 
             <!-- Actions -->

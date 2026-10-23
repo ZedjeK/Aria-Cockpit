@@ -166,12 +166,14 @@ public static class GpuProfile
 }
 
 /// <summary>
-/// Tâche planifiée « Aria\Profil GPU » : lance Aria en mode silencieux à l'ouverture de session,
+/// Tâche planifiée « Aria Cockpit\Profil GPU » : lance Aria Cockpit en mode silencieux à l'ouverture de session,
 /// avec les droits administrateur (sans fenêtre UAC), pour réappliquer le réglage GPU.
 /// </summary>
 public static class StartupTask
 {
-    public const string Name = @"Aria\Profil GPU";
+    public const string Name = @"Aria Cockpit\Profil GPU";
+    /// <summary>Nom utilisé par les versions de test d'avant le renommage en Aria Cockpit : supprimé dès qu'on touche à la tâche.</summary>
+    public const string LegacyName = @"Aria\Profil GPU";
     public const string Argument = "--gpu-profile";
 
     public static bool Exists() => OperatingSystem.IsWindows() && Run($"/Query /TN \"{Name}\"").Code == 0;
@@ -191,17 +193,18 @@ public static class StartupTask
         // 20 s après l'ouverture de session : le pilote graphique est prêt
         var (code, output) = Run($"/Create /TN \"{Name}\" /TR \"\\\"{exePath}\\\" {Argument}\" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /F");
         if (code != 0) throw new GpuTuningException($"Tâche de démarrage refusée par Windows : {output.Trim()}");
+        DeleteLegacy();
     }
 
     public static void Delete()
     {
         if (Exists()) Run($"/Delete /TN \"{Name}\" /F");
+        DeleteLegacy();
     }
 
-    /// <summary>Exe déplacé depuis la création de la tâche : la tâche est recréée vers le nouvel emplacement.</summary>
-    public static void Repair(string exePath)
+    private static void DeleteLegacy()
     {
-        if (Command() is { } command && !string.Equals(command, exePath, StringComparison.OrdinalIgnoreCase)) Create(exePath);
+        if (OperatingSystem.IsWindows() && Run($"/Query /TN \"{LegacyName}\"").Code == 0) Run($"/Delete /TN \"{LegacyName}\" /F");
     }
 
     private static (int Code, string Output) Run(string arguments)

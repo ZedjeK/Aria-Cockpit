@@ -7,7 +7,7 @@ public enum ReportKind { Settings, Simulation, Restore, Updates, PcSheet, Cleanu
 /// <summary>Un rapport enregistré : type, date et ligne de bilan.</summary>
 public sealed record ReportInfo(string Path, ReportKind Kind, DateTime At, string Summary);
 
-/// <summary>Liste des rapports de C:\ProgramData\Aria\Rapports, du plus récent au plus ancien.</summary>
+/// <summary>Liste des rapports de C:\ProgramData\AriaCockpit\Rapports, du plus récent au plus ancien.</summary>
 public static class ReportIndex
 {
     private const string SettingsPrefix = "rapport_";

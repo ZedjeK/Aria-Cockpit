@@ -137,7 +137,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         HasTaskProblem = wanted && (!state.AtStartup || !string.Equals(taskCommand, exe, StringComparison.OrdinalIgnoreCase));
         TaskText = !HasTaskProblem ? ""
             : !state.AtStartup
-                ? "Le réglage devait être réappliqué au démarrage, mais la tâche planifiée « Aria\\Profil GPU » a disparu."
+                ? "Le réglage devait être réappliqué au démarrage, mais la tâche planifiée « Aria Cockpit\\Profil GPU » a disparu."
                 : $"La tâche de démarrage lance encore Aria depuis « {taskCommand} », un ancien emplacement.";
     }
 
@@ -180,7 +180,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         if (target.MemoryOffsetMHz > 1000)
             warnings.Add("Mémoire au-delà de +1000 MHz : la GDDR6X corrige ses propres erreurs, une mémoire trop poussée ne plante pas mais devient plus lente.");
         if (target.AtStartup && !Current.AtStartup)
-            warnings.Add("« Garder au démarrage » crée la tâche planifiée « Aria\\Profil GPU » : Aria se lancera en silence, avec les droits administrateur, à chaque ouverture de session pour réappliquer ce réglage.");
+            warnings.Add("« Garder au démarrage » crée la tâche planifiée « Aria Cockpit\\Profil GPU » : Aria Cockpit se lancera en silence, avec les droits administrateur, à chaque ouverture de session pour réappliquer ce réglage.");
 
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
                 Title: "Appliquer le réglage GPU",
@@ -211,7 +211,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
                 Title: "Revenir d'origine",
                 ConfirmText: "Revenir d'origine",
                 Message: OriginText.Length > 0 ? $"La carte retrouve son réglage d'avant Aria : {OriginText}." : "La carte retrouve son réglage d'avant Aria.",
-                Note: "La tâche de démarrage « Aria\\Profil GPU » est supprimée si elle existe.")))
+                Note: "La tâche de démarrage « Aria Cockpit\\Profil GPU » est supprimée si elle existe.")))
             return;
         await RunAsync(() => GpuProfile.RevertToOrigin(_tuner, ExePath()), "Réglage d'origine remis.");
     }
@@ -223,7 +223,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         if (Current is { } c) LoadSliders(c);
     }
 
-    /// <summary>Recrée la tâche de démarrage vers cet Aria.exe (clic de l'utilisateur).</summary>
+    /// <summary>Recrée la tâche de démarrage vers cet exe (clic de l'utilisateur).</summary>
     [RelayCommand]
     private Task FixTask() => RunAsync(() => StartupTask.Create(ExePath()), "Tâche de démarrage mise à jour.");
 
@@ -255,5 +255,5 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     private static string Cap(GpuTuningState s) => s.MaxClockMHz == 0 ? "Aucun" : $"{s.MaxClockMHz} MHz";
 
-    private static string ExePath() => Environment.ProcessPath ?? "Aria.exe";
+    private static string ExePath() => Environment.ProcessPath ?? "Aria-Cockpit.exe";
 }

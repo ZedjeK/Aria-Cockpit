@@ -4,7 +4,7 @@ using Aria.Core.Models;
 
 namespace Aria.Core.Reporting;
 
-/// <summary>Rapport texte complet, enregistré dans C:\ProgramData\Aria\Rapports.</summary>
+/// <summary>Rapport texte complet, enregistré dans C:\ProgramData\AriaCockpit\Rapports.</summary>
 public static class ReportFile
 {
     public static string Folder => Path.Combine(BackupStore.DataRoot, "Rapports");
@@ -22,7 +22,7 @@ public static class ReportFile
         var path = Path.Combine(Folder, $"rapport_{now:yyyy-MM-dd_HHmmss}.txt");
 
         using var w = new StreamWriter(path);
-        w.WriteLine($"Aria — rapport du {now:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
+        w.WriteLine($"Aria Cockpit — rapport du {now:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
         w.WriteLine($"Mode : {mode switch { RunMode.Simulate => "simulation (rien n'a été modifié)", RunMode.Restore => "restauration", _ => "optimisation" }}");
 
         InventoryPrinter.Print(hw, w);

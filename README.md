@@ -1,60 +1,74 @@
-<p align="center"><img src="docs/aria-icon.png" width="128" alt="Logo d'Aria : un A néon glitché traversé d'une onde orange"></p>
+<p align="center">
+  <img src="docs/logo.png" width="160" alt="Logo d'Aria Cockpit : un A néon glitché avec un compteur orange">
+</p>
 
-<h1 align="center">Aria · PC-Tune</h1>
+<h1 align="center">Aria Cockpit</h1>
 
-Outil Windows 11 qui analyse le matériel du PC et propose les réglages Windows, NVIDIA et confidentialité adaptés,
-installe les mises à jour et fait le ménage, avec une interface « cockpit HUD » aux couleurs du logo : cyan glacé, bleu roi et orange.
+<p align="center">
+  Le tableau de bord de ton PC de jeu : il analyse le matériel, surveille ta carte graphique en direct<br>
+  et te propose les bons réglages Windows, NVIDIA et confidentialité, jusqu'à l'undervolt guidé.<br>
+  Rien n'est modifié sans ton accord, tout se restaure. Un seul exe, rien à installer.
+</p>
 
-**Rien n'est modifié sans votre accord.** Chaque changement apparaît dans une liste à cocher avec sa valeur actuelle,
-la valeur proposée et la raison. Avant toute modification, Aria sauvegarde les valeurs d'origine et crée un point
-de restauration Windows : tout se restaure en quelques clics. Le BIOS n'est jamais modifié, seulement lu et expliqué.
+<p align="center">
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.15 · Windows 11 x64 · carte NVIDIA conseillée
+</p>
 
-## Téléchargement
+## Ce qu'il fait
 
-Dernière version : [page des releases](../../releases/latest).
-
-| Fichier | Pour qui |
-|---|---|
-| `Aria-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 140 Mo une fois décompressé) |
-| `Aria-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 8 Mo) |
-
-Décompresser, puis lancer `Aria.exe`.
-
-- **Windows 11** requis. Aria demande les **droits administrateur** : elle en a besoin pour lire et modifier les
-  réglages du système. Lancez-la depuis votre propre session (si un autre compte administrateur valide l'élévation,
-  les réglages personnels comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là).
-- L'exécutable **n'est pas signé** : au premier lancement, Windows SmartScreen peut afficher « Windows a protégé votre
-  ordinateur ». Cliquez sur « Informations complémentaires » puis « Exécuter quand même ». Le code source complet est
-  dans ce dépôt.
-
-## Fonctionnalités
-
-| Page | Ce qu'elle fait |
-|---|---|
-| **Mon PC** | Matériel détecté, diagnostic avec score de conformité, guide BIOS selon la marque de la carte mère, export de la fiche PC en HTML |
-| **Réglages** | Trois groupes (Windows, NVIDIA, Confidentialité) : valeur actuelle → valeur proposée, liste à cocher, application puis résultat |
-| **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS, avec la même liste à cocher |
+| Page | Ce que ça fait |
+| --- | --- |
+| **Mon PC** | Un cockpit : composants détectés de part et d'autre, jauge de conformité au centre. Diagnostic complet, guide BIOS selon la marque de la carte mère, fiche PC en HTML |
+| **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
+| **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
+| **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Silence, Undervolt, Performance) cherche le meilleur réglage palier par palier ; un garde-fou signale les plantages du pilote |
+| **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
 | **Rapports** | Tous les rapports (réglages, restaurations, mises à jour, nettoyages, fiches PC) avec leur bilan et un aperçu |
 
-On passe d'une page à l'autre par les onglets de la barre du haut. Mon PC prend la forme d'un cockpit : nom du PC
-et jauge de conformité au centre, composants dans des cadres de viseur de part et d'autre, résumé du diagnostic en
-dessous. Code couleur : cyan glacé pour ce qui est conforme, bleu roi pour l'information, orange pour ce qui est à
-corriger et pour les boutons d'action, rouge pour un échec.
+**Rien n'est modifié sans ton accord.** Chaque changement est récapitulé avant d'être appliqué. Aria Cockpit sauvegarde
+d'abord les valeurs d'origine et crée un point de restauration Windows : tout se restaure en quelques clics. Le BIOS
+n'est jamais modifié, seulement lu et expliqué.
 
-Les confirmations s'affichent dans la fenêtre d'Aria et récapitulent chaque changement avant de l'appliquer.
+## Installation
+
+1. Télécharge l'un des deux zips dans les [Releases](../../releases) et décompresse-le où tu veux :
+
+   | Fichier | Pour qui |
+   |---|---|
+   | `Aria-Cockpit-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 140 Mo une fois décompressé) |
+   | `Aria-Cockpit-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 9 Mo) |
+
+2. Lance `Aria-Cockpit.exe`. L'exe n'est pas signé : si Windows SmartScreen affiche « Windows a protégé votre
+   ordinateur », clique sur « Informations complémentaires » puis « Exécuter quand même ». Le code source complet est
+   dans ce dépôt.
+
+Aria Cockpit demande les **droits administrateur** : il en a besoin pour lire et modifier les réglages du système.
+Lance-le depuis ta propre session (si un autre compte administrateur valide l'élévation, les réglages personnels
+comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là).
 
 ### Diagnostic (lecture seule)
 
 Branchement des écrans (carte graphique ou carte mère), câble et fréquence, HDR, lien PCIe et Resizable BAR de la
 carte NVIDIA, mémoire (canal, vitesse, profil XMP/EXPO), P-cores et E-cores, microcode Intel 13e et 14e génération,
 mode de démarrage, Secure Boot et TPM, âge du BIOS et du pilote graphique, santé et espace libre des disques,
-réseau, applications au démarrage, protection du système, redémarrage en attente, batterie, G-SYNC (disponible mais
+réseau, programmes au démarrage, protection du système, redémarrage en attente, batterie, G-SYNC (disponible mais
 désactivé) et conseil DLSS selon la génération de la carte.
 
 Les corrections qui se font dans le BIOS sont expliquées pas à pas pour ASUS, MSI, Gigabyte et ASRock (plus un guide
 générique), avec un bouton pour redémarrer directement dans le BIOS.
+
+### Télémétrie et analyse de performance
+
+Les mesures viennent de NVML (`nvml.dll`, installé avec le pilote NVIDIA,
+[documentation officielle](https://docs.nvidia.com/deploy/nvml-api/)), en lecture seule. L'analyse dure 5 minutes de
+jeu : Aria Cockpit attend de voir ton jeu en action (5 secondes d'affilée, carte chargée), puis relève chaque seconde
+les mesures du GPU, la raison officielle de chaque baisse de fréquence et la charge du processeur, cœur par cœur. Le
+rapport donne un verdict et un « Que faire ? » pour chaque constat. Le bouton « Relancer » affiche les chiffres de
+l'analyse précédente pour comparer. Les artefacts visuels et les saccades ne sont pas détectables de cette façon :
+pour eux, tes yeux restent le meilleur juge.
 
 ## Réglages
 
@@ -67,7 +81,7 @@ de confort, animations de Windows.
 
 ### NVIDIA
 
-Aria parle au pilote via NVAPI (`nvapi64.dll`, installé avec le pilote), avec les seuls identifiants publiés par
+Aria Cockpit parle au pilote via NVAPI (`nvapi64.dll`, installé avec le pilote), avec les seuls identifiants publiés par
 NVIDIA dans le [SDK NVAPI](https://github.com/NVIDIA/nvapi) (licence MIT). Les réglages modifiés sont ceux du profil
 global (« Paramètres globaux » de l'application NVIDIA) ; les profils propres à chaque jeu restent prioritaires.
 
@@ -82,8 +96,8 @@ global (« Paramètres globaux » de l'application NVIDIA) ; les profils propres
 | Processeur graphique préféré | Processeur NVIDIA (décoché, autonomie réduite) | portable à deux puces graphiques |
 | Plage dynamique (par écran) | Complète (0-255) | écran NVIDIA en plage limitée, RGB, sans HDR |
 
-Un réglage jamais modifié s'affiche « (par défaut) » ; le restaurer remet la valeur d'usine du pilote. Aria ne peut
-pas activer G-SYNC lui-même (absent de l'API officielle) : le diagnostic indique où le faire. Fermez le Panneau de
+Un réglage jamais modifié s'affiche « (par défaut) » ; le restaurer remet la valeur d'usine du pilote. Aria Cockpit ne peut
+pas activer G-SYNC lui-même (absent de l'API officielle) : le diagnostic indique où le faire. Ferme le Panneau de
 configuration NVIDIA avant d'appliquer : un clic sur « Appliquer » de sa part pourrait remettre ses anciennes valeurs.
 
 ### Confidentialité
@@ -110,6 +124,49 @@ surface d'attaque.
 - **Widgets** : non gérés. Leur stratégie officielle (`HKLM\SOFTWARE\Policies\Microsoft\Dsh`) est verrouillée par Windows,
   même pour un administrateur. Pour masquer le bouton : Paramètres → Personnalisation → Barre des tâches → Widgets.
 
+### Démarrage
+
+Les programmes lancés à l'ouverture de session, comme dans l'onglet Démarrage du Gestionnaire des tâches et avec le
+même mécanisme : nom et éditeur, compte concerné, tout décoché par défaut. Désactiver ne désinstalle rien et se
+réactive depuis Restauration ou le Gestionnaire des tâches. Les composants de sécurité de Windows ne sont jamais
+proposés.
+
+### Applications
+
+19 applications préinstallées par Windows (Clipchamp, Actualités, Météo, Solitaire, Astuces, To Do, Teams, Cartes,
+LinkedIn, Mobile connecté…). Seules celles réellement installées apparaissent, toutes décochées. La désinstallation
+ne concerne que ton compte ; la restauration ouvre la page de l'application dans le Microsoft Store. Xbox, Game Bar,
+le Store et les outils du quotidien (Photos, Calculatrice, Bloc-notes, Terminal…) restent hors liste.
+
+## Réglage GPU
+
+Par NVML, l'interface officielle du pilote NVIDIA. Le pilote garde la main sur la tension : ces réglages ne peuvent
+pas dépasser les limites de sécurité de la carte. Au pire, un jeu ou le pilote plante (écran noir quelques secondes).
+
+| Réglage | Ce qu'il fait | Bornes d'Aria Cockpit |
+|---|---|---|
+| Limite de puissance | Plafond de consommation de la carte | plage de la carte |
+| Plafond de fréquence | La carte ne dépasse plus cette fréquence et redescend normalement au repos | de 1 200 MHz au maximum de la carte |
+| Décalage GPU | Décale la courbe fréquence/tension : plus de MHz à tension égale | ± 300 MHz |
+| Décalage mémoire | Fréquence de la mémoire vidéo | − 500 à + 1 500 MHz |
+
+**Undervolt** = décalage GPU positif + plafond à la fréquence habituelle en jeu : même fréquence, donc mêmes FPS,
+atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
+
+- **Essayer** : le réglage s'efface au prochain redémarrage.
+- **Garder au démarrage** : la tâche planifiée « Aria Cockpit\Profil GPU » le réapplique à chaque ouverture de session
+  (Aria Cockpit en mode silencieux, droits administrateur, sans fenêtre).
+- **Revenir d'origine**, ici ou dans Restauration : remet la carte comme avant Aria Cockpit et supprime la tâche.
+- **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale.
+
+**L'assistant guidé** mesure d'abord ton jeu au réglage d'origine (3 minutes), puis cherche le meilleur palier, du
+grossier vers le fin : grands pas tant que ça tient, puis pas moyens à partir du dernier palier stable, puis un dernier
+affinage. Pour l'undervolt et la performance : + 100, + 30, puis + 15 MHz (exemple : +100 ✓, +200 ✓, +300 ✗, +230 ✓,
++260 ✗, +245 → fin). Pour le silence : environ 10 %, 5 %, puis 5 W de limite de puissance en moins, jusqu'à 60 % au plus
+bas. Après chaque palier, tu juges (artefacts, plantage, fluidité) ; un plantage détecté fait passer à un palier plus
+prudent. La mémoire peut ensuite être testée par paliers de + 250 MHz jusqu'à + 1 000. À la fin, c'est toi qui choisis :
+garder au démarrage, garder jusqu'au redémarrage, ou tout annuler.
+
 ## Mises à jour
 
 - **Windows Update** : interface officielle de Windows. Cochées d'office : sécurité, correctifs, antivirus.
@@ -117,9 +174,11 @@ surface d'attaque.
 - **Applications** : winget (gestionnaire officiel de Windows). Une ligne mal lue n'est jamais proposée.
 - **Pilote NVIDIA** : comparaison avec le dernier pilote Game Ready, via le service de recherche du site
   NVIDIA (non officiel). Téléchargement par le navigateur, l'installation reste celle de NVIDIA.
-- **BIOS** : version installée et lien de recherche vers la page support ; jamais mis à jour par Aria.
+- **BIOS** : version installée et lien de recherche vers la page support ; jamais mis à jour par Aria Cockpit.
+- **Aria Cockpit lui-même** : au lancement, un bandeau signale une nouvelle version publiée sur ce dépôt, avec un lien
+  vers sa page. Rien n'est téléchargé ni installé automatiquement.
 
-Un point de restauration Windows est créé avant chaque installation (Aria ne désinstalle pas les mises à jour).
+Un point de restauration Windows est créé avant chaque installation (Aria Cockpit ne désinstalle pas les mises à jour).
 Les applications à mettre à jour qui sont ouvertes sont listées avec un compte à rebours de 20 s, puis fermées
 normalement (fermeture forcée au bout de 10 s) ; on peut aussi les fermer tout de suite, les exclure ou annuler.
 Le téléchargement des applications s'affiche en direct (« Téléchargement · 45 % · 44 Mo / 98 Mo »).
@@ -148,12 +207,14 @@ chemins.
 
 ## Sauvegardes et rapports
 
-- Sauvegardes des valeurs d'origine : `C:\ProgramData\Aria\Sauvegardes`
-- Rapports : `C:\ProgramData\Aria\Rapports`
-- Journal des erreurs : `C:\ProgramData\Aria\erreurs.log`
+- Sauvegardes des valeurs d'origine : `C:\ProgramData\AriaCockpit\Sauvegardes`
+- Rapports : `C:\ProgramData\AriaCockpit\Rapports`
+- Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
+- Journal des erreurs : `C:\ProgramData\AriaCockpit\erreurs.log`
 
-Les versions 0.12 et antérieures (sous le nom PC-Tune) utilisaient `C:\ProgramData\PCTune` : ce dossier est renommé
-automatiquement au premier lancement, les sauvegardes restent donc restaurables.
+Les versions précédentes rangeaient leurs données dans `C:\ProgramData\Aria` (0.13 et 0.14) ou
+`C:\ProgramData\PCTune` (0.12 et avant) : ce dossier est renommé automatiquement au premier lancement, les
+sauvegardes restent donc restaurables.
 
 Une restauration suit le même parcours qu'une application (nouvelle sauvegarde, point de restauration, vérification,
 rapport) : elle peut donc elle-même être annulée.
@@ -174,8 +235,8 @@ Prérequis :
 - Pour un éditeur : Visual Studio 2026 (version 18) ou plus récent, ou VS Code avec l'extension C# Dev Kit.
   Visual Studio 2022 ne sait pas cibler .NET 10.
 
-Le plus simple : double-cliquer sur **`Lancer Aria.cmd`**. Le script demande les droits administrateur, installe le
-SDK .NET 10 via winget s'il manque, compile `publish\Aria.exe`, puis ouvre l'interface.
+Le plus simple : double-cliquer sur **`Lancer Aria Cockpit.cmd`**. Le script demande les droits administrateur, installe
+le SDK .NET 10 via winget s'il manque, compile `publish\Aria-Cockpit.exe`, puis ouvre l'interface.
 
 À la main, dans un terminal **administrateur** :
 
@@ -183,29 +244,31 @@ SDK .NET 10 via winget s'il manque, compile `publish\Aria.exe`, puis ouvre l'int
     dotnet publish src/Aria.Gui -c Release           # exécutable unique autonome
     dotnet publish src/Aria.Gui -c Release -p:SelfContained=false   # version légère (runtime .NET 10 requis)
 
-Résultat : `src/Aria.Gui/bin/Release/net10.0-windows/win-x64/publish/Aria.exe`
+Résultat : `src/Aria.Gui/bin/Release/net10.0-windows/win-x64/publish/Aria-Cockpit.exe`
 
 Version console en simulation, depuis la racine du projet :
 
-    powershell -ExecutionPolicy Bypass -File outils\Lancer-Aria.ps1 -Console -Simulation
+    powershell -ExecutionPolicy Bypass -File outils\Lancer-Aria-Cockpit.ps1 -Console -Simulation
 
 ## Structure du projet
 
-- `src/Aria.Core` : moteur (détection, diagnostic, réglages, NVIDIA, confidentialité, mises à jour, nettoyage,
-  sauvegarde, rapports), sans interface
-- `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria.exe`
+- `src/Aria.Core` : moteur (détection, diagnostic, réglages, NVIDIA, télémétrie et réglage GPU, confidentialité,
+  mises à jour, nettoyage, sauvegarde, rapports), sans interface
+- `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe`
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
-- `src/Aria.Gui/Assets/aria-icon.svg` : source du logo ; `Aria.ico` en est le rendu de 16 à 256 px
+- `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px
 
 Les fichiers BIOS sont intégrés à l'exécutable. Pour corriger un chemin sans recompiler : créer un dossier `bios` à
-côté d'`Aria.exe` et y placer le fichier modifié (même nom) ; il remplace alors la version intégrée.
+côté d'`Aria-Cockpit.exe` et y placer le fichier modifié (même nom) ; il remplace alors la version intégrée.
 
 ## Crédits
 
-- Développé par Jérémy Zemani. Anciennement PC-Tune (jusqu'à la version 0.12).
+- Développé par Jérémy Zemani. Anciennement Aria (versions 0.13 et 0.14) et PC-Tune (jusqu'à la 0.12).
 - Interface : [WPF-UI](https://github.com/lepoco/wpfui) (MIT) et CommunityToolkit.Mvvm (MIT).
 - Identifiants des fonctions et réglages NVIDIA : [SDK NVAPI](https://github.com/NVIDIA/nvapi) (MIT).
+- Télémétrie et réglage GPU : [NVML](https://docs.nvidia.com/deploy/nvml-api/) ; structures relues dans la bibliothèque
+  officielle [nvidia-ml-py](https://pypi.org/project/nvidia-ml-py/).
 - Table des modèles de cartes NVIDIA : [ZenitH-AT/nvidia-data](https://github.com/ZenitH-AT/nvidia-data)
   (domaine public). Copie intégrée dans `src/Aria.Core/Updates/nvidia-gpu-data.json`, mise à jour en ligne si possible.
 - Recommandations G-SYNC : [Blur Busters, G-SYNC 101](https://www.blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/14/).

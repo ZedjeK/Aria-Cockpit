@@ -1,8 +1,8 @@
 <Project>
   <!-- Informations communes aux exécutables (Propriétés → Détails, Gestionnaire des tâches) : un seul endroit à modifier -->
   <PropertyGroup>
-    <Product>Aria · PC-Tune</Product>
-    <Version>0.14.1</Version>
+    <Product>Aria Cockpit</Product>
+    <Version>0.15.0</Version>
     <Company>Jérémy Zemani</Company>
     <Authors>Jérémy Zemani</Authors>
     <Copyright>© 2026 Jérémy Zemani</Copyright>

@@ -68,7 +68,7 @@ public partial class App : Application
             System.Windows.MessageBox.Show(
                 $"Une erreur inattendue s'est produite :\n\n{e.Exception.Message}\n\nDétails enregistrés dans :\n{log}\n\n" +
                 "Si l'affichage reste anormal, fermez puis relancez Aria.",
-                "Aria", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
         finally
         {
@@ -90,7 +90,7 @@ public partial class App : Application
     }
 }
 
-/// <summary>Journal des erreurs, dans C:\ProgramData\Aria\erreurs.log.</summary>
+/// <summary>Journal des erreurs, dans C:\ProgramData\AriaCockpit\erreurs.log.</summary>
 internal static class ErrorLog
 {
     private static string FilePath => Path.Combine(BackupStore.DataRoot, "erreurs.log");

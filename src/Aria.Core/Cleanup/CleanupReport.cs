@@ -2,7 +2,7 @@ using Aria.Core.Reporting;
 
 namespace Aria.Core.Cleanup;
 
-/// <summary>Rapport texte d'un nettoyage, dans C:\ProgramData\Aria\Rapports.</summary>
+/// <summary>Rapport texte d'un nettoyage, dans C:\ProgramData\AriaCockpit\Rapports.</summary>
 public static class CleanupReport
 {
     public static string Save(IReadOnlyList<CleanupResult> results, DateTime at)
@@ -16,7 +16,7 @@ public static class CleanupReport
 
     public static void Write(TextWriter w, IReadOnlyList<CleanupResult> results, DateTime at)
     {
-        w.WriteLine($"Aria — nettoyage du {at:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
+        w.WriteLine($"Aria Cockpit — nettoyage du {at:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
         w.WriteLine();
         w.WriteLine("== NETTOYAGE ==");
         foreach (var r in results)

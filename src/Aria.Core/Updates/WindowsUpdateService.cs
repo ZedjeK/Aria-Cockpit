@@ -23,7 +23,7 @@ public sealed class WindowsUpdateService
         try
         {
             _session = Com.Create("Microsoft.Update.Session");
-            Com.Set(_session, "ClientApplicationID", "Aria");
+            Com.Set(_session, "ClientApplicationID", "Aria Cockpit");
             var searcher = Com.Call(_session, "CreateUpdateSearcher")!;
             var result = Com.Call(searcher, "Search", "IsInstalled=0 and IsHidden=0")!;
 

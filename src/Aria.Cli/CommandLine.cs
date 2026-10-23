@@ -15,7 +15,7 @@ internal static class CommandLine
           Aria.Cli --restaurer [fichier]  Revient aux valeurs d'une sauvegarde (liste à cocher)
           Aria.Cli --aide                 Affiche cette aide
 
-        Sauvegardes et rapports : C:\ProgramData\Aria
+        Sauvegardes et rapports : C:\ProgramData\AriaCockpit
         """;
 
     /// <returns>null si l'aide doit être affichée.</returns>

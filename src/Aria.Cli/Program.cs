@@ -20,9 +20,9 @@ if (options is null)
 
 ConsoleUi.Title(options.Mode switch
 {
-    RunMode.Simulate => "Aria — simulation (rien ne sera modifié)",
-    RunMode.Restore => "Aria — restauration",
-    _ => "Aria"
+    RunMode.Simulate => "Aria Cockpit — simulation (rien ne sera modifié)",
+    RunMode.Restore => "Aria Cockpit — restauration",
+    _ => "Aria Cockpit"
 });
 ConsoleUi.Info("Analyse du matériel…");
 

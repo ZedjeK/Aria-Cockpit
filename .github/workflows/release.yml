@@ -1,4 +1,4 @@
-# Publication d'une version d'Aria, déclenchée à la main :
+# Publication d'une version d'Aria Cockpit, déclenchée à la main :
 # Actions → Release → Run workflow → numéro de version (identique à Directory.Build.props).
 # Compile les deux exécutables (autonome et léger), les zippe, calcule les empreintes
 # SHA-256 et crée la release « v<version> » avec les notes de .github/release-notes.md.
@@ -52,10 +52,10 @@ jobs:
       - name: Préparer les fichiers
         run: |
           New-Item -ItemType Directory -Force assets | Out-Null
-          $full  = "assets/Aria-$env:VERSION-autonome.zip"
-          $light = "assets/Aria-$env:VERSION-leger.zip"
-          Compress-Archive -Path out-full/Aria.exe  -DestinationPath $full
-          Compress-Archive -Path out-light/Aria.exe -DestinationPath $light
+          $full  = "assets/Aria-Cockpit-$env:VERSION-autonome.zip"
+          $light = "assets/Aria-Cockpit-$env:VERSION-leger.zip"
+          Compress-Archive -Path out-full/Aria-Cockpit.exe  -DestinationPath $full
+          Compress-Archive -Path out-light/Aria-Cockpit.exe -DestinationPath $light
 
           $sums = foreach ($zip in $full, $light) {
             $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -67,4 +67,4 @@ jobs:
           Get-Content notes.md
 
       - name: Publier la release
-        run: gh release create "v$env:VERSION" (Get-ChildItem assets/*.zip).FullName --title "Aria · PC-Tune $env:VERSION" --notes-file notes.md --target $env:GITHUB_SHA
+        run: gh release create "v$env:VERSION" (Get-ChildItem assets/*.zip).FullName --title "Aria Cockpit $env:VERSION" --notes-file notes.md --target $env:GITHUB_SHA

@@ -7,14 +7,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Aria.Gui</RootNamespace>
-    <AssemblyName>Aria</AssemblyName>
+    <AssemblyName>Aria-Cockpit</AssemblyName>
     <!-- « Description du fichier » dans Windows -->
-    <AssemblyTitle>Aria</AssemblyTitle>
+    <AssemblyTitle>Aria Cockpit</AssemblyTitle>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- Icône de l'exe (Explorateur, barre des tâches) : Assets\aria-icon.svg rendu en 16 à 256 px -->
-    <ApplicationIcon>Assets\Aria.ico</ApplicationIcon>
+    <!-- Icône de l'exe (Explorateur, barre des tâches) : Assets\logo.svg rendu en 16 à 256 px -->
+    <ApplicationIcon>Assets\Aria-Cockpit.ico</ApplicationIcon>
 
-    <!-- Publication : un seul Aria.exe autonome -->
+    <!-- Publication : un seul Aria-Cockpit.exe autonome -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
@@ -32,7 +32,7 @@
 
   <ItemGroup>
     <!-- Même icône pour la fenêtre -->
-    <Resource Include="Assets\Aria.ico" />
+    <Resource Include="Assets\Aria-Cockpit.ico" />
   </ItemGroup>
 
   <ItemGroup>

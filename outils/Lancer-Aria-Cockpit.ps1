@@ -1,8 +1,8 @@
-﻿# Lance Aria sans rien installer à la main :
+﻿# Lance Aria Cockpit sans rien installer à la main :
 #   1. demande les droits administrateur (une seule fois pour tout le script)
 #   2. installe le SDK .NET 10 via winget s'il est absent
-#   3. compile Aria dans le dossier "publish" du projet
-#   4. lance l'interface Aria.exe
+#   3. compile Aria Cockpit dans le dossier "publish" du projet
+#   4. lance l'interface Aria-Cockpit.exe
 #      (options avancées : -Console pour la version console Aria.Cli.exe, -Simulation pour n'y rien modifier)
 #
 # Compatible avec Windows PowerShell 5.1 (présent d'office sur Windows 11).
@@ -22,7 +22,7 @@ if ($Console) {
 }
 else {
     $csproj = Join-Path $projet 'src\Aria.Gui\Aria.Gui.csproj'
-    $exe = Join-Path $sortie 'Aria.exe'
+    $exe = Join-Path $sortie 'Aria-Cockpit.exe'
 }
 
 function Etape([string] $texte) {
@@ -59,12 +59,12 @@ if (-not $estAdmin) {
         Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $arguments
     }
     catch {
-        Arret 'Droits administrateur refusés : Aria en a besoin pour lire les réglages du système.'
+        Arret 'Droits administrateur refusés : Aria Cockpit en a besoin pour lire les réglages du système.'
     }
     exit 0   # la suite se déroule dans la nouvelle fenêtre administrateur
 }
 
-Write-Host 'Aria — préparation' -ForegroundColor White
+Write-Host 'Aria Cockpit — préparation' -ForegroundColor White
 
 # --- 2. SDK .NET 10 -----------------------------------------------------------------------
 if (Sdk10Installe) {
@@ -95,7 +95,7 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) {
 Write-Host "Prêt : $exe" -ForegroundColor Green
 
 # --- 4. Lancement -------------------------------------------------------------------------
-Etape 'Lancement d''Aria…'
+Etape 'Lancement d''Aria Cockpit…'
 if (-not $Console) {
     # Interface graphique : elle s'ouvre dans sa propre fenêtre, celle-ci peut se fermer
     Start-Process -FilePath $exe

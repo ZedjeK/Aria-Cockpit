@@ -130,7 +130,7 @@ public static class HtmlReport
             w.Raw("</tbody>\n</table></div>\n");
         }
 
-        w.Raw($"<footer>Généré par Aria {w.Enc(input.Version)} le {input.At:dd/MM/yyyy à HH:mm:ss}." +
+        w.Raw($"<footer>Généré par Aria Cockpit {w.Enc(input.Version)} le {input.At:dd/MM/yyyy à HH:mm:ss}." +
               (hidePersonal ? " Informations personnelles masquées (nom du PC et de l'utilisateur)." : "") +
               " Diagnostic en lecture seule : rien n'est modifié sans validation.</footer>\n");
         w.Raw("</main>\n</body>\n</html>\n");
