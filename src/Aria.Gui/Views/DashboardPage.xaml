@@ -229,7 +229,7 @@
             Command="{Binding Performance.StartCommand}"
             Content="ANALYSER LES PERFORMANCES"
             Style="{StaticResource HudButtonGhost}"
-            ToolTip="5 minutes d'enregistrement pendant que vous jouez, puis un verdict. Ne modifie rien."
+            ToolTip="5 minutes d'enregistrement pendant que vous jouez, puis un verdict. Ne modifie rien. Indisponible pendant que l'assistant du Réglage GPU teste un palier."
             Visibility="{Binding Performance.IsRunning, Converter={StaticResource InverseBoolToVisibility}}" />
         </Grid>
 

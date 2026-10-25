@@ -78,6 +78,31 @@
         </Grid>
       </Border>
 
+      <!-- Réglage enregistré pour une autre carte (carte changée) -->
+      <Border
+        Margin="0,12,0,0"
+        Padding="16,12"
+        Background="#14FF8A1F"
+        BorderBrush="{StaticResource NeonOrangeBrush}"
+        BorderThickness="2,0,0,0"
+        Visibility="{Binding HasOtherGpu, Converter={StaticResource BoolToVisibility}}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock VerticalAlignment="Center" Text="{Binding OtherGpuText}" TextWrapping="Wrap" />
+          <Button
+            Grid.Column="1"
+            Margin="16,0,0,0"
+            VerticalAlignment="Center"
+            Command="{Binding ForgetOtherGpuCommand}"
+            Content="OUBLIER CE RÉGLAGE"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="Supprime le réglage de l'ancienne carte et sa tâche de démarrage, sans toucher à la carte actuelle" />
+        </Grid>
+      </Border>
+
       <!-- Tâche de démarrage absente ou vers un ancien emplacement -->
       <Border
         Margin="0,12,0,0"
@@ -183,6 +208,13 @@
                 </StackPanel>
               </Border>
             </UniformGrid>
+
+            <TextBlock
+              Margin="0,10,0,0"
+              Foreground="{StaticResource NeonOrangeBrush}"
+              Text="Une analyse de performance est en cours sur Mon PC : l'assistant sera disponible quand elle sera terminée."
+              TextWrapping="Wrap"
+              Visibility="{Binding BlockedByAnalysis, Converter={StaticResource BoolToVisibility}}" />
 
             <!-- Résultat d'Équilibre, ou ce qu'il faut faire pour débloquer les deux autres modes -->
             <Grid Margin="0,14,0,0">

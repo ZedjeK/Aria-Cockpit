@@ -44,7 +44,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsDone))]
-    [NotifyCanExecuteChangedFor(nameof(StartEconomyCommand), nameof(StartPerformanceCommand))]
+    [NotifyCanExecuteChangedFor(nameof(StartBalancedCommand), nameof(StartEconomyCommand), nameof(StartPerformanceCommand))]
     private AssistantPhase phase;
 
     /// <summary>Résultat d'Équilibre pour cette carte : sans lui, Économie et Performance restent verrouillés.</summary>
@@ -102,11 +102,29 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         DriverChanged = Record?.DriverChanged(t.Identity) == true;
     }
 
-    [RelayCommand] private Task StartBalanced() => Begin(TuningGoal.Balanced);
+    [RelayCommand(CanExecute = nameof(CanStartBalanced))] private Task StartBalanced() => Begin(TuningGoal.Balanced);
     [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartEconomy() => Begin(TuningGoal.Economy);
     [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartPerformance() => Begin(TuningGoal.Performance);
 
-    private bool CanStartDerived() => IsUnlocked && IsIdle;
+    private bool CanStartDerived() => IsUnlocked && IsIdle && !MeasurementGate.AnalysisRunning;
+    private bool CanStartBalanced() => IsIdle && !MeasurementGate.AnalysisRunning;
+
+    /// <summary>Une analyse de Mon PC est en cours : l'assistant attend qu'elle se termine.</summary>
+    public bool BlockedByAnalysis => MeasurementGate.AnalysisRunning;
+
+    /// <summary>Abonnement à la porte des mesures (appelé une fois par la page).</summary>
+    public void WatchMeasurements()
+    {
+        MeasurementGate.Changed += () =>
+        {
+            StartBalancedCommand.NotifyCanExecuteChanged();
+            StartEconomyCommand.NotifyCanExecuteChanged();
+            StartPerformanceCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(BlockedByAnalysis));
+        };
+    }
+
+    partial void OnPhaseChanged(AssistantPhase value) => MeasurementGate.AssistantRunning = value != AssistantPhase.Idle;
 
     private async Task Begin(TuningGoal goal)
     {
@@ -143,7 +161,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     new("3. Votre verdict", verdict),
                     new("4. À la fin", "vous choisissez de garder ou d'annuler")
                 ],
-                Warnings: ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."],
+                Warnings: goal == TuningGoal.Performance && t.Limits.MaxPowerMilliwatts > t.Limits.DefaultPowerMilliwatts
+                    ?
+                    [
+                        "Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Chaque palier s'efface au redémarrage.",
+                        $"La carte pourra consommer jusqu'à {t.Limits.MaxPowerMilliwatts / 1000} W au lieu de {t.Limits.DefaultPowerMilliwatts / 1000} W : vérifiez que votre alimentation a la puissance recommandée et que le câble d'alimentation de la carte (12V-2x6 / 12VHPWR) est enfoncé à fond."
+                    ]
+                    : ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."],
                 Note: "Chaque mesure démarre dès qu'Aria voit le jeu en action, et un son retentit à la fin : revenez alors dans Aria (Alt+Tab).",
                 IsRisky: true)))
             return;
@@ -158,7 +182,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
         if (goal == TuningGoal.Balanced)
         {
-            _start = TuningPlan.Start(GpuProfile.Origin ?? _before);
+            _start = TuningPlan.Start(GpuProfile.OriginFor(t) ?? _before);
             _baseline = null;
             _baselineGame = null;
             _step = Step.Baseline;

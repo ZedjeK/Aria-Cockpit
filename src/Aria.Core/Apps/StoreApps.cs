@@ -8,7 +8,8 @@ namespace Aria.Core.Apps;
 /// <summary>
 /// Applications préinstallées par Windows qu'on peut désinstaller pour son compte. Toutes décochées par défaut.
 /// Restent hors liste : Xbox et Game Bar (jeux), Store, Photos, Calculatrice, Bloc-notes, Lecteur multimédia,
-/// Terminal, Capture d'écran, Pense-bêtes, Caméra, Horloge, Paint.
+/// Terminal, Capture d'écran, Pense-bêtes, Caméra, Horloge, Paint, Magnétophone. Les applis tierces en promotion
+/// (Spotify, Disney+…) ne sont proposées que si elles sont réellement installées, comme les autres.
 /// </summary>
 public static class StoreApps
 {
@@ -33,14 +34,30 @@ public static class StoreApps
         new StoreAppSetting("teams", "Microsoft Teams", "Conversations et réunions", "Microsoft Teams", "MSTeams", "MicrosoftTeams"),
         new StoreAppSetting("family", "Microsoft Family Safety", "Contrôle parental", "Microsoft Family Safety",
             "MicrosoftCorporationII.MicrosoftFamily"),
-        new StoreAppSetting("office", "Microsoft 365 (Office)", "Lanceur des applications Office", "Microsoft 365", "Microsoft.MicrosoftOfficeHub"),
+        new StoreAppSetting("office", "Microsoft 365 Copilot", "Lanceur des applications Office (ex-« Microsoft 365 »)", "Microsoft 365 Copilot", "Microsoft.MicrosoftOfficeHub"),
         new StoreAppSetting("powerautomate", "Power Automate", "Automatisation de tâches", "Power Automate", "Microsoft.PowerAutomateDesktop"),
         new StoreAppSetting("maps", "Cartes", "Cartes et itinéraires Windows", "Windows Maps", "Microsoft.WindowsMaps"),
         new StoreAppSetting("bingsearch", "Recherche Bing", "Application de recherche Bing", "Bing", "Microsoft.BingSearch"),
         new StoreAppSetting("linkedin", "LinkedIn", "Réseau professionnel", "LinkedIn", "7EE7776C.LinkedInforWindows"),
         new StoreAppSetting("devhome", "Dev Home", "Tableau de bord pour développeurs", "Dev Home", "Microsoft.Windows.DevHome"),
         new StoreAppSetting("cortana", "Cortana", "Ancien assistant vocal de Windows", "Cortana", "Microsoft.549981C3F5F10"),
-        new StoreAppSetting("phonelink", "Mobile connecté", "Lien entre votre téléphone et le PC", "Phone Link", "Microsoft.YourPhone")
+        new StoreAppSetting("phonelink", "Mobile connecté", "Lien entre votre téléphone et le PC", "Phone Link", "Microsoft.YourPhone"),
+        new StoreAppSetting("quickassist", "Assistance rapide", "Prise de contrôle à distance du PC ; très utilisée par les arnaques au faux support technique",
+            "Quick Assist", "MicrosoftCorporationII.QuickAssist"),
+        // Anciennes installations : applications abandonnées ou remplacées par Microsoft
+        new StoreAppSetting("filmstv", "Films et TV", "Ancien lecteur vidéo, remplacé par le Lecteur multimédia", "Films & TV", "Microsoft.ZuneVideo"),
+        new StoreAppSetting("mail", "Courrier et Calendrier", "Abandonné par Microsoft fin 2024, remplacé par Outlook", "Mail and Calendar",
+            "microsoft.windowscommunicationsapps"),
+        new StoreAppSetting("people", "Contacts", "Ancien carnet d'adresses de Windows", "Microsoft People", "Microsoft.People"),
+        new StoreAppSetting("skype", "Skype", "Service fermé par Microsoft en mai 2025", "Skype", "Microsoft.SkypeApp"),
+        // Applications tierces installées en promotion sur les PC neufs
+        new StoreAppSetting("spotify", "Spotify", "Installée en promotion par Windows", "Spotify", "SpotifyAB.SpotifyMusic"),
+        new StoreAppSetting("disney", "Disney+", "Installée en promotion par Windows", "Disney+", "Disney.37853FC22B2CE"),
+        new StoreAppSetting("netflix", "Netflix", "Installée en promotion par Windows", "Netflix", "4DF9E0F8.Netflix"),
+        new StoreAppSetting("primevideo", "Prime Video", "Installée en promotion par Windows", "Prime Video", "AmazonVideo.PrimeVideo"),
+        new StoreAppSetting("tiktok", "TikTok", "Installée en promotion par Windows", "TikTok", "BytedancePte.Ltd.TikTok"),
+        new StoreAppSetting("candycrush", "Candy Crush", "Jeux installés en promotion par Windows", "Candy Crush",
+            "king.com.CandyCrushSaga", "king.com.CandyCrushSodaSaga", "king.com.CandyCrushFriends")
     ];
 }
 

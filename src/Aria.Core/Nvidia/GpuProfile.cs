@@ -7,7 +7,13 @@ using Aria.Core.Models;
 namespace Aria.Core.Nvidia;
 
 /// <summary>Réglage GPU posé par Aria : la valeur d'origine (avant Aria) et celle en place.</summary>
-public sealed record GpuProfileFile(string Origin, string Current, DateTime AppliedAt);
+/// <param name="GpuUuid">Carte pour laquelle le réglage a été posé (identifiant NVML) ; vide pour les profils d'avant la 0.17.</param>
+public sealed record GpuProfileFile(string Origin, string Current, DateTime AppliedAt, string GpuUuid = "", string GpuName = "")
+{
+    /// <summary>Le réglage a été posé sur une autre carte que celle-ci (carte changée depuis).</summary>
+    public bool IsForOtherGpu(GpuIdentity gpu) =>
+        GpuUuid.Length > 0 && gpu.Uuid.Length > 0 && !string.Equals(GpuUuid, gpu.Uuid, StringComparison.OrdinalIgnoreCase);
+}
 
 /// <summary>
 /// Réglage GPU d'Aria, de bout en bout : sauvegarde de l'origine, application, tâche de démarrage, garde-fou.
@@ -43,10 +49,15 @@ public static class GpuProfile
     /// <summary>Valeur d'origine, avant le premier réglage d'Aria ; null si Aria n'a rien réglé.</summary>
     public static GpuTuningState? Origin => Load() is { } f && GpuTuningState.TryParse(f.Origin, out var o) ? o : null;
 
+    /// <summary>Valeur d'origine de cette carte ; null si Aria n'a rien réglé, ou si le réglage enregistré concerne une autre carte.</summary>
+    public static GpuTuningState? OriginFor(GpuTuner tuner) =>
+        Load() is { } f && !f.IsForOtherGpu(tuner.Identity) && GpuTuningState.TryParse(f.Origin, out var o) ? o : null;
+
     /// <summary>État actuel de la carte (le plafond de fréquence, illisible par NVML, vient du profil d'Aria).</summary>
     public static GpuTuningState ReadCurrent(GpuTuner tuner)
     {
-        var known = Load() is { } f && GpuTuningState.TryParse(f.Current, out var current) ? current.MaxClockMHz : 0u;
+        var known = Load() is { } f && !f.IsForOtherGpu(tuner.Identity) && GpuTuningState.TryParse(f.Current, out var current)
+            ? current.MaxClockMHz : 0u;
         return tuner.Read(known, StartupTask.Exists());
     }
 
@@ -60,6 +71,12 @@ public static class GpuProfile
         lock (Gate)
         {
             var saved = Load();
+            if (saved?.IsForOtherGpu(tuner.Identity) == true)
+            {
+                // Réglage d'une ancienne carte : son origine ne vaut rien pour celle-ci, on repart de zéro
+                Forget();
+                saved = null;
+            }
             var before = ReadCurrent(tuner);
             var origin = saved is not null && GpuTuningState.TryParse(saved.Origin, out var o) ? o : before with { AtStartup = false };
 
@@ -85,7 +102,8 @@ public static class GpuProfile
             else
             {
                 Directory.CreateDirectory(BackupStore.DataRoot);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(new GpuProfileFile(origin.ToRaw(), target.ToRaw(), DateTime.Now), Json));
+                File.WriteAllText(FilePath, JsonSerializer.Serialize(
+                    new GpuProfileFile(origin.ToRaw(), target.ToRaw(), DateTime.Now, tuner.Identity.Uuid, tuner.Identity.Name), Json));
             }
         }
     }
@@ -93,8 +111,23 @@ public static class GpuProfile
     /// <summary>Remet la carte comme avant Aria et supprime la tâche de démarrage.</summary>
     public static void RevertToOrigin(GpuTuner tuner, string exePath)
     {
-        if (Origin is { } origin) Apply(tuner, origin with { AtStartup = false }, exePath, saveBackup: false);
+        if (Load()?.IsForOtherGpu(tuner.Identity) == true) Forget();
+        else if (Origin is { } origin) Apply(tuner, origin with { AtStartup = false }, exePath, saveBackup: false);
         else StartupTask.Delete();
+    }
+
+    /// <summary>
+    /// Oublie le réglage enregistré (carte changée) : supprime le profil et la tâche de démarrage,
+    /// sans rien appliquer à la carte actuelle.
+    /// </summary>
+    public static void Forget()
+    {
+        lock (Gate)
+        {
+            StartupTask.Delete();
+            try { File.Delete(FilePath); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>
@@ -114,6 +147,11 @@ public static class GpuProfile
             {
                 if (GpuTuner.TryOpen() is { } tuner)
                 {
+                    if (saved.IsForOtherGpu(tuner.Identity))
+                    {
+                        Log($"Carte changée ({tuner.Identity.Name}) : réglage de « {saved.GpuName} » non réappliqué. Ouvrez l'onglet Réglage GPU.");
+                        return;
+                    }
                     tuner.Apply(current);
                     Log($"Réappliqué : {current.Describe()}");
                     return;

@@ -133,10 +133,14 @@ proposés.
 
 ### Applications
 
-19 applications préinstallées par Windows (Clipchamp, Actualités, Météo, Solitaire, Astuces, To Do, Teams, Cartes,
-LinkedIn, Mobile connecté…). Seules celles réellement installées apparaissent, toutes décochées. La désinstallation
-ne concerne que ton compte ; la restauration ouvre la page de l'application dans le Microsoft Store. Xbox, Game Bar,
-le Store et les outils du quotidien (Photos, Calculatrice, Bloc-notes, Terminal…) restent hors liste.
+30 applications préinstallées par Windows : Clipchamp, Actualités, Météo, Solitaire, Astuces, To Do, Teams, Cartes,
+LinkedIn, Mobile connecté, Microsoft 365 Copilot… ; **Assistance rapide** (prise de contrôle à distance, très utilisée par
+les arnaques au faux support technique) ; les applications abandonnées que gardent les anciennes installations (Films et
+TV, Courrier et Calendrier, Contacts, Skype) ; et les applis tierces installées en promotion sur les PC neufs (Spotify,
+Disney+, Netflix, Prime Video, TikTok, Candy Crush). Seules celles réellement installées apparaissent, toutes décochées.
+La désinstallation ne concerne que ton compte ; la restauration ouvre la page de l'application dans le Microsoft Store.
+Xbox, Game Bar, le Store et les outils du quotidien (Photos, Calculatrice, Bloc-notes, Terminal, Magnétophone…) restent
+hors liste.
 
 ## Réglage GPU
 

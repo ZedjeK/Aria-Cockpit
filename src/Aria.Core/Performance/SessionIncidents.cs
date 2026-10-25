@@ -65,7 +65,20 @@ public sealed class GameTracker
         "UbisoftConnect", "upc", "GalaxyClient", "RiotClientServices", "RiotClientUx",
         "NVIDIA Overlay", "NVIDIA App", "NVIDIA Share", "nvcontainer", "NVDisplay.Container", "nvsphelper64",
         "MSIAfterburner", "RTSS", "EncoderServer", "Code", "devenv", "Photoshop", "Lightroom",
-        "wallpaper32", "wallpaper64", "Lively", "Rainmeter", "SignalRgb", "iCUE", "ArmouryCrate", "LGHUB"
+        "wallpaper32", "wallpaper64", "Lively", "Rainmeter", "SignalRgb", "iCUE", "ArmouryCrate", "LGHUB",
+        // Autres navigateurs
+        "arc", "zen", "librewolf", "floorp", "thorium", "waterfox", "chromium",
+        // Messageries et visio
+        "WhatsApp", "Telegram", "Signal", "slack", "Zoom", "olk", "Skype",
+        // Lecteurs vidéo et audio
+        "vlc", "mpc-hc64", "mpc-hc", "mpc-be64", "PotPlayerMini64", "PotPlayer", "Video.UI", "Microsoft.Media.Player",
+        // Lanceurs et compagnons de jeu
+        "Launcher", "RockstarService", "SocialClubHelper", "Amazon Games UI", "Playnite.DesktopApp", "Playnite.FullscreenApp",
+        "heroic", "itch", "HYP", "Overwolf", "OverwolfBrowser", "CurseForge", "GameOverlayUI", "GOG Galaxy Notifications Renderer",
+        // Diffusion et capture
+        "Streamlabs OBS", "Streamlabs Desktop", "XSplit.Core", "NVIDIA Broadcast", "ShareX", "SnippingTool", "ScreenClippingHost",
+        // Outils de Windows et divers
+        "Photos", "Microsoft.Photos", "PowerToys", "Taskmgr", "WindowsTerminal", "Notepad", "mspaint", "Copilot", "msteams"
     };
 
     private readonly Dictionary<string, int> _activeSeconds = new(StringComparer.OrdinalIgnoreCase);

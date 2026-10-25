@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Aria.Core.Nvidia;
 using Aria.Core.Performance;
+using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
 
@@ -78,7 +79,22 @@ public sealed partial class PerformanceViewModel : ObservableObject
         }
     }
 
-    private bool CanStart() => !IsRunning;
+    /// <summary>Pas d'analyse pendant que l'assistant du Réglage GPU teste un palier.</summary>
+    private bool CanStart() => !IsRunning && !MeasurementGate.AssistantRunning;
+
+    /// <summary>L'assistant tourne : le bouton d'analyse affiche pourquoi il est grisé.</summary>
+    public bool BlockedByAssistant => MeasurementGate.AssistantRunning;
+
+    public PerformanceViewModel()
+    {
+        MeasurementGate.Changed += () =>
+        {
+            StartCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(BlockedByAssistant));
+        };
+    }
+
+    partial void OnIsRunningChanged(bool value) => MeasurementGate.AnalysisRunning = value;
 
     /// <summary>Arrêt anticipé : le verdict porte sur ce qui a déjà été enregistré (en attente du jeu : annulation).</summary>
     [RelayCommand]

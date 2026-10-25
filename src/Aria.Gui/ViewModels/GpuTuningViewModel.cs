@@ -26,6 +26,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     public GpuTuningViewModel()
     {
         Assistant = new TuningAssistantViewModel(() => _tuner, () => RefreshAsync(resetSliders: true));
+        Assistant.WatchMeasurements();
         Assistant.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName != nameof(TuningAssistantViewModel.IsActive)) return;
@@ -64,6 +65,8 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private bool hasCrashes;
     [ObservableProperty] private string taskText = "";
     [ObservableProperty] private bool hasTaskProblem;
+    [ObservableProperty] private string otherGpuText = "";
+    [ObservableProperty] private bool hasOtherGpu;
 
     private uint _defaultPower;
 
@@ -117,8 +120,16 @@ public sealed partial class GpuTuningViewModel : ObservableObject
             var file = GpuProfile.Load();
             var crashList = file is null ? [] : GpuProfile.DriverCrashesSince(file.AppliedAt);
             var command = s.AtStartup ? StartupTask.Command() : null;
-            return (s, GpuProfile.Origin, file, crashList, command);
+            return (s, GpuProfile.OriginFor(tuner), file, crashList, command);
         });
+
+        // Réglage enregistré pour une autre carte (carte changée) : rien n'est réappliqué, on le signale
+        HasOtherGpu = saved?.IsForOtherGpu(tuner.Identity) == true;
+        OtherGpuText = HasOtherGpu
+            ? $"Le réglage enregistré concerne « {saved!.GpuName} », alors que votre carte actuelle est « {tuner.Identity.Name} ». " +
+              "Il n'est pas réappliqué au démarrage. Oubliez-le pour repartir de zéro avec cette carte."
+            : "";
+        if (HasOtherGpu) saved = null;
 
         Current = state;
         CurrentText = state.Describe();
@@ -179,6 +190,9 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         {
             "Un réglage trop poussé peut faire planter un jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien : le pilote garde la main sur la tension."
         };
+        if (_tuner.Limits.DefaultPowerMilliwatts > 0 && target.PowerLimitMilliwatts > _tuner.Limits.DefaultPowerMilliwatts)
+            warnings.Add($"Limite de puissance au-dessus de la valeur d'usine ({target.PowerLimitWatts:0} W au lieu de {_tuner.Limits.DefaultPowerMilliwatts / 1000} W) : " +
+                         "vérifiez que votre alimentation a la puissance recommandée et que le câble d'alimentation de la carte (12V-2x6 / 12VHPWR) est enfoncé à fond.");
         if (target.MemoryOffsetMHz > 1000)
             warnings.Add("Mémoire au-delà de +1000 MHz : la GDDR6X corrige ses propres erreurs, une mémoire trop poussée ne plante pas mais devient plus lente.");
         if (target.AtStartup && !Current.AtStartup)
@@ -224,6 +238,10 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     {
         if (Current is { } c) LoadSliders(c);
     }
+
+    /// <summary>Carte changée : oublie le réglage de l'ancienne carte (profil et tâche de démarrage), sans toucher à la nouvelle.</summary>
+    [RelayCommand]
+    private Task ForgetOtherGpu() => RunAsync(GpuProfile.Forget, "Réglage de l'ancienne carte oublié.");
 
     /// <summary>Recrée la tâche de démarrage vers cet exe (clic de l'utilisateur).</summary>
     [RelayCommand]

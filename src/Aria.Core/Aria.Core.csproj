@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Base de connaissances BIOS : intégrée à l'exe, remplaçable par un dossier "bios" placé à côté d'Aria.exe -->
+    <!-- Base de connaissances BIOS : intégrée à l'exe, remplaçable par un dossier "bios" placé à côté d'Aria-Cockpit.exe -->
     <EmbeddedResource Include="..\..\config\bios\*.json" LogicalName="Aria.Bios.%(Filename).json" />
     <!-- Table nom de carte → identifiant NVIDIA (ZenitH-AT/nvidia-data, domaine public), secours hors ligne -->
     <EmbeddedResource Include="Updates\nvidia-gpu-data.json" LogicalName="Aria.Nvidia.gpu-data.json" />
