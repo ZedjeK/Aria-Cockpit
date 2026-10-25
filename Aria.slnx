@@ -3,5 +3,6 @@
     <Project Path="src/Aria.Core/Aria.Core.csproj" />
     <Project Path="src/Aria.Gui/Aria.Gui.csproj" />
     <Project Path="src/Aria.Cli/Aria.Cli.csproj" />
+    <Project Path="src/Aria.Bench/Aria.Bench.csproj" />
   </Folder>
 </Solution>
