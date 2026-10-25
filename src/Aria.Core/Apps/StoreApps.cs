@@ -57,7 +57,10 @@ public static class StoreApps
         new StoreAppSetting("primevideo", "Prime Video", "Installée en promotion par Windows", "Prime Video", "AmazonVideo.PrimeVideo"),
         new StoreAppSetting("tiktok", "TikTok", "Installée en promotion par Windows", "TikTok", "BytedancePte.Ltd.TikTok"),
         new StoreAppSetting("candycrush", "Candy Crush", "Jeux installés en promotion par Windows", "Candy Crush",
-            "king.com.CandyCrushSaga", "king.com.CandyCrushSodaSaga", "king.com.CandyCrushFriends")
+            "king.com.CandyCrushSaga", "king.com.CandyCrushSodaSaga", "king.com.CandyCrushFriends"),
+        new StoreAppSetting("facebook", "Facebook", "Installée en promotion par Windows", "Facebook", "FACEBOOK.FACEBOOK"),
+        new StoreAppSetting("instagram", "Instagram", "Installée en promotion par Windows", "Instagram", "Facebook.Instagram"),
+        new StoreAppSetting("whatsapp", "WhatsApp", "Messagerie souvent installée en promotion par Windows", "WhatsApp", "5319275A.WhatsAppDesktop")
     ];
 }
 

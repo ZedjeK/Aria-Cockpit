@@ -29,6 +29,7 @@ public static class PrivacySettings
         yield return new AppLaunchTrackingSetting();
         yield return new LanguageListSetting();
         yield return new CopilotAppSetting();
+        yield return new RecallSetting();
 
         yield return new ServiceStartSetting("DiagTrack", "Service de télémétrie (Expériences utilisateur connectées)",
             selected: true, "Envoie les données de diagnostic à Microsoft. Le couper n'a aucun effet sur le fonctionnement de Windows.");
@@ -241,6 +242,47 @@ public sealed class WindowsSuggestionsSetting : SettingBase
         var effective = Effective(string.Join(";", raw)).ToList();
         var off = effective.Select((value, i) => value == Values[i].Wanted).Count(x => x);
         return off == Values.Length ? "Désactivées" : off == 0 ? "Activées" : $"En partie ({off}/{Values.Length} désactivées)";
+    }
+}
+
+// ================================================================ Recall
+
+/// <summary>
+/// Recall (PC Copilot+) : captures d'écran régulières analysées par l'IA. Stratégie officielle WindowsAI/DisableAIDataAnalysis
+/// (Policy CSP, Windows 11 24H2 KB5055627 et plus récent) : arrête l'enregistrement et supprime les captures existantes.
+/// AllowRecallEnablement (qui désinstalle Recall et impose un redémarrage) n'est volontairement pas utilisé.
+/// Proposé seulement si la fonctionnalité facultative « Recall » est activée sur le PC.
+/// </summary>
+public sealed class RecallSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableAIDataAnalysis", valueWhenMissing: null)
+{
+    private static readonly Lazy<bool> Present = new(DetectRecall);
+
+    public override string Id => "privacy.recall";
+    public override string DisplayName => "Recall (captures d'écran analysées par l'IA)";
+    public override bool HiddenWhenNotApplicable => true;
+    protected override string Describe(int value) => value == 1 ? "Captures désactivées" : "Captures autorisées";
+
+    public override string? WhyNotApplicable(HardwareProfile hw) => Present.Value ? null : "Recall absent (PC Copilot+ uniquement)";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(1), "Windows n'enregistre plus de captures de votre écran. Attention : les captures déjà enregistrées sont " +
+                      "supprimées, définitivement. Restaurer ce réglage autorise de nouveau Recall, sans rendre les anciennes captures.");
+
+    /// <summary>Fonctionnalité facultative « Recall » activée (InstallState 1). Absente des PC qui ne sont pas Copilot+.</summary>
+    private static bool DetectRecall()
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        try
+        {
+            return Aria.Core.Inventory.Wmi.Query("SELECT InstallState FROM Win32_OptionalFeature WHERE Name = 'Recall'")
+                .Any(f => Aria.Core.Inventory.Wmi.Int(f, "InstallState") == 1);
+        }
+        catch (Exception e) when (e is System.Management.ManagementException or UnauthorizedAccessException
+                                      or System.Runtime.InteropServices.COMException or PlatformNotSupportedException)
+        {
+            return false;
+        }
     }
 }
 

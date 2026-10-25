@@ -77,6 +77,10 @@ public sealed class GameTracker
         "heroic", "itch", "HYP", "Overwolf", "OverwolfBrowser", "CurseForge", "GameOverlayUI", "GOG Galaxy Notifications Renderer",
         // Diffusion et capture
         "Streamlabs OBS", "Streamlabs Desktop", "XSplit.Core", "NVIDIA Broadcast", "ShareX", "SnippingTool", "ScreenClippingHost",
+        // Jeu à distance (affichent un flux vidéo, pas un rendu 3D)
+        "parsecd", "Moonlight", "sunshine",
+        // Surveillance et périphériques
+        "HWiNFO64", "HWiNFO32", "HWiNFO", "NZXT CAM", "RazerAppEngine", "Razer Synapse 3", "Razer Synapse", "RazerCentral",
         // Outils de Windows et divers
         "Photos", "Microsoft.Photos", "PowerToys", "Taskmgr", "WindowsTerminal", "Notepad", "mspaint", "Copilot", "msteams"
     };

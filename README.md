@@ -119,7 +119,9 @@ surface d'attaque.
   - recommandations du menu Démarrer, suggestions et astuces (Paramètres, écran de verrouillage) ;
   - suivi des applications lancées, liste de langues envoyée aux sites ;
   - services Télémétrie (DiagTrack) et Fax ;
-  - spouleur d'impression **seulement si aucune imprimante réelle** (« Imprimer en PDF » ne fonctionnera plus).
+  - spouleur d'impression **seulement si aucune imprimante réelle** (« Imprimer en PDF » ne fonctionnera plus) ;
+  - Recall, **seulement sur un PC Copilot+ où il est activé** : stratégie officielle `DisableAIDataAnalysis`, qui arrête
+    les captures d'écran ; les captures déjà enregistrées sont supprimées définitivement (Recall n'est pas désinstallé).
 - **Décochés, au choix** :
   - application Copilot (désinstallée pour le compte ; la stratégie « Désactiver Copilot » ne concerne plus la nouvelle
     application ; la restauration ouvre le Microsoft Store) ;
@@ -139,11 +141,11 @@ proposés.
 
 ### Applications
 
-30 applications préinstallées par Windows : Clipchamp, Actualités, Météo, Solitaire, Astuces, To Do, Teams, Cartes,
+33 applications préinstallées par Windows : Clipchamp, Actualités, Météo, Solitaire, Astuces, To Do, Teams, Cartes,
 LinkedIn, Mobile connecté, Microsoft 365 Copilot… ; **Assistance rapide** (prise de contrôle à distance, très utilisée par
 les arnaques au faux support technique) ; les applications abandonnées que gardent les anciennes installations (Films et
 TV, Courrier et Calendrier, Contacts, Skype) ; et les applis tierces installées en promotion sur les PC neufs (Spotify,
-Disney+, Netflix, Prime Video, TikTok, Candy Crush). Seules celles réellement installées apparaissent, toutes décochées.
+Disney+, Netflix, Prime Video, TikTok, Candy Crush, Facebook, Instagram, WhatsApp). Seules celles réellement installées apparaissent, toutes décochées.
 La désinstallation ne concerne que ton compte ; la restauration ouvre la page de l'application dans le Microsoft Store.
 Xbox, Game Bar, le Store et les outils du quotidien (Photos, Calculatrice, Bloc-notes, Terminal, Magnétophone…) restent
 hors liste.
