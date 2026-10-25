@@ -88,7 +88,9 @@ public sealed partial class GpuTuningViewModel : ObservableObject
             if (_tuner is null) return;
             SetRanges(_tuner.Limits);
         }
-        if (_tuner is not null) await RefreshAsync(resetSliders: Current is null || !HasChanges);
+        if (_tuner is null) return;
+        await RefreshAsync(resetSliders: Current is null || !HasChanges);
+        await Assistant.LoadRecordAsync();
     }
 
     public void OnHidden() => Telemetry.Stop();

@@ -2,6 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace Aria.Core.Nvidia;
 
+/// <summary>Carte (nom, identifiant unique NVML) et version du pilote.</summary>
+public sealed record GpuIdentity(string Name, string Uuid, string DriverVersion);
+
 /// <summary>Erreur renvoyée par NVML lors d'un réglage, avec un message lisible.</summary>
 public sealed class GpuTuningException(string message) : Exception(message);
 
@@ -45,17 +48,35 @@ public sealed class GpuTuner
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int IntFn(IntPtr device, out int value);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int TwoIntFn(IntPtr device, out int a, out int b);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int SetIntFn(IntPtr device, int value);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int DeviceTextFn(IntPtr device, byte[] text, uint length);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] private delegate int SystemTextFn(byte[] text, uint length);
 
     private readonly IntPtr _lib, _device;
     private readonly object _gate = new();
 
     public GpuTuningLimits Limits { get; }
 
+    /// <summary>Identité de la carte et du pilote : le résultat d'Équilibre ne vaut que pour cette carte.</summary>
+    public GpuIdentity Identity { get; }
+
     private GpuTuner(IntPtr lib, IntPtr device, GpuTuningLimits limits)
     {
         _lib = lib;
         _device = device;
         Limits = limits;
+        Identity = new GpuIdentity(
+            Text(Fn<DeviceTextFn>(lib, "nvmlDeviceGetName") is { } name ? b => name(device, b, (uint)b.Length) : null) ?? "Carte NVIDIA",
+            Text(Fn<DeviceTextFn>(lib, "nvmlDeviceGetUUID") is { } uuid ? b => uuid(device, b, (uint)b.Length) : null) ?? "",
+            Text(Fn<SystemTextFn>(lib, "nvmlSystemGetDriverVersion") is { } drv ? b => drv(b, (uint)b.Length) : null) ?? "");
+    }
+
+    private static string? Text(Func<byte[], int>? call)
+    {
+        if (call is null) return null;
+        var buffer = new byte[256];
+        if (call(buffer) != Success) return null;
+        var end = Array.IndexOf(buffer, (byte)0);
+        return System.Text.Encoding.UTF8.GetString(buffer, 0, end < 0 ? buffer.Length : end).Trim();
     }
 
     /// <summary>Première carte NVIDIA ; null si NVML est indisponible ou si les plages ne sont pas lisibles.</summary>

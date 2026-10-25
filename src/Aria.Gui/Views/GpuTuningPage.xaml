@@ -142,16 +142,16 @@
             <UniformGrid Columns="3">
               <Border Margin="0,0,10,0" Padding="16,12" Background="#0F7DF9FF" BorderBrush="#557DF9FF" BorderThickness="1,0,0,0">
                 <StackPanel>
-                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Silence" />
+                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Économie" />
                   <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Limite de puissance plus basse, jusqu'à la perte de fluidité que vous jugez acceptable : moins de bruit et de chauffe." TextWrapping="Wrap" />
-                  <Button HorizontalAlignment="Left" Command="{Binding StartSilenceCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
+                  <Button HorizontalAlignment="Left" Command="{Binding StartEconomyCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
                 </StackPanel>
               </Border>
               <Border Margin="5,0" Padding="16,12" Background="#14FF8A1F" BorderBrush="#99FF8A1F" BorderThickness="1,0,0,0">
                 <StackPanel>
-                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Undervolt (recommandé)" />
+                  <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Équilibre (en premier)" />
                   <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Même fréquence avec moins de tension : moins de watts et de degrés, sans perte." TextWrapping="Wrap" />
-                  <Button HorizontalAlignment="Left" Command="{Binding StartUndervoltCommand}" Content="COMMENCER" Style="{StaticResource HudButton}" />
+                  <Button HorizontalAlignment="Left" Command="{Binding StartBalancedCommand}" Content="COMMENCER" Style="{StaticResource HudButton}" />
                 </StackPanel>
               </Border>
               <Border Margin="10,0,0,0" Padding="16,12" Background="#145C8BFF" BorderBrush="#995C8BFF" BorderThickness="1,0,0,0">

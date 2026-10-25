@@ -25,7 +25,15 @@ public sealed record PerformanceStats(
     double ThermalShare,
     double EmergencyShare,
     double? AvgCpuTotal,
-    double? AvgCpuBusiestCore);
+    double? AvgCpuBusiestCore,
+    double ClockP90 = 0)
+{
+    /// <summary>
+    /// Fréquence haute que la carte atteint régulièrement en jeu (90e centile, à défaut la moyenne) :
+    /// le plafond de l'undervolt se cale dessus pour ne pas écrêter les pointes.
+    /// </summary>
+    public double SustainedClock => ClockP90 > 0 ? ClockP90 : AvgClock;
+}
 
 public sealed record PerformanceFinding(string Title, string Detail, string? Advice, Severity Severity);
 
@@ -199,7 +207,17 @@ public static class PerformanceAnalyzer
             Share(GpuLimitReasons.Thermal),
             Share(GpuLimitReasons.Emergency),
             cpus.Count == 0 ? null : cpus.Average(c => c.Total),
-            cpus.Count == 0 ? null : cpus.Average(c => c.BusiestCore));
+            cpus.Count == 0 ? null : cpus.Average(c => c.BusiestCore),
+            Percentile(clocks, 0.90));
+    }
+
+    /// <summary>Centile par rang le plus proche (0,90 → valeur dépassée par 10 % des mesures) ; 0 sans mesure.</summary>
+    internal static double Percentile(IReadOnlyCollection<uint> values, double rank)
+    {
+        if (values.Count == 0) return 0;
+        var sorted = values.Order().ToList();
+        var index = (int)Math.Ceiling(rank * sorted.Count) - 1;
+        return sorted[Math.Clamp(index, 0, sorted.Count - 1)];
     }
 
     private static bool Has(PerfSample s, GpuLimitReasons reason) =>
