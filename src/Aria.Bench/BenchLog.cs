@@ -18,6 +18,7 @@ public sealed class BenchLog
     public string Statut { get; set; } = StatusRunning;
     public string Options { get; init; } = "";
     public GpuInfo? Carte { get; set; }
+    public SystemContext? Contexte { get; set; }
     public List<PassResult> Resultats { get; init; } = [];
     public List<string> Remarques { get; init; } = [];
     public List<string> Erreurs { get; init; } = [];
@@ -50,11 +51,26 @@ public sealed class BenchLog
 public sealed record GpuInfo(string Nom, string VendorId, string DeviceId, long MemoireMo, string PiloteWindows, string? PiloteNvidia,
     IReadOnlyList<string> CartesDetectees);
 
-public sealed record PassResult(string Qualite, string Definition, int Largeur, int Hauteur, int Images, double Secondes, double FpsMoyen,
-    double TempsMoyenMs, double Fps1PourcentBas, double TempsP99Ms, double TempsMaxMs)
+/// <summary>Résultat d'une passe (un préréglage à une définition).</summary>
+/// <param name="Verifications">Images de contrôle recalculées pendant la passe.</param>
+/// <param name="ErreursCalcul">Vérifications dont l'image différait de la référence : signe d'instabilité.</param>
+/// <param name="PixelsDifferents">Le plus grand nombre de pixels différents constaté.</param>
+/// <param name="Plafond">Explication si les FPS semblent bridés par une limite, sinon absent.</param>
+public sealed record PassResult(string Qualite, string Definition, int Largeur, int Hauteur, int Images, double Secondes,
+    double FpsMoyen, double FpsMedian, double TempsMoyenMs, double Fps1PourcentBas, double TempsP99Ms, double TempsMaxMs, int Saccades,
+    int Verifications, int ErreursCalcul, long PixelsDifferents, string? Empreinte, string? Plafond)
 {
-    public static PassResult From(QualityPreset quality, int definition, int width, int height, FrameSummary s) =>
-        new(quality.Label, BenchOptions.Label(definition), width, height, s.Frames, s.Seconds, s.AverageFps, s.AverageMs, s.Low1PercentFps, s.P99Ms, s.MaxMs);
+    public static PassResult From(QualityPreset quality, int definition, int width, int height, FrameSummary s,
+        ImageVerification? check = null, string? cap = null) =>
+        new(quality.Label, BenchOptions.Label(definition), width, height, s.Frames, s.Seconds,
+            s.AverageFps, s.MedianFps, s.AverageMs, s.Low1PercentFps, s.P99Ms, s.MaxMs, s.Stutters,
+            check?.Checks ?? 0, check?.Failures ?? 0, check?.MaxDifferentPixels ?? 0, check?.Fingerprint, cap);
+}
+
+/// <summary>Conditions de la mesure : elles expliquent un résultat bridé.</summary>
+public sealed record SystemContext(string Alimentation, bool EconomieEnergie, int FrequenceEcranHz)
+{
+    [JsonIgnore] public bool OnBattery => Alimentation == "batterie";
 }
 
 /// <summary>Erreur attendue (carte absente, pilote qui lâche…) : son message va tel quel dans le journal.</summary>

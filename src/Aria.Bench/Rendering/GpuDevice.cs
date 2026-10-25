@@ -159,6 +159,14 @@ internal sealed class GpuDevice : IDisposable
         return buffer;
     }
 
+    /// <summary>Exécute une liste ponctuelle (hors affichage) et attend qu'elle soit terminée.</summary>
+    public void Execute(ID3D12GraphicsCommandList list)
+    {
+        list.Close();
+        Queue.ExecuteCommandList(list);
+        WaitIdle();
+    }
+
     /// <summary>Attend que la carte ait fini tout le travail envoyé.</summary>
     public void WaitIdle() => WaitForFence(Signal(), "la fin du travail en cours");
 

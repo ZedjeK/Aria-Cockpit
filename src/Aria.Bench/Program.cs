@@ -43,6 +43,9 @@ namespace Aria.Bench
 {
     internal static class BenchRun
     {
+        /// <summary>Intervalle entre deux vérifications de l'image de contrôle.</summary>
+        public static readonly TimeSpan VerifyInterval = TimeSpan.FromSeconds(3);
+
         /// <summary>Enchaîne les définitions demandées. Renvoie faux si l'utilisateur a arrêté avant la fin.</summary>
         public static bool Execute(BenchOptions options, BenchLog log)
         {
@@ -50,6 +53,9 @@ namespace Aria.Bench
             using var window = new Win32Window("Aria Bench", fullscreen: !options.Windowed);
             using var gpu = new GpuDevice(window.Handle, window.ClientWidth, window.ClientHeight, options.Debug, log.Remarques);
             log.Carte = gpu.Info;
+            log.Contexte = SystemInfo.Read();
+            if (log.Contexte.OnBattery) log.Remarques.Add("PC sur batterie : la carte est souvent bridée (60 FPS, puissance réduite). Branchez-le pour une vraie mesure.");
+            if (log.Contexte.EconomieEnergie) log.Remarques.Add("Économiseur d'énergie de Windows actif : les performances peuvent être réduites.");
             log.Remarques.Add($"Écran : {window.ClientWidth} × {window.ClientHeight}{(window.Fullscreen ? ", plein écran" : ", fenêtre")}.");
 
             try
@@ -64,19 +70,35 @@ namespace Aria.Bench
                 {
                     var (width, height) = BenchOptions.SizeOf(definition);
                     renderer.Configure(quality, width, height);
+                    var check = new ImageVerification();
+                    check.SetReference(renderer.RenderCheck());
                     var stats = new FrameStats();
                     var clock = Stopwatch.StartNew();
                     var last = clock.Elapsed;
+                    var nextCheck = options.Warmup + VerifyInterval;
+
+                    PassResult Result() =>
+                        PassResult.From(quality, definition, width, height, stats.Summarize(), check,
+                            FrameCap.Detect(stats.Summarize().MedianFps, log.Contexte.FrequenceEcranHz, log.Contexte.OnBattery));
 
                     while (true)
                     {
                         if (!window.PumpMessages())
                         {
-                            if (stats.Count > 0) log.Resultats.Add(PassResult.From(quality, definition, width, height, stats.Summarize()));
+                            if (stats.Count > 0) log.Resultats.Add(Result());
                             return false;
                         }
                         var elapsed = clock.Elapsed;
                         if (elapsed >= passLength) break;
+
+                        if (elapsed >= nextCheck)
+                        {
+                            // Vérification hors mesure : son temps n'est compté dans aucune image
+                            check.Check(renderer.RenderCheck());
+                            nextCheck += VerifyInterval;
+                            last = clock.Elapsed;
+                            continue;
+                        }
 
                         renderer.Render((float)elapsed.TotalSeconds, (float)((done + elapsed.TotalSeconds) / total));
 
@@ -86,7 +108,12 @@ namespace Aria.Bench
                         last = now;
                     }
 
-                    log.Resultats.Add(PassResult.From(quality, definition, width, height, stats.Summarize()));
+                    var result = Result();
+                    log.Resultats.Add(result);
+                    if (result.ErreursCalcul > 0)
+                        log.Remarques.Add($"Erreurs de calcul en {result.Qualite} {result.Definition} : {result.ErreursCalcul} vérification(s) sur {result.Verifications} "
+                                          + $"(jusqu'à {result.PixelsDifferents:N0} pixels différents). La carte n'est pas stable avec ce réglage.");
+                    if (result.Plafond is not null && !log.Remarques.Contains(result.Plafond)) log.Remarques.Add(result.Plafond);
                     done += passLength.TotalSeconds;
                 }
                 return true;

@@ -24,6 +24,9 @@ internal sealed unsafe class Renderer : IDisposable
     private const Format BloomFormat = Format.R11G11B10_Float;
     private const Format DepthFormat = Format.D32_Float;
     private const Format FinalFormat = Format.R8G8B8A8_UNorm_SRgb;
+    private const Format CheckFormat = Format.R8G8B8A8_UNorm;
+    /// <summary>Instant de la scène utilisé pour l'image de contrôle (le même à chaque vérification).</summary>
+    public const float CheckTime = 7.5f;
     private const int FrameBufferSize = 4608;   // FrameHeader (288 octets) + 256 lumières, arrondi à 256
     private const uint DefaultComponentMapping = 0x1688;
     private static readonly Vector3 SunDirection = Vector3.Normalize(new Vector3(0.55f, 0.32f, 0.42f));
@@ -31,7 +34,9 @@ internal sealed unsafe class Renderer : IDisposable
     private readonly GpuDevice _gpu;
     private readonly ID3D12RootSignature _sceneRoot, _postRoot;
     private readonly ID3D12PipelineState _skyPso, _terrainPso, _objectsPso, _terrainShadowPso, _objectsShadowPso;
-    private readonly ID3D12PipelineState _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso;
+    private readonly ID3D12PipelineState _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso, _checkPso;
+    private readonly ID3D12CommandAllocator _checkAllocator;
+    private readonly ID3D12GraphicsCommandList _checkList;
     private readonly ID3D12Resource _cubeVertices, _cubeIndices;
     private readonly VertexBufferView _cubeVertexView;
     private readonly uint _cubeIndexCount;
@@ -44,6 +49,9 @@ internal sealed unsafe class Renderer : IDisposable
     private int _terrainResolution;
     private RenderTexture? _hdr, _normalDepth, _depth, _shadow, _ao;
     private RenderTexture[] _bloom = [];
+    private RenderTexture? _check;
+    private ID3D12Resource? _readback;
+    private PlacedSubresourceFootPrint _checkFootprint;
     private int _shadowTable, _ssaoTable, _compositeTable;
     private int[] _bloomDownTables = [], _bloomUpTables = [];
 
@@ -136,6 +144,10 @@ internal sealed unsafe class Renderer : IDisposable
         _bloomDownPso = Post("Bloom (réduction)", "PSBloomDown", BloomFormat, BlendDescription.Opaque);
         _bloomUpPso = Post("Bloom (agrandissement)", "PSBloomUp", BloomFormat, BlendDescription.Additive);
         _compositePso = Post("Image finale", "PSComposite", FinalFormat, BlendDescription.Opaque);
+        _checkPso = Post("Image de contrôle", "PSComposite", CheckFormat, BlendDescription.Opaque);
+        _checkAllocator = device.CreateCommandAllocator(CommandListType.Direct);
+        _checkList = device.CreateCommandList<ID3D12GraphicsCommandList>(CommandListType.Direct, _checkAllocator);
+        _checkList.Close();
 
         var (vertices, indices) = CubeMesh.Build();
         _cubeVertices = gpu.CreateBuffer(vertices, ResourceStates.VertexAndConstantBuffer, "Sommets du cube");
@@ -197,6 +209,13 @@ internal sealed unsafe class Renderer : IDisposable
             _bloom[i] = RenderTexture.Color(device, $"Bloom {i}", BloomFormat, Math.Max(1, width >> (i + 1)), Math.Max(1, height >> (i + 1)),
                 _rtv.Cpu(_rtv.Allocate()), new Color4(0, 0, 0, 0));
 
+        _check = RenderTexture.Color(device, "Image de contrôle", CheckFormat, width, height, _rtv.Cpu(_rtv.Allocate()), new Color4(0, 0, 0, 1));
+        var footprints = new PlacedSubresourceFootPrint[1];
+        device.GetCopyableFootprints(_check.Resource.Description, 0, 1, 0, footprints, new uint[1], new ulong[1], out var readbackSize);
+        _checkFootprint = footprints[0];
+        _readback = device.CreateCommittedResource(HeapType.Readback, ResourceDescription.Buffer(readbackSize), ResourceStates.CopyDest);
+        _readback.Name = "Relecture de l'image de contrôle";
+
         _shadowTable = Table((_shadow, Format.R32_Float));
         _ssaoTable = Table((_normalDepth, NormalDepthFormat));
         _bloomDownTables = [.. Enumerable.Range(0, _bloom.Length).Select(i => i == 0 ? Table((_hdr, HdrFormat)) : Table((_bloom[i - 1], BloomFormat)))];
@@ -243,12 +262,65 @@ internal sealed unsafe class Renderer : IDisposable
     /// <param name="progress">Avancement global de 0 à 1, affiché par la barre du bas.</param>
     public void Render(float time, float progress)
     {
-        if (_hdr is null || _normalDepth is null || _depth is null || _shadow is null)
-            throw new InvalidOperationException("Configure doit être appelé avant Render.");
         var cl = _gpu.BeginFrame();
         var frame = _gpu.FrameIndex;
         WriteFrameConstants(frame, time);
-        var constants = _frameBuffers[frame].GPUVirtualAddress;
+        RecordScene(cl, _frameBuffers[frame].GPUVirtualAddress);
+
+        // 4. Image finale à l'écran
+        cl.ResourceBarrierTransition(_gpu.BackBuffer, ResourceStates.Present, ResourceStates.RenderTarget);
+        var backRtv = _gpu.BackBufferRtv;
+        cl.OMSetRenderTargets(backRtv);
+        cl.ClearRenderTargetView(backRtv, new Color4(0, 0, 0, 1));
+        RecordComposite(cl, _compositePso, FitViewport(Width, Height, _gpu.Width, _gpu.Height), _gpu.Width, _gpu.Height, progress);
+        cl.ResourceBarrierTransition(_gpu.BackBuffer, ResourceStates.RenderTarget, ResourceStates.Present);
+        _gpu.EndFrame();
+    }
+
+    /// <summary>
+    /// Calcule l'image de contrôle (instant <see cref="CheckTime"/>, sans barre de progression) à la définition interne
+    /// et la relit en mémoire : pixels RGBA, ligne après ligne. Attend la carte avant et après (hors mesure).
+    /// </summary>
+    public byte[] RenderCheck()
+    {
+        if (_check is null || _readback is null) throw new InvalidOperationException("Configure doit être appelé avant RenderCheck.");
+        _gpu.WaitIdle();
+        // La carte est au repos : n'importe quel tampon de constantes peut servir
+        WriteFrameConstants(0, CheckTime);
+        _checkAllocator.Reset();
+        var cl = _checkList;
+        cl.Reset(_checkAllocator);
+        RecordScene(cl, _frameBuffers[0].GPUVirtualAddress);
+
+        _check.Transition(cl, ResourceStates.RenderTarget);
+        cl.OMSetRenderTargets(_check.View);
+        RecordComposite(cl, _checkPso, _check.FullViewport, Width, Height, 0f);
+        _check.Transition(cl, ResourceStates.CopySource);
+        cl.CopyTextureRegion(new TextureCopyLocation(_readback, _checkFootprint), 0, 0, 0, new TextureCopyLocation(_check.Resource, 0));
+        _check.Transition(cl, ResourceStates.PixelShaderResource);
+        _gpu.Execute(cl);
+
+        var rowBytes = Width * 4;
+        var pixels = new byte[rowBytes * Height];
+        var source = _readback.Map<byte>(0);
+        try
+        {
+            var pitch = (int)_checkFootprint.Footprint.RowPitch;
+            for (var y = 0; y < Height; y++)
+                new ReadOnlySpan<byte>(source + (long)y * pitch, rowBytes).CopyTo(pixels.AsSpan(y * rowBytes, rowBytes));
+        }
+        finally
+        {
+            _readback.Unmap(0);
+        }
+        return pixels;
+    }
+
+    /// <summary>Étapes 1 à 3 : ombres, scène, effets. Laisse la signature racine des effets en place pour l'image finale.</summary>
+    private void RecordScene(ID3D12GraphicsCommandList cl, ulong constants)
+    {
+        if (_hdr is null || _normalDepth is null || _depth is null || _shadow is null)
+            throw new InvalidOperationException("Configure doit être appelé avant le rendu.");
         cl.SetDescriptorHeaps(_srv.Heap);
         cl.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
 
@@ -295,15 +367,14 @@ internal sealed unsafe class Renderer : IDisposable
         for (var i = _bloom.Length - 1; i > 0; i--)
             PostPass(cl, _bloomUpPso, _bloom[i - 1], _bloomUpTables[i],
                 new PostConstants { TexelSize = new Vector2(1f / _bloom[i].Width, 1f / _bloom[i].Height) });
+    }
 
-        // 4. Image finale à l'écran
-        cl.ResourceBarrierTransition(_gpu.BackBuffer, ResourceStates.Present, ResourceStates.RenderTarget);
-        var backRtv = _gpu.BackBufferRtv;
-        cl.OMSetRenderTargets(backRtv);
-        cl.ClearRenderTargetView(backRtv, new Color4(0, 0, 0, 1));
-        cl.RSSetViewport(FitViewport(Width, Height, _gpu.Width, _gpu.Height));
-        cl.RSSetScissorRect(_gpu.Width, _gpu.Height);
-        cl.SetPipelineState(_compositePso);
+    /// <summary>Image finale (tonemapping + barre de progression) dans la cible déjà en place.</summary>
+    private void RecordComposite(ID3D12GraphicsCommandList cl, ID3D12PipelineState pso, Viewport viewport, int scissorWidth, int scissorHeight, float progress)
+    {
+        cl.RSSetViewport(viewport);
+        cl.RSSetScissorRect(scissorWidth, scissorHeight);
+        cl.SetPipelineState(pso);
         cl.SetGraphicsRootDescriptorTable(1, _srv.Gpu(_compositeTable));
         var composite = new PostConstants
         {
@@ -314,8 +385,6 @@ internal sealed unsafe class Renderer : IDisposable
         };
         cl.SetGraphicsRoot32BitConstants(2, 8, &composite, 0);
         cl.DrawInstanced(3, 1, 0, 0);
-        cl.ResourceBarrierTransition(_gpu.BackBuffer, ResourceStates.RenderTarget, ResourceStates.Present);
-        _gpu.EndFrame();
     }
 
     private void PostPass(ID3D12GraphicsCommandList cl, ID3D12PipelineState pso, RenderTexture target, int table, PostConstants values)
@@ -424,7 +493,10 @@ internal sealed unsafe class Renderer : IDisposable
         _shadow?.Dispose();
         _ao?.Dispose();
         foreach (var b in _bloom) b.Dispose();
-        _hdr = _normalDepth = _depth = _shadow = _ao = null;
+        _check?.Dispose();
+        _readback?.Dispose();
+        _readback = null;
+        _hdr = _normalDepth = _depth = _shadow = _ao = _check = null;
         _bloom = [];
     }
 
@@ -440,8 +512,10 @@ internal sealed unsafe class Renderer : IDisposable
         _rtv.Dispose();
         _dsv.Dispose();
         _srv.Dispose();
-        foreach (var pso in new[] { _skyPso, _terrainPso, _objectsPso, _terrainShadowPso, _objectsShadowPso, _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso })
+        foreach (var pso in new[] { _skyPso, _terrainPso, _objectsPso, _terrainShadowPso, _objectsShadowPso, _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso, _checkPso })
             pso.Dispose();
+        _checkList.Dispose();
+        _checkAllocator.Dispose();
         _sceneRoot.Dispose();
         _postRoot.Dispose();
     }
