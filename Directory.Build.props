@@ -2,7 +2,7 @@
   <!-- Informations communes aux exécutables (Propriétés → Détails, Gestionnaire des tâches) : un seul endroit à modifier -->
   <PropertyGroup>
     <Product>Aria Cockpit</Product>
-    <Version>0.15.0</Version>
+    <Version>0.16.0</Version>
     <Company>Jérémy Zemani</Company>
     <Authors>Jérémy Zemani</Authors>
     <Copyright>© 2026 Jérémy Zemani</Copyright>

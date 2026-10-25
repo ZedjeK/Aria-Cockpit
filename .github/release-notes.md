@@ -1,4 +1,4 @@
-**Aria Cockpit** {VERSION} : le tableau de bord de ton PC de jeu. Analyse du matériel, télémétrie GPU en direct, réglages Windows, NVIDIA et confidentialité, réglage GPU guidé (undervolt, silence, performance), mises à jour, nettoyage, restauration et rapports.
+**Aria Cockpit** {VERSION} : le tableau de bord de ton PC de jeu. Analyse du matériel, télémétrie GPU en direct, réglages Windows, NVIDIA et confidentialité, réglage GPU guidé (Équilibre, Économie, Performance), mises à jour, nettoyage, restauration et rapports.
 
 **Rien n'est modifié sans ton accord** : chaque changement est proposé, sauvegardé et réversible depuis la page Restauration.
 
@@ -19,7 +19,7 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 
 - **Mon PC** : diagnostic matériel, télémétrie GPU en direct, analyse de performance en jeu, guide BIOS par marque, fiche PC en HTML
 - **Réglages** : Windows, NVIDIA (NVAPI officiel), confidentialité, programmes au démarrage, applications préinstallées
-- **Réglage GPU** : limite de puissance, plafond et décalages de fréquence (NVML officiel), assistant guidé, garde-fou anti-plantage
+- **Réglage GPU** : limite de puissance, plafond et décalages de fréquence (NVML officiel), assistant guidé Équilibre → Économie ou Performance, validation de 15 minutes, garde-fou anti-plantage
 - **Mises à jour** : Windows Update, applications (winget), pilote NVIDIA, BIOS, et vérification des nouvelles versions d'Aria Cockpit
 - **Nettoyage**, **Restauration** et **Rapports**
 

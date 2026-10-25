@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.15 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.16 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -22,7 +22,7 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Silence, Undervolt, Performance) cherche le meilleur réglage palier par palier ; un garde-fou signale les plantages du pilote |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier ; un garde-fou signale les plantages du pilote |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
@@ -150,7 +150,7 @@ pas dépasser les limites de sécurité de la carte. Au pire, un jeu ou le pilot
 | Décalage GPU | Décale la courbe fréquence/tension : plus de MHz à tension égale | ± 300 MHz |
 | Décalage mémoire | Fréquence de la mémoire vidéo | − 500 à + 1 500 MHz |
 
-**Undervolt** = décalage GPU positif + plafond à la fréquence habituelle en jeu : même fréquence, donc mêmes FPS,
+**Undervolt** = décalage GPU positif + plafond à la fréquence haute habituelle en jeu : même fréquence, donc mêmes FPS,
 atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 
 - **Essayer** : le réglage s'efface au prochain redémarrage.
@@ -159,13 +159,31 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 - **Revenir d'origine**, ici ou dans Restauration : remet la carte comme avant Aria Cockpit et supprime la tâche.
 - **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale.
 
-**L'assistant guidé** mesure d'abord ton jeu au réglage d'origine (3 minutes), puis cherche le meilleur palier, du
-grossier vers le fin : grands pas tant que ça tient, puis pas moyens à partir du dernier palier stable, puis un dernier
-affinage. Pour l'undervolt et la performance : + 100, + 30, puis + 15 MHz (exemple : +100 ✓, +200 ✓, +300 ✗, +230 ✓,
-+260 ✗, +245 → fin). Pour le silence : environ 10 %, 5 %, puis 5 W de limite de puissance en moins, jusqu'à 60 % au plus
-bas. Après chaque palier, tu juges (artefacts, plantage, fluidité) ; un plantage détecté fait passer à un palier plus
-prudent. La mémoire peut ensuite être testée par paliers de + 250 MHz jusqu'à + 1 000. À la fin, c'est toi qui choisis :
-garder au démarrage, garder jusqu'au redémarrage, ou tout annuler.
+### L'assistant guidé : Équilibre, puis Économie ou Performance
+
+| Mode | Ce qu'il cherche | Comment |
+|---|---|---|
+| **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ au réglage d'origine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
+| **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
+| **Performance** | Quelques pour cent de fréquence en plus | Part du décalage d'Équilibre, sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz |
+
+- **Équilibre débloque les deux autres.** Son résultat (réglage retenu, mesure de départ, jeu, carte, pilote) est gardé
+  dans `equilibre.json` : Économie et Performance partent de lui et se comparent à la même mesure. Il est invalidé si tu
+  changes de carte graphique ; après une mise à jour du pilote, refaire Équilibre est conseillé.
+- **Recherche du grossier vers le fin** : grands pas tant que ça tient, puis pas moyens à partir du dernier palier
+  stable, puis un dernier affinage (exemple : +100 ✓, +200 ✓, +300 ✗, +230 ✓, +260 ✗, +245 ✓).
+- **Recul de sécurité** : quand un palier a planté juste au-dessus, le résultat recule d'un cran (15 MHz). Dans
+  l'exemple, +230 est gardé plutôt que +245.
+- **Ton verdict à chaque palier** : artefacts ou plantage (pour Équilibre et Performance), perte jugée acceptable ou non
+  (pour Économie). Un plantage du pilote ou du jeu détecté par Windows fait passer à un palier plus prudent.
+- **Mémoire** en option à la fin d'Équilibre et de Performance : paliers de + 250 MHz jusqu'à + 1 000.
+- **Validation de 15 minutes** (conseillée) sur le réglage retenu, avant de le garder : un réglage peut tenir 3 minutes
+  et lâcher au bout d'un quart d'heure. En cas de problème, il recule encore d'un cran.
+- **À la fin, c'est toi qui choisis** : garder au démarrage, garder jusqu'au redémarrage, ou tout annuler.
+
+Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
+mesures se font en jeu ; le garde-fou signale un éventuel plantage au repos après coup. Les artefacts visuels ne sont
+pas détectables automatiquement : tes yeux restent le juge.
 
 ## Mises à jour
 

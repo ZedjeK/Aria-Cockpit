@@ -20,6 +20,8 @@ public enum AssistantPhase { Idle, Measuring, Review, MemoryPrompt, Done }
 public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func<Task> refresh) : ObservableObject
 {
     public static readonly TimeSpan MeasureDuration = TimeSpan.FromMinutes(3);
+    /// <summary>Validation finale facultative : un réglage peut tenir 3 minutes et lâcher au bout d'un quart d'heure.</summary>
+    public static readonly TimeSpan ValidationDuration = TimeSpan.FromMinutes(15);
 
     /// <summary>Ce que mesure l'étape en cours.</summary>
     private enum Step { Baseline, PerformanceBase, Search }
@@ -36,7 +38,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private string? _baselineGame;
     private PerformanceReport? _lastStableReport, _current;
     private TuningSearch? _search;
-    private bool _memoryPhase, _aborted;
+    private bool _memoryPhase, _aborted, _validating;
+    private TimeSpan _duration = MeasureDuration;
     private CancellationTokenSource? _stop;
 
     [ObservableProperty]
@@ -69,7 +72,11 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private bool showRetry;
     [ObservableProperty] private bool showGoBack;
     [ObservableProperty] private string doneText = "";
-    [ObservableProperty] private bool doneChanged;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool doneChanged;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool validated;
+
+    /// <summary>La validation de 15 minutes est proposée tant que le réglage retenu ne l'a pas passée.</summary>
+    public bool CanValidate => DoneChanged && !Validated;
 
     public bool IsIdle => Phase == AssistantPhase.Idle;
     public bool IsActive => Phase != AssistantPhase.Idle;
@@ -144,6 +151,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _goal = goal;
         _memoryPhase = false;
         _aborted = false;
+        _validating = false;
+        Validated = false;
         _search = null;
         _before = (await Task.Run(() => GpuProfile.ReadCurrent(t))) with { AtStartup = false };
 
@@ -182,15 +191,19 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private async Task MeasureAsync()
     {
         if (await GpuTelemetry.OpenSharedAsync() is not { } gpu) return;
-        var step = _search?.Current;
-        Title = _search is not null
+        var step = _validating ? null : _search?.Current;
+        _duration = _validating ? ValidationDuration : MeasureDuration;
+        Title = _validating ? "VALIDATION · 15 MINUTES"
+            : _search is not null
             ? $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_search.Tested + 1} · {_search.StageName}"
             : _step == Step.Baseline ? "MESURE DE DÉPART" : "PERFORMANCE · RÉGLAGE DE BASE";
         var watch = _goal == TuningGoal.Economy && !_memoryPhase
             ? "Jugez la fluidité : la perte mesurée s'affichera à la fin."
             : "Surveillez bandes, scintillements ou couleurs bizarres.";
         var sameGame = _baselineGame is { } g ? $" ({g} de préférence)" : "";
-        Instruction = step is not null
+        Instruction = _validating
+            ? $"Réglage retenu en place ({_lastStable.Describe()}). Jouez normalement pendant 15 minutes, idéalement une scène exigeante : c'est la vraie épreuve de stabilité."
+            : step is not null
             ? $"Palier en place : {step.Describe()}. Retournez dans le jeu{sameGame}, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}"
             : _step == Step.Baseline
                 ? $"Réglage d'origine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
@@ -229,7 +242,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         PerformanceReport report;
         try
         {
-            report = await PerformanceSession.RunAsync(gpu, MeasureDuration, new Progress<TimeSpan>(UpdateProgress), _stop.Token);
+            report = await PerformanceSession.RunAsync(gpu, _duration, new Progress<TimeSpan>(UpdateProgress), _stop.Token);
         }
         finally
         {
@@ -244,8 +257,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     private void UpdateProgress(TimeSpan elapsed)
     {
-        Progress = Math.Clamp(elapsed / MeasureDuration, 0, 1);
-        var left = MeasureDuration - elapsed;
+        Progress = Math.Clamp(elapsed / _duration, 0, 1);
+        var left = _duration - elapsed;
         ProgressText = $"MESURE EN COURS · {(left < TimeSpan.Zero ? TimeSpan.Zero : left):m\\:ss} RESTANTES";
     }
 
@@ -254,8 +267,23 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Incidents = report.Findings.Where(f => report.Unstable && f.Severity == Severity.Critical)
             .Select(f => new FindingItem(f.Title, f.Detail, f.Advice, [], f.Severity)).ToList();
         HasIncidents = Incidents.Count > 0;
-        var isReference = _search is null && _step == Step.Baseline;
+        var isReference = _search is null && _step == Step.Baseline && !_validating;
         Tiles = BuildTiles(report, isReference ? null : _baseline);
+
+        if (_validating)
+        {
+            Headline = report.Unstable ? "Plantage détecté pendant la validation"
+                : !report.Conclusive ? "Validation non concluante : la carte n'a pas assez travaillé"
+                : "Validation terminée";
+            QuestionText = "Pendant ces 15 minutes, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
+            YesText = "NON, TOUT ÉTAIT NORMAL";
+            NoText = "OUI, J'AI VU UN PROBLÈME";
+            ShowQuestion = report.Conclusive && !report.Unstable;
+            ShowRetry = !report.Conclusive || report.Unstable;
+            ShowGoBack = report.Unstable;
+            Phase = AssistantPhase.Review;
+            return;
+        }
 
         if (_search is null && report.Conclusive && !report.Unstable && tuner() is { } t)
         {
@@ -332,6 +360,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [RelayCommand]
     private async Task Stable()
     {
+        if (_validating)
+        {
+            _validating = false;
+            Validated = true;
+            await FinishAsync($"Validé : 15 minutes sans plantage ni artefact. Réglage retenu : {_lastStable.Describe()}.");
+            return;
+        }
         if (_search is null && _step == Step.PerformanceBase && tuner() is { } t)
         {
             // Réglage de base stable : la recherche du décalage part de lui
@@ -352,6 +387,11 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [RelayCommand]
     private async Task Unstable()
     {
+        if (_validating)
+        {
+            await BackOffAfterValidationAsync();
+            return;
+        }
         if (_search is null && _step == Step.PerformanceBase && Record?.ResultState is { } balanced)
         {
             _lastStable = balanced;
@@ -389,10 +429,44 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         return FinishAsync(null);
     }
 
+    /// <summary>Validation finale de 15 minutes sur le réglage retenu.</summary>
+    [RelayCommand]
+    private async Task Validate()
+    {
+        _validating = true;
+        if (await ApplyAsync(_lastStable)) await MeasureAsync();
+    }
+
+    /// <summary>
+    /// La validation a échoué : on recule d'un cran (15 MHz de décalage en moins ; pour Économie, retour au réglage
+    /// d'Équilibre), puis l'utilisateur peut relancer la validation.
+    /// </summary>
+    private async Task BackOffAfterValidationAsync()
+    {
+        _validating = false;
+        var previous = _lastStable;
+        if (_goal == TuningGoal.Economy && Record?.ResultState is { } balanced)
+            _lastStable = balanced;
+        else if (_lastStable.CoreOffsetMHz - TuningPlan.ClockBin >= _start.CoreOffsetMHz)
+            _lastStable = _lastStable with { CoreOffsetMHz = _lastStable.CoreOffsetMHz - TuningPlan.ClockBin };
+        else
+            _lastStable = _start;
+        if (_goal == TuningGoal.Balanced) SaveBalancedRecord();
+        _lastStableReport = null;
+        await FinishAsync(previous.SameTuning(_lastStable)
+            ? "Problème pendant la validation, et plus de marge pour reculer : la carte revient à son réglage de départ."
+            : $"Problème pendant la validation : réglage reculé à {_lastStable.Describe()}. Relancez la validation pour en être sûr.");
+    }
+
     /// <summary>Refaire la mesure. Un plantage du pilote efface le réglage : le palier est donc réappliqué.</summary>
     [RelayCommand]
     private async Task Retry()
     {
+        if (_validating)
+        {
+            if (await ApplyAsync(_lastStable)) await MeasureAsync();
+            return;
+        }
         if (_search is not null) await NextStepAsync();
         else if (await ApplyAsync(_start)) await MeasureAsync();
     }
@@ -465,7 +539,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 Title: "Garder au démarrage",
                 ConfirmText: "Garder",
                 Message: $"Réglage gardé : {_lastStable.Describe()}.",
-                Warnings: ["La tâche planifiée « Aria Cockpit\\Profil GPU » réappliquera ce réglage à chaque ouverture de session, avec les droits administrateur, sans fenêtre."],
+                Warnings: Validated
+                    ? ["La tâche planifiée « Aria Cockpit\\Profil GPU » réappliquera ce réglage à chaque ouverture de session, avec les droits administrateur, sans fenêtre."]
+                    : ["La tâche planifiée « Aria Cockpit\\Profil GPU » réappliquera ce réglage à chaque ouverture de session, avec les droits administrateur, sans fenêtre.",
+                       "Ce réglage n'a pas passé la validation de 15 minutes : le garder au démarrage sans l'avoir validé est plus risqué."],
                 Note: "Revenir d'origine (onglet Réglage GPU ou Restauration) supprime la tâche.")))
             return;
         if (await ApplyAsync(_lastStable with { AtStartup = true })) Phase = AssistantPhase.Idle;
@@ -479,6 +556,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private async Task CancelAll()
     {
         _aborted = true;
+        _validating = false;
         _stop?.Cancel();
         await ApplyAsync(_before);
         Phase = AssistantPhase.Idle;
