@@ -12,6 +12,8 @@ namespace Aria.Core.Nvidia;
 /// <param name="Result">Réglage retenu par Équilibre, recul de sécurité compris.</param>
 /// <param name="FoundOffset">Un décalage stable a été trouvé (sinon : réglage d'origine plafonné).</param>
 /// <param name="Baseline">Mesure de départ, au réglage d'origine.</param>
+/// <param name="BenchFps">FPS moyens du banc d'essai à la mesure de départ (absent si mesurée dans un jeu).</param>
+/// <param name="BenchDefinition">Définition du banc d'essai pour cette mesure (1080, 1440 ou 2160).</param>
 public sealed record BalancedRecord(
     DateTime At,
     string GpuName,
@@ -21,7 +23,9 @@ public sealed record BalancedRecord(
     string Origin,
     string Result,
     bool FoundOffset,
-    PerformanceStats Baseline)
+    PerformanceStats Baseline,
+    double? BenchFps = null,
+    int? BenchDefinition = null)
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 

@@ -89,7 +89,7 @@ internal sealed unsafe class Renderer : IDisposable
     {
         _gpu = gpu;
         var device = gpu.Device;
-        var code = ShaderLibrary.CompileAll();
+        var code = ShaderLibrary.LoadAll();
 
         // Signatures racines écrites dans les shaders ([RootSignature]) et lues dans le code compilé
         _sceneRoot = device.CreateRootSignature(code["VSTerrain"]);

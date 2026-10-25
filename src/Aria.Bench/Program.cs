@@ -70,12 +70,12 @@ namespace Aria.Bench
                 {
                     var (width, height) = BenchOptions.SizeOf(definition);
                     renderer.Configure(quality, width, height);
-                    var check = new ImageVerification();
-                    check.SetReference(renderer.RenderCheck());
+                    var check = new ImageVerification { ImageWidth = width };
                     var stats = new FrameStats();
                     var clock = Stopwatch.StartNew();
                     var last = clock.Elapsed;
-                    var nextCheck = options.Warmup + VerifyInterval;
+                    // Référence prise à la fin de la chauffe : carte et pilote stabilisés
+                    var nextCheck = options.Warmup;
 
                     PassResult Result() =>
                         PassResult.From(quality, definition, width, height, stats.Summarize(), check,
@@ -94,7 +94,8 @@ namespace Aria.Bench
                         if (elapsed >= nextCheck)
                         {
                             // Vérification hors mesure : son temps n'est compté dans aucune image
-                            check.Check(renderer.RenderCheck());
+                            if (check.Reference is null) check.SetReference(renderer.RenderCheck());
+                            else check.Check(renderer.RenderCheck(), renderer.RenderCheck);
                             nextCheck += VerifyInterval;
                             last = clock.Elapsed;
                             continue;
@@ -110,6 +111,20 @@ namespace Aria.Bench
 
                     var result = Result();
                     log.Resultats.Add(result);
+                    if (check.ReferenceUpdates > 0)
+                        log.Remarques.Add($"{result.Qualite} {result.Definition} : image de référence mise à jour {check.ReferenceUpdates} fois après contre-vérification "
+                                          + "(le pilote a réoptimisé ses shaders : calcul légèrement différent mais stable, ce n'est pas une erreur).");
+                    if (check.FailureBounds is { } box)
+                        log.Remarques.Add($"Écarts en {result.Qualite} {result.Definition} dans le rectangle x={box.X}, y={box.Y}, {box.Width} × {box.Height} pixels.");
+                    if (options.SaveImages && check.Reference is { } reference && check.FirstFailure is { } failure)
+                    {
+                        // Images de diagnostic à côté du journal : référence, image fautive et carte des écarts
+                        var folder = Path.GetDirectoryName(Path.GetFullPath(options.OutputPath ?? Path.Combine(AppContext.BaseDirectory, "x")))!;
+                        var stem = Path.Combine(folder, $"bench-{quality.Id}-{definition}");
+                        ImageVerification.SaveBmp(stem + "-reference.bmp", reference, width, height);
+                        ImageVerification.SaveBmp(stem + "-erreur.bmp", failure, width, height);
+                        ImageVerification.SaveBmp(stem + "-ecarts.bmp", ImageVerification.DifferenceMap(reference, failure), width, height);
+                    }
                     if (result.ErreursCalcul > 0)
                         log.Remarques.Add($"Erreurs de calcul en {result.Qualite} {result.Definition} : {result.ErreursCalcul} vérification(s) sur {result.Verifications} "
                                           + $"(jusqu'à {result.PixelsDifferents:N0} pixels différents). La carte n'est pas stable avec ce réglage.");

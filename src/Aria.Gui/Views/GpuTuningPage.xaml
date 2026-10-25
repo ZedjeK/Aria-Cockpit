@@ -162,8 +162,24 @@
             <TextBlock
               Margin="0,8,0,14"
               Foreground="{StaticResource NeonMutedBrush}"
-              Text="Commencez par Équilibre : il mesure votre jeu au réglage d'origine et trouve l'undervolt qui garde les mêmes FPS avec moins de watts. Son résultat débloque Économie et Performance, qui partent de lui. Chaque palier dure 3 minutes de jeu ; rien n'est gardé sans votre accord."
+              Text="Commencez par Équilibre : il mesure la carte au réglage d'origine et trouve l'undervolt qui garde les mêmes FPS avec moins de watts. Son résultat débloque Économie et Performance, qui partent de lui. Chaque palier dure 3 minutes, sur le banc d'essai Aria (automatique) ou dans votre jeu ; rien n'est gardé sans votre accord."
               TextWrapping="Wrap" />
+            <!-- Source des mesures -->
+            <StackPanel Margin="0,0,0,14" Orientation="Horizontal" Visibility="{Binding BenchAvailable, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Style="{StaticResource HudCode}" Text="MESURER AVEC" />
+              <RadioButton
+                Margin="16,0,0,0"
+                Content="Le banc d'essai Aria (verdict automatique)"
+                GroupName="AssistantSource"
+                IsChecked="{Binding UseBench}"
+                ToolTip="Scène 3D en qualité Ultra, à la définition de l'écran ; chaque image de contrôle est vérifiée : une erreur de calcul trahit un réglage instable" />
+              <RadioButton
+                Margin="16,0,0,0"
+                Content="Mon jeu (votre verdict à chaque palier)"
+                GroupName="AssistantSource"
+                IsChecked="{Binding UseGame}"
+                ToolTip="La mesure démarre quand Aria voit votre jeu en action ; vous jugez les artefacts" />
+            </StackPanel>
             <UniformGrid Columns="3">
               <Border Margin="0,0,10,0" Padding="16,12" Background="#14FF8A1F" BorderBrush="#99FF8A1F" BorderThickness="1,0,0,0">
                 <StackPanel>

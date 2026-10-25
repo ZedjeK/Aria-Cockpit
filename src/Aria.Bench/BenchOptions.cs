@@ -13,7 +13,8 @@ public sealed record BenchOptions(
     TimeSpan Warmup,
     bool Windowed,
     bool Debug,
-    string? OutputPath)
+    string? OutputPath,
+    bool SaveImages = false)
 {
     public static readonly int[] AllDefinitions = [1080, 1440, 2160];
     public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(20);
@@ -23,7 +24,7 @@ public sealed record BenchOptions(
         new([QualityPreset.High], AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
 
     public const string Help =
-        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--sortie fichier.json]";
+        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--sortie fichier.json]";
 
     /// <summary>Taille du rendu interne (16:9) pour une définition.</summary>
     public static (int Width, int Height) SizeOf(int definition) => definition switch
@@ -62,6 +63,9 @@ public sealed record BenchOptions(
                     break;
                 case "--debug":
                     options = options with { Debug = true };
+                    break;
+                case "--images":
+                    options = options with { SaveImages = true };
                     break;
                 case "--sortie":
                     options = options with { OutputPath = Next(args, ref i, arg) };

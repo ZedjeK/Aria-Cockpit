@@ -1,43 +1,39 @@
 using System.Reflection;
-using Vortice.Dxc;
 
 namespace Aria.Bench.Rendering;
 
-/// <summary>Shaders HLSL intégrés à l'exe, compilés en DXIL (modèle 6.0) par DXC au lancement.</summary>
+/// <summary>
+/// Shaders précompilés en DXIL signé (modèle 6.0), intégrés à l'exe : Aria-Bench n'embarque aucun compilateur.
+/// Sources dans Shaders/*.hlsl ; après une modification, relancer outils/compiler-shaders.py (les tests le vérifient).
+/// </summary>
 public static class ShaderLibrary
 {
-    public static IReadOnlyList<string> Names { get; } = ["Scene", "Post"];
+    public static IReadOnlyList<string> Files { get; } = ["Scene", "Post"];
 
-    /// <summary>Tous les points d'entrée utilisés par le moteur (fichier, étape, nom) : vérifiés par les tests.</summary>
-    public static IReadOnlyList<(string File, DxcShaderStage Stage, string Entry)> Entries { get; } =
+    /// <summary>Tous les points d'entrée utilisés par le moteur (fichier source, profil, nom).</summary>
+    public static IReadOnlyList<(string File, string Profile, string Entry)> Entries { get; } =
     [
-        ("Scene", DxcShaderStage.Vertex, "VSSky"), ("Scene", DxcShaderStage.Pixel, "PSSky"),
-        ("Scene", DxcShaderStage.Vertex, "VSTerrain"), ("Scene", DxcShaderStage.Pixel, "PSTerrain"),
-        ("Scene", DxcShaderStage.Vertex, "VSObjects"), ("Scene", DxcShaderStage.Pixel, "PSObjects"),
-        ("Post", DxcShaderStage.Vertex, "VSFull"), ("Post", DxcShaderStage.Pixel, "PSSsao"),
-        ("Post", DxcShaderStage.Pixel, "PSBloomDown"), ("Post", DxcShaderStage.Pixel, "PSBloomUp"),
-        ("Post", DxcShaderStage.Pixel, "PSComposite")
+        ("Scene", "vs_6_0", "VSSky"), ("Scene", "ps_6_0", "PSSky"),
+        ("Scene", "vs_6_0", "VSTerrain"), ("Scene", "ps_6_0", "PSTerrain"),
+        ("Scene", "vs_6_0", "VSObjects"), ("Scene", "ps_6_0", "PSObjects"),
+        ("Post", "vs_6_0", "VSFull"), ("Post", "ps_6_0", "PSSsao"),
+        ("Post", "ps_6_0", "PSBloomDown"), ("Post", "ps_6_0", "PSBloomUp"),
+        ("Post", "ps_6_0", "PSComposite")
     ];
 
-    public static string Source(string name)
+    /// <summary>Code compilé d'un point d'entrée.</summary>
+    public static byte[] Load(string entry)
     {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"Aria.Bench.Shaders.{name}.hlsl")
-            ?? throw new BenchException($"Shader introuvable dans l'exe : {name}.hlsl");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"Aria.Bench.Shaders.{entry}.cso")
+            ?? throw new BenchException($"Shader compilé introuvable dans l'exe : {entry}.cso");
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        var bytes = memory.ToArray();
+        if (bytes.Length < 4 || bytes[0] != 'D' || bytes[1] != 'X' || bytes[2] != 'B' || bytes[3] != 'C')
+            throw new BenchException($"Shader compilé invalide : {entry}.cso");
+        return bytes;
     }
 
-    public static byte[] Compile(string name, DxcShaderStage stage, string entryPoint)
-    {
-        var options = new DxcCompilerOptions { ShaderModel = DxcShaderModel.Model6_0 };
-        using var result = DxcCompiler.Compile(stage, Source(name), entryPoint, options, $"{name}.hlsl");
-        var bytecode = result.GetStatus().Success ? result.GetObjectBytecodeArray() : [];
-        if (bytecode.Length == 0)
-            throw new BenchException($"Le shader {name}.hlsl ({entryPoint}) ne compile pas : {result.GetErrors()}".Trim());
-        return bytecode;
-    }
-
-    /// <summary>Compile tous les points d'entrée une fois ; clé : nom du point d'entrée.</summary>
-    public static Dictionary<string, byte[]> CompileAll() =>
-        Entries.ToDictionary(e => e.Entry, e => Compile(e.File, e.Stage, e.Entry));
+    /// <summary>Tous les points d'entrée ; clé : nom du point d'entrée.</summary>
+    public static Dictionary<string, byte[]> LoadAll() => Entries.ToDictionary(e => e.Entry, e => Load(e.Entry));
 }

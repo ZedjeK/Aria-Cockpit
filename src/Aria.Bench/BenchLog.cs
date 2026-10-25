@@ -56,15 +56,16 @@ public sealed record GpuInfo(string Nom, string VendorId, string DeviceId, long 
 /// <param name="ErreursCalcul">Vérifications dont l'image différait de la référence : signe d'instabilité.</param>
 /// <param name="PixelsDifferents">Le plus grand nombre de pixels différents constaté.</param>
 /// <param name="Plafond">Explication si les FPS semblent bridés par une limite, sinon absent.</param>
+/// <param name="ReferencesAjustees">Références remplacées après contre-vérification (pilote qui réoptimise ses shaders).</param>
 public sealed record PassResult(string Qualite, string Definition, int Largeur, int Hauteur, int Images, double Secondes,
     double FpsMoyen, double FpsMedian, double TempsMoyenMs, double Fps1PourcentBas, double TempsP99Ms, double TempsMaxMs, int Saccades,
-    int Verifications, int ErreursCalcul, long PixelsDifferents, string? Empreinte, string? Plafond)
+    int Verifications, int ErreursCalcul, long PixelsDifferents, string? Empreinte, string? Plafond, int ReferencesAjustees = 0)
 {
     public static PassResult From(QualityPreset quality, int definition, int width, int height, FrameSummary s,
         ImageVerification? check = null, string? cap = null) =>
         new(quality.Label, BenchOptions.Label(definition), width, height, s.Frames, s.Seconds,
             s.AverageFps, s.MedianFps, s.AverageMs, s.Low1PercentFps, s.P99Ms, s.MaxMs, s.Stutters,
-            check?.Checks ?? 0, check?.Failures ?? 0, check?.MaxDifferentPixels ?? 0, check?.Fingerprint, cap);
+            check?.Checks ?? 0, check?.Failures ?? 0, check?.MaxDifferentPixels ?? 0, check?.Fingerprint, cap, check?.ReferenceUpdates ?? 0);
 }
 
 /// <summary>Conditions de la mesure : elles expliquent un résultat bridé.</summary>

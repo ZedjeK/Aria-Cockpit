@@ -1,6 +1,6 @@
 # Publication d'une version d'Aria Cockpit, déclenchée à la main :
 # Actions → Release → Run workflow → numéro de version (identique à Directory.Build.props).
-# Compile les deux exécutables (autonome et léger), les zippe, calcule les empreintes
+# Compile Aria Cockpit et son banc d'essai Aria-Bench (versions autonome et légère), les zippe, calcule les empreintes
 # SHA-256 et crée la release « v<version> » avec les notes de .github/release-notes.md.
 
 name: Release
@@ -44,18 +44,22 @@ jobs:
           $global:LASTEXITCODE = 0
 
       - name: Compiler la version autonome
-        run: dotnet publish src/Aria.Gui -c Release -o out-full
+        run: |
+          dotnet publish src/Aria.Gui -c Release -o out-full
+          dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=true -o out-full
 
       - name: Compiler la version légère
-        run: dotnet publish src/Aria.Gui -c Release -p:SelfContained=false -o out-light
+        run: |
+          dotnet publish src/Aria.Gui -c Release -p:SelfContained=false -o out-light
+          dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=false -o out-light
 
       - name: Préparer les fichiers
         run: |
           New-Item -ItemType Directory -Force assets | Out-Null
           $full  = "assets/Aria-Cockpit-$env:VERSION-autonome.zip"
           $light = "assets/Aria-Cockpit-$env:VERSION-leger.zip"
-          Compress-Archive -Path out-full/Aria-Cockpit.exe  -DestinationPath $full
-          Compress-Archive -Path out-light/Aria-Cockpit.exe -DestinationPath $light
+          Compress-Archive -Path out-full/Aria-Cockpit.exe, out-full/Aria-Bench.exe   -DestinationPath $full
+          Compress-Archive -Path out-light/Aria-Cockpit.exe, out-light/Aria-Bench.exe -DestinationPath $light
 
           $sums = foreach ($zip in $full, $light) {
             $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()

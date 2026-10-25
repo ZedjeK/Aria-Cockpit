@@ -11,17 +11,15 @@
     <AssemblyName>Aria-Bench</AssemblyName>
     <AssemblyTitle>Aria Bench</AssemblyTitle>
     <ApplicationIcon>..\Aria.Gui\Assets\Aria-Cockpit.ico</ApplicationIcon>
-    <!-- Publication (avec -r win-x64) : un seul Aria-Bench.exe, compilateur de shaders inclus -->
+    <!-- Publication (avec -r win-x64) : un seul Aria-Bench.exe -->
     <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Direct3D 12, DXGI et compilateur de shaders DXC pour .NET (MIT) -->
+    <!-- Direct3D 12 et DXGI pour .NET (MIT) -->
     <PackageReference Include="Vortice.Direct3D12" Version="3.8.3" />
     <PackageReference Include="Vortice.DXGI" Version="3.8.3" />
-    <PackageReference Include="Vortice.Dxc" Version="3.8.3" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,8 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Shaders HLSL intégrés à l'exe, compilés au lancement -->
-    <EmbeddedResource Include="Shaders\*.hlsl" LogicalName="Aria.Bench.Shaders.%(Filename).hlsl" />
+    <!-- Shaders précompilés (outils/compiler-shaders.py) : aucun compilateur livré avec l'exe -->
+    <EmbeddedResource Include="Shaders\Compiled\*.cso" LogicalName="Aria.Bench.Shaders.%(Filename).cso" />
+    <None Include="Shaders\*.hlsl" />
   </ItemGroup>
 
 </Project>

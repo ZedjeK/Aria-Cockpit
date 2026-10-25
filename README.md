@@ -7,11 +7,11 @@
 <p align="center">
   Le tableau de bord de ton PC de jeu : il analyse le matériel, surveille ta carte graphique en direct<br>
   et te propose les bons réglages Windows, NVIDIA et confidentialité, jusqu'à l'undervolt guidé.<br>
-  Rien n'est modifié sans ton accord, tout se restaure. Un seul exe, rien à installer.
+  Rien n'est modifié sans ton accord, tout se restaure. Rien à installer.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.17 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.18 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -22,7 +22,8 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier ; un garde-fou signale les plantages du pilote |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria ou dans ton jeu ; un garde-fou signale les plantages du pilote |
+| **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
@@ -38,8 +39,10 @@ n'est jamais modifié, seulement lu et expliqué.
 
    | Fichier | Pour qui |
    |---|---|
-   | `Aria-Cockpit-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 140 Mo une fois décompressé) |
-   | `Aria-Cockpit-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 9 Mo) |
+   | `Aria-Cockpit-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 215 Mo une fois décompressé) |
+   | `Aria-Cockpit-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 11 Mo) |
+
+   Le zip contient `Aria-Cockpit.exe` et `Aria-Bench.exe`, le banc d'essai : garde-les dans le même dossier.
 
 2. Lance `Aria-Cockpit.exe`. L'exe n'est pas signé : si Windows SmartScreen affiche « Windows a protégé votre
    ordinateur », clique sur « Informations complémentaires » puis « Exécuter quand même ». Le code source complet est
@@ -177,6 +180,18 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 
 ### L'assistant guidé : Équilibre, puis Économie ou Performance
 
+Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton jeu**, au choix avant de commencer :
+
+| | Banc d'essai Aria | Ton jeu |
+|---|---|---|
+| Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul | La mesure démarre quand Aria voit ton jeu en action |
+| Verdict (Équilibre, Performance, validation) | **Automatique** : erreur de calcul ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne | Le tien : artefacts ou plantage ? |
+| Mesures comparées | Fréquence, watts, température et **FPS** | Fréquence, watts, température |
+
+Économie garde ta décision à chaque palier (la fluidité acceptable, c'est toi qui la juges), avec la perte de FPS mesurée par le banc.
+Si le banc d'essai bute sur une limite d'images (V-Sync, limite du pilote), l'assistant refait la mesure à la définition
+supérieure pour charger la carte à fond. Sur un portable, branche-le sur secteur : sur batterie, la carte est bridée.
+
 | Mode | Ce qu'il cherche | Comment |
 |---|---|---|
 | **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ au réglage d'origine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
@@ -200,6 +215,43 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
 mesures se font en jeu ; le garde-fou signale un éventuel plantage au repos après coup. Les artefacts visuels ne sont
 pas détectables automatiquement : tes yeux restent le juge.
+
+## Banc d'essai Aria
+
+`Aria-Bench.exe`, livré à côté d'Aria Cockpit, dessine une scène 3D générée par le programme (rien à télécharger) :
+terrain et montagnes, ville de tours aux fenêtres éclairées, soleil de fin de journée avec ombres portées, lumières
+néon, occlusion ambiante, halo lumineux. Il tourne dans son propre processus : si un réglage fait planter le pilote,
+Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (16:9, bandes noires si l'écran est en
+16:10), affichage sans V-Sync.
+
+| Préréglage | Terrain | Objets | Ombres | Lumières néon | Occlusion ambiante | Halo |
+|---|---|---|---|---|---|---|
+| Faible | 256² | 4 096 | 1024 px, nettes | 8 | non | non |
+| Moyen | 512² | 12 100 | 2048 px, adoucies | 32 | 8 échantillons | 3 niveaux |
+| Élevé | 768² | 28 900 | 4096 px, adoucies | 64 | 12 échantillons | 4 niveaux |
+| Ultra | 1024² | 57 600 | 4096 px, très adoucies | 96 | 16 échantillons | 5 niveaux |
+
+- **Vérification des images** : une image de contrôle (toujours le même instant de la scène) est calculée après la
+  chauffe, puis recalculée toutes les 3 secondes et comparée au pixel près. Sur une carte stable, le résultat est
+  identique. En cas d'écart, l'image est recalculée aussitôt : si elle redonne exactement le même résultat, c'est le
+  pilote qui a réoptimisé ses shaders (écarts d'un ou deux niveaux, stables) et la référence est mise à jour ; sinon,
+  c'est une erreur de calcul, typique d'un undervolt ou d'un overclocking trop poussé. `--images` enregistre alors la
+  référence, l'image fautive et la carte des écarts en BMP.
+- **Mesures** : FPS moyens et médians, 1 % les plus bas, temps par image, saccades (images plus de 2,5 fois plus longues
+  que la normale). Les premières secondes de chaque passe ne comptent pas (montée en fréquence).
+- **Contexte** : alimentation (secteur ou batterie), fréquence de l'écran ; une mesure collée à une limite (V-Sync,
+  limite d'images du pilote, 60 ou 30 FPS) est signalée « plafonnée » : la carte n'y est pas mesurée à fond.
+- **Journal** : `bench-<date>.json` (et `bench-dernier.json`) à côté de l'exe : carte, pilote, contexte, résultats,
+  erreurs. C'est lui qu'Aria Cockpit lit.
+
+Lancement à la main (Échap arrête) :
+
+    Aria-Bench.exe                                  Élevé, 1080p puis 1440p puis 4K, 20 s chacune
+    Aria-Bench.exe --qualite tout --def 1440        Les quatre préréglages en 1440p
+    Aria-Bench.exe --qualite ultra --def 4k --duree 60 --fenetre --debug --images --sortie resultat.json
+
+`--debug` active la couche de diagnostic de Direct3D (fonctionnalité facultative « Outils graphiques » de Windows) :
+les performances mesurées ne sont alors pas représentatives.
 
 ## Mises à jour
 
@@ -270,13 +322,15 @@ Prérequis :
   Visual Studio 2022 ne sait pas cibler .NET 10.
 
 Le plus simple : double-cliquer sur **`Lancer Aria Cockpit.cmd`**. Le script demande les droits administrateur, installe
-le SDK .NET 10 via winget s'il manque, compile `publish\Aria-Cockpit.exe`, puis ouvre l'interface.
+le SDK .NET 10 via winget s'il manque, compile `publish\Aria-Cockpit.exe` et le banc d'essai `publish\Aria-Bench.exe`, puis
+ouvre l'interface.
 
 À la main, dans un terminal **administrateur** :
 
     dotnet run --project src/Aria.Gui                # lancer
     dotnet publish src/Aria.Gui -c Release           # exécutable unique autonome
     dotnet publish src/Aria.Gui -c Release -p:SelfContained=false   # version légère (runtime .NET 10 requis)
+    dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=true -o <dossier d'Aria-Cockpit.exe>   # banc d'essai
 
 Résultat : `src/Aria.Gui/bin/Release/net10.0-windows/win-x64/publish/Aria-Cockpit.exe`
 
@@ -290,6 +344,8 @@ Version console en simulation, depuis la racine du projet :
   mises à jour, nettoyage, sauvegarde, rapports), sans interface
 - `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe`
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
+- `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; shaders dans `Shaders/*.hlsl`, précompilés dans
+  `Shaders/Compiled` par `outils/compiler-shaders.py` (aucun compilateur n'est livré avec l'exe)
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px
@@ -301,6 +357,8 @@ côté d'`Aria-Cockpit.exe` et y placer le fichier modifié (même nom) ; il rem
 
 - Développé par Jérémy Zemani. Anciennement Aria (versions 0.13 et 0.14) et PC-Tune (jusqu'à la 0.12).
 - Interface : [WPF-UI](https://github.com/lepoco/wpfui) (MIT) et CommunityToolkit.Mvvm (MIT).
+- Banc d'essai : Direct3D 12 et DXGI pour .NET par [Vortice.Windows](https://github.com/amerkoleci/Vortice.Windows) (MIT) ;
+  shaders compilés avec le [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) de Microsoft.
 - Identifiants des fonctions et réglages NVIDIA : [SDK NVAPI](https://github.com/NVIDIA/nvapi) (MIT).
 - Télémétrie et réglage GPU : [NVML](https://docs.nvidia.com/deploy/nvml-api/) ; structures relues dans la bibliothèque
   officielle [nvidia-ml-py](https://pypi.org/project/nvidia-ml-py/).

@@ -92,6 +92,14 @@ Etape "Compilation de $(Split-Path -Leaf $exe) (une à deux minutes la première
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) {
     Arret 'La compilation a échoué : copiez les messages ci-dessus dans la conversation pour les faire corriger.'
 }
+if (-not $Console) {
+    # Banc d'essai 3D, à côté d'Aria-Cockpit.exe : l'assistant Réglage GPU l'utilise pour ses mesures
+    Etape 'Compilation du banc d''essai Aria-Bench.exe…'
+    & dotnet publish (Join-Path $projet 'src\Aria.Bench\Aria.Bench.csproj') -c Release -r win-x64 --self-contained true -o $sortie
+    if ($LASTEXITCODE -ne 0) {
+        Arret 'La compilation du banc d''essai a échoué : copiez les messages ci-dessus dans la conversation pour les faire corriger.'
+    }
+}
 Write-Host "Prêt : $exe" -ForegroundColor Green
 
 # --- 4. Lancement -------------------------------------------------------------------------

@@ -2,6 +2,7 @@ using System.IO;
 using System.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Aria.Core.Bench;
 using Aria.Core.Models;
 using Aria.Core.Nvidia;
 using Aria.Core.Performance;
@@ -37,10 +38,36 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private PerformanceStats? _baseline;
     private string? _baselineGame;
     private PerformanceReport? _lastStableReport, _current;
+    /// <summary>FPS du banc pour le dernier réglage stable (affichés à la fin).</summary>
+    private double? _lastStableFps;
     private TuningSearch? _search;
     private bool _memoryPhase, _aborted, _validating;
     private TimeSpan _duration = MeasureDuration;
     private CancellationTokenSource? _stop;
+
+    /// <summary>Qualité du banc d'essai pour l'assistant : la plus lourde, pour charger la carte à fond.</summary>
+    public const string BenchQuality = "ultra";
+    /// <summary>Mesures faites avec le banc d'essai (fixé au début du mode).</summary>
+    private bool _benchMode;
+    private int _benchDefinition = 1080;
+    /// <summary>FPS moyens du banc à la mesure de départ, pour comparer chaque palier.</summary>
+    private double? _baselineFps;
+    private BenchResult? _bench;
+    /// <summary>Résultat du palier précédent, rappelé pendant la mesure suivante (verdict automatique).</summary>
+    private string _previousStep = "";
+    private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
+
+    /// <summary>Aria-Bench.exe est livré à côté d'Aria Cockpit.</summary>
+    public bool BenchAvailable { get; } = BenchRunner.IsAvailable;
+
+    /// <summary>Source des mesures : le banc d'essai (par défaut s'il est là) ou le jeu de l'utilisateur.</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(UseGame))] private bool useBench = BenchRunner.IsAvailable;
+
+    public bool UseGame
+    {
+        get => !UseBench;
+        set => UseBench = !value;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsDone))]
@@ -132,6 +159,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (goal != TuningGoal.Balanced && Record?.ResultState is null) return;
 
         var noLock = !t.Limits.SupportsClockLock;
+        var bench = UseBench && BenchAvailable;
+        var benchDefinition = BenchRunner.DefinitionFor(BenchRunner.PrimaryScreenHeight());
         var (name, what, verdict) = goal switch
         {
             TuningGoal.Balanced when noLock => ("Équilibre",
@@ -161,26 +190,38 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     new(goal == TuningGoal.Balanced ? "1. Mesure de départ" : "1. Point de départ",
                         goal switch
                         {
-                            TuningGoal.Balanced => "réglage d'origine, 3 min de jeu",
-                            TuningGoal.Performance => "réglage de base, 3 min de jeu",
+                            TuningGoal.Balanced => bench ? "réglage d'origine, 3 min de banc d'essai" : "réglage d'origine, 3 min de jeu",
+                            TuningGoal.Performance => bench ? "réglage de base, 3 min de banc d'essai" : "réglage de base, 3 min de jeu",
                             _ => "résultat d'Équilibre"
                         }),
-                    new("2. Un palier à la fois", Record?.Game is { } g && goal != TuningGoal.Balanced ? $"3 min chacun, sur {g} de préférence" : "3 min de jeu chacun, même jeu, même scène"),
-                    new("3. Votre verdict", verdict),
+                    new("2. Un palier à la fois", bench ? "3 min de banc d'essai chacun, enchaînés automatiquement"
+                        : Record?.Game is { } g && goal != TuningGoal.Balanced ? $"3 min chacun, sur {g} de préférence" : "3 min de jeu chacun, même jeu, même scène"),
+                    bench && goal != TuningGoal.Economy
+                        ? new("3. Verdict automatique", "erreur de calcul ou plantage → pas plus fin")
+                        : new("3. Votre verdict", verdict),
                     new("4. À la fin", "vous choisissez de garder ou d'annuler")
                 ],
-                Warnings: goal == TuningGoal.Performance && t.Limits.MaxPowerMilliwatts > t.Limits.DefaultPowerMilliwatts
+                Warnings: [.. (goal == TuningGoal.Performance && t.Limits.MaxPowerMilliwatts > t.Limits.DefaultPowerMilliwatts
                     ?
-                    [
+                    new[]
+                    {
                         "Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Chaque palier s'efface au redémarrage.",
                         $"La carte pourra consommer jusqu'à {t.Limits.MaxPowerMilliwatts / 1000} W au lieu de {t.Limits.DefaultPowerMilliwatts / 1000} W : vérifiez que votre alimentation a la puissance recommandée et que le câble d'alimentation de la carte (12V-2x6 / 12VHPWR) est enfoncé à fond."
-                    ]
-                    : ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."],
-                Note: "Chaque mesure démarre dès qu'Aria voit le jeu en action, et un son retentit à la fin : revenez alors dans Aria (Alt+Tab).",
+                    }
+                    : ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."]),
+                    .. (BenchRunner.OnBattery()
+                        ? new[] { "Le PC est sur batterie : la carte y est bridée et les mesures seraient faussées. Branchez-le sur secteur avant de commencer." }
+                        : [])],
+                Note: bench
+                    ? $"Le banc d'essai Aria s'ouvre en plein écran à chaque mesure (Ultra, {BenchLabel(benchDefinition)}) et se ferme seul : laissez le PC travailler, sur secteur pour un portable. Échap arrête la mesure en cours."
+                    : "Chaque mesure démarre dès qu'Aria voit le jeu en action, et un son retentit à la fin : revenez alors dans Aria (Alt+Tab).",
                 IsRisky: true)))
             return;
 
         _goal = goal;
+        _benchMode = bench;
+        _benchDefinition = benchDefinition;
+        _previousStep = "";
         _memoryPhase = false;
         _aborted = false;
         _validating = false;
@@ -193,6 +234,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             _start = TuningPlan.Start(GpuProfile.OriginFor(t) ?? _before);
             _baseline = null;
             _baselineGame = null;
+            _baselineFps = null;
             _step = Step.Baseline;
             _lastStable = _start;
             if (await ApplyAsync(_start)) await MeasureAsync();
@@ -202,7 +244,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         var balanced = Record!.ResultState!;
         _baseline = Record.Baseline;
         _baselineGame = Record.Game;
+        // FPS de départ comparables seulement si Équilibre a mesuré avec le banc, à la même définition
+        _baselineFps = _benchMode && Record.BenchDefinition == _benchDefinition ? Record.BenchFps : null;
         _lastStableReport = null;
+        _lastStableFps = null;
         if (goal == TuningGoal.Economy)
         {
             _start = balanced;
@@ -229,6 +274,11 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             : _search is not null
             ? $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_search.Tested + 1} · {_search.StageName}"
             : _step == Step.Baseline ? "MESURE DE DÉPART" : "PERFORMANCE · RÉGLAGE DE BASE";
+        if (_benchMode)
+        {
+            await MeasureWithBenchAsync(gpu, step);
+            return;
+        }
         var watch = _goal == TuningGoal.Economy && !_memoryPhase
             ? "Jugez la fluidité : la perte mesurée s'affichera à la fin."
             : "Surveillez bandes, scintillements ou couleurs bizarres.";
@@ -284,8 +334,86 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (_aborted) return;
         SystemSounds.Asterisk.Play();
         _current = report;
-        Review(report, game);
+        _bench = null;
+        Review(report, game, null);
     }
+
+    /// <summary>
+    /// Mesure avec le banc d'essai : Aria-Bench tourne en plein écran (Ultra, définition de l'écran) pendant que la
+    /// télémétrie habituelle enregistre la carte. Le banc vérifie aussi ses images : une erreur de calcul trahit l'instabilité.
+    /// </summary>
+    private async Task MeasureWithBenchAsync(GpuTelemetry gpu, GpuTuningState? step)
+    {
+        var setting = _validating ? $"Réglage retenu en place ({_lastStable.Describe()})"
+            : step is not null ? $"Palier en place : {step.Describe()}"
+            : $"{(_step == Step.Baseline ? "Réglage d'origine" : "Réglage de base")} en place ({_start.Describe()})";
+        var minutes = _duration.TotalMinutes >= 2 ? $"{_duration.TotalMinutes:0} minutes" : $"{_duration.TotalSeconds:0} secondes";
+        Instruction = (_previousStep.Length > 0 ? _previousStep + "\n" : "") +
+                      $"{setting}. Le banc d'essai Aria tourne en plein écran pendant {minutes}, puis se ferme seul : laissez le PC travailler. Échap l'arrête.";
+        Phase = AssistantPhase.Measuring;
+        Progress = 0;
+        IsWaiting = false;
+        GameText = $"BANC D'ESSAI · ULTRA · {BenchLabel(_benchDefinition).ToUpperInvariant()}";
+        ProgressText = "DÉMARRAGE DU BANC D'ESSAI";
+
+        _stop = new CancellationTokenSource();
+        var token = _stop.Token;
+        PerformanceReport? report = null;
+        BenchResult bench;
+        try
+        {
+            var running = BenchRunner.RunAsync(BenchQuality, _benchDefinition, _duration + BenchRunner.Tail, BenchOutput, token);
+            try
+            {
+                // La télémétrie démarre quand le banc dessine déjà ses images mesurées
+                await Task.Delay(BenchRunner.LeadTime, token);
+                report = await PerformanceSession.RunAsync(gpu, _duration, new Progress<TimeSpan>(UpdateProgress), token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Arrêt pendant le démarrage : pas de télémétrie
+            }
+            bench = await running;
+        }
+        catch (Exception e) when (e is FileNotFoundException or InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            bench = BenchResult.Missing($"Le banc d'essai n'a pas pu démarrer : {e.Message}");
+        }
+        finally
+        {
+            _stop.Dispose();
+            _stop = null;
+        }
+        if (_aborted) return;
+
+        _bench = bench;
+        _current = report;
+        // FPS bridés par une limite (V-Sync, limite du pilote) : on charge davantage la carte et on refait la mesure
+        if (bench.Pass?.Plafond is not null && !bench.Unstable && BenchRunner.NextDefinition(_benchDefinition) is { } next)
+        {
+            _benchDefinition = next;
+            _baselineFps = null;
+            _previousStep = $"FPS plafonnés par une limite d'images : mesure refaite en {BenchLabel(next)} pour charger la carte à fond.";
+            await Retry();
+            return;
+        }
+        if (report is null)
+        {
+            SystemSounds.Asterisk.Play();
+            Tiles = [];
+            Incidents = [];
+            HasIncidents = false;
+            Headline = bench.Erreurs.FirstOrDefault() ?? "Mesure arrêtée avant d'avoir commencé";
+            ShowQuestion = false;
+            ShowRetry = true;
+            ShowGoBack = false;
+            Phase = AssistantPhase.Review;
+            return;
+        }
+        Review(report, $"le banc d'essai Aria (Ultra {BenchLabel(_benchDefinition)})", bench);
+    }
+
+    public static string BenchLabel(int definition) => definition == 2160 ? "4K" : $"{definition}p";
 
     private void UpdateProgress(TimeSpan elapsed)
     {
@@ -294,14 +422,34 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         ProgressText = $"MESURE EN COURS · {(left < TimeSpan.Zero ? TimeSpan.Zero : left):m\\:ss} RESTANTES";
     }
 
-    private void Review(PerformanceReport report, string game)
+    private void Review(PerformanceReport report, string game, BenchResult? bench)
     {
-        Incidents = report.Findings.Where(f => report.Unstable && f.Severity == Severity.Critical)
+        // Instable : plantage noté par Windows, ou (banc d'essai) erreur de calcul / pilote qui lâche pendant le rendu
+        var unstable = report.Unstable || bench?.Unstable == true;
+        var incidents = report.Findings.Where(f => report.Unstable && f.Severity == Severity.Critical)
             .Select(f => new FindingItem(f.Title, f.Detail, f.Advice, [], f.Severity)).ToList();
+        if (bench?.CalculationErrors == true && bench.Pass is { } bad)
+            incidents.Insert(0, new FindingItem("Erreurs de calcul",
+                $"{bad.ErreursCalcul} image(s) de contrôle sur {bad.Verifications} différaient de la référence (jusqu'à {bad.PixelsDifferents:N0} pixels).",
+                "La carte calcule faux avec ce réglage, même sans planter : l'assistant passe à un palier plus prudent.", [], Severity.Critical));
+        if (bench?.DriverFailure == true)
+            incidents.Insert(0, new FindingItem("Le pilote a lâché pendant le banc d'essai", bench.Erreurs.FirstOrDefault() ?? "",
+                "Réglage instable : l'assistant passe à un palier plus prudent.", [], Severity.Critical));
+        Incidents = incidents;
         HasIncidents = Incidents.Count > 0;
         var isReference = _search is null && _step == Step.Baseline && !_validating;
-        Tiles = BuildTiles(report, isReference ? null : _baseline);
+        var fps = bench?.Pass?.FpsMoyen;
+        Tiles = BuildTiles(report, isReference ? null : _baseline, fps, isReference ? null : _baselineFps);
+        var automatic = bench is not null && bench.Pass is not null;
 
+        if (_validating && automatic)
+        {
+            // Banc d'essai : verdict automatique (Stable termine, Unstable recule d'un cran)
+            if (unstable) _ = Unstable();
+            else if (report.Conclusive) _ = Stable();
+            else ShowInconclusive();
+            return;
+        }
         if (_validating)
         {
             Headline = report.Unstable ? "Plantage détecté pendant la validation"
@@ -317,14 +465,16 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             return;
         }
 
-        if (_search is null && report.Conclusive && !report.Unstable && tuner() is { } t)
+        if (_search is null && report.Conclusive && !unstable && tuner() is { } t)
         {
             if (_step == Step.Baseline)
             {
                 // Mesure de départ d'Équilibre réussie : elle devient la référence, puis premier palier
                 _baseline = report.Stats;
-                _baselineGame = report.Incidents?.Game ?? game;
+                _baselineFps = fps;
+                _baselineGame = bench is not null ? game : report.Incidents?.Game ?? game;
                 _lastStableReport = report;
+                _lastStableFps = fps;
                 // Plafond si la carte le permet (Turing et plus récentes), sinon limite de puissance, sinon décalage seul
                 if (TuningPlan.BalancedCap(report.Stats, t.Limits) is { } cap)
                     _search = TuningSearch.Balanced(_start, t.Limits, cap);
@@ -339,6 +489,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                         : "Cette carte ne permet ni plafond, ni limite de puissance, ni décalage réglables : Équilibre n'a rien à proposer.");
                     return;
                 }
+            }
+            else if (automatic)
+            {
+                // Réglage de base de Performance : images vérifiées par le banc, pas besoin de demander
+                _previousStep = $"Réglage de base stable{FpsNote(fps)}.";
+                _ = Stable();
+                return;
             }
             else
             {
@@ -364,20 +521,70 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         }
 
         var economy = _search?.Goal == TuningGoal.Economy;
+        if (automatic && _search is not null && !economy)
+        {
+            // Banc d'essai : erreur de calcul ou plantage → pas plus fin ; sinon le palier tient
+            var tested = _search.Current.Describe();
+            if (unstable)
+            {
+                _previousStep = $"Palier précédent ({tested}) : instable ({(bench!.CalculationErrors ? "erreurs de calcul" : "plantage")}), pas plus fin.";
+                _ = Unstable();
+                return;
+            }
+            if (report.Conclusive)
+            {
+                _previousStep = $"Palier précédent ({tested}) : stable, images vérifiées{FpsNote(fps)}.";
+                _ = Stable();
+                return;
+            }
+        }
+        if (automatic && _search is null && _step == Step.PerformanceBase && unstable)
+        {
+            // Réglage de base de Performance instable : Performance s'arrête et revient au réglage d'Équilibre
+            _ = Unstable();
+            return;
+        }
+        if (automatic && _search is null && _step == Step.Baseline && bench!.CalculationErrors)
+        {
+            // Erreurs de calcul dès le réglage d'origine : inutile de chercher un undervolt
+            SystemSounds.Asterisk.Play();
+            Headline = "Erreurs de calcul dès le réglage d'origine";
+            ShowQuestion = false;
+            ShowRetry = true;
+            ShowGoBack = false;
+            Phase = AssistantPhase.Review;
+            return;
+        }
+        if (bench is not null) SystemSounds.Asterisk.Play();
         QuestionText = economy
             ? $"{Loss(report)} Le jeu vous paraît-il toujours assez fluide pour continuer à baisser ?"
             : "Pendant ce palier, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
         YesText = economy ? "OUI, CONTINUER" : "NON, TOUT ÉTAIT NORMAL";
         NoText = economy ? "NON, C'EST TROP" : "OUI, J'AI VU UN PROBLÈME";
-        Headline = report.Unstable ? "Plantage détecté pendant ce palier"
+        Headline = unstable ? (bench?.CalculationErrors == true ? "Erreurs de calcul pendant ce palier" : "Plantage détecté pendant ce palier")
             : !report.Conclusive ? "Mesure non concluante : la carte n'a pas assez travaillé"
             : _search is null && _step == Step.PerformanceBase ? "Réglage de base instable"
             : report.Headline;
-        ShowQuestion = _search is not null && report.Conclusive && !report.Unstable;
-        ShowRetry = !report.Conclusive || report.Unstable;
-        ShowGoBack = _search is not null && (report.Unstable || !report.Conclusive);
+        ShowQuestion = _search is not null && report.Conclusive && !unstable;
+        ShowRetry = !report.Conclusive || unstable;
+        ShowGoBack = _search is not null && (unstable || !report.Conclusive);
         Phase = AssistantPhase.Review;
     }
+
+    /// <summary>Mesure trop faible pour juger (carte peu chargée) : on propose de refaire.</summary>
+    private void ShowInconclusive()
+    {
+        SystemSounds.Asterisk.Play();
+        Headline = "Mesure non concluante : la carte n'a pas assez travaillé";
+        ShowQuestion = false;
+        ShowRetry = true;
+        ShowGoBack = false;
+        Phase = AssistantPhase.Review;
+    }
+
+    /// <summary>« , 142 FPS (-1 %) » d'après la mesure de départ.</summary>
+    private string FpsNote(double? fps) =>
+        fps is not { } f ? "" : _baselineFps is { } b && b > 0 ? $", {f:0} FPS ({(f - b) / b * 100:+0;-0;0} %)" : $", {f:0} FPS";
 
     /// <summary>« Fréquence -4 %, -45 W, -6 °C par rapport au départ. » (Économie)</summary>
     private string Loss(PerformanceReport report)
@@ -386,6 +593,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         var s = report.Stats;
         var clock = b.AvgClock > 0 ? (s.AvgClock - b.AvgClock) / b.AvgClock * 100 : 0;
         var parts = new List<string> { $"Fréquence {clock:+0;-0;0} %" };
+        if (_bench?.Pass?.FpsMoyen is { } fps && _baselineFps is { } baseFps && baseFps > 0)
+            parts.Insert(0, $"FPS {(fps - baseFps) / baseFps * 100:+0;-0;0} %");
         if (s.AvgPower is { } p && b.AvgPower is { } bp) parts.Add(TuningPlan.Delta(p, bp, "W"));
         parts.Add(TuningPlan.Delta(s.MaxTemp, b.MaxTemp, "°C"));
         return string.Join(", ", parts) + " par rapport au départ.";
@@ -411,6 +620,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         {
             // Réglage de base stable : la recherche du décalage part de lui
             _lastStableReport = _current;
+            _lastStableFps = _bench?.Pass?.FpsMoyen;
             _search = TuningSearch.Performance(Record!.ResultState!, t.Limits);
             if (_search.Finished) await EndPhaseAsync();
             else await NextStepAsync();
@@ -420,6 +630,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _search.Report(true);
         _lastStable = _search.LastStable;
         _lastStableReport = _current;
+            _lastStableFps = _bench?.Pass?.FpsMoyen;
         await ContinueAsync();
     }
 
@@ -436,6 +647,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         {
             _lastStable = balanced;
             _lastStableReport = null;
+        _lastStableFps = null;
             await FinishAsync("Le décalage d'Équilibre ne tient pas sans plafond à pleine puissance : Performance n'a rien de plus à proposer. La carte revient au réglage d'Équilibre.");
             return;
         }
@@ -464,6 +676,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         {
             _lastStable = _search.Current;
             _lastStableReport = _current;
+            _lastStableFps = _bench?.Pass?.FpsMoyen;
         }
         if (!_memoryPhase) SaveBalancedRecord();
         return FinishAsync(null);
@@ -493,6 +706,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             _lastStable = _start;
         if (_goal == TuningGoal.Balanced) SaveBalancedRecord();
         _lastStableReport = null;
+        _lastStableFps = null;
         await FinishAsync(previous.SameTuning(_lastStable)
             ? "Problème pendant la validation, et plus de marge pour reculer : la carte revient à son réglage de départ."
             : $"Problème pendant la validation : réglage reculé à {_lastStable.Describe()}. Relancez la validation pour en être sûr.");
@@ -544,7 +758,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         if (_goal != TuningGoal.Balanced || _baseline is null || tuner() is not { } t) return;
         var record = new BalancedRecord(DateTime.Now, t.Identity.Name, t.Identity.Uuid, t.Identity.DriverVersion, _baselineGame,
-            _start.ToRaw(), (_lastStable with { AtStartup = false }).ToRaw(), _lastStable.CoreOffsetMHz > _start.CoreOffsetMHz, _baseline);
+            _start.ToRaw(), (_lastStable with { AtStartup = false }).ToRaw(), _lastStable.CoreOffsetMHz > _start.CoreOffsetMHz, _baseline,
+            _baselineFps, _benchMode && _baselineFps is not null ? _benchDefinition : null);
         try
         {
             record.Save();
@@ -568,7 +783,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     ?? (changed
                         ? $"Meilleur réglage stable : {_lastStable.Describe()}. Il est en place jusqu'au prochain redémarrage."
                         : "Aucun palier n'a tenu : la carte est revenue à son réglage de départ.")) + unlocked;
-        Tiles = changed && _lastStableReport is { } r ? BuildTiles(r, _baseline) : [];
+        Tiles = changed && _lastStableReport is { } r ? BuildTiles(r, _baseline, _lastStableFps, _baselineFps) : [];
+        if (_benchMode) SystemSounds.Asterisk.Play();
         Phase = AssistantPhase.Done;
     }
 
@@ -632,18 +848,22 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     }
 
     /// <summary>Chiffres clés d'une mesure, avec ceux de la mesure de départ pour comparer.</summary>
-    private static IReadOnlyList<StatTile> BuildTiles(PerformanceReport r, PerformanceStats? b)
+    private static IReadOnlyList<StatTile> BuildTiles(PerformanceReport r, PerformanceStats? b, double? fps, double? baselineFps)
     {
         if (!r.Conclusive) return [];
         var s = r.Stats;
         string Before(Func<PerformanceStats, double?> pick, string unit) =>
             b is null || pick(b) is not { } before || pick(s) is not { } now ? "" : $"départ {before:0} {unit} ({TuningPlan.Delta(now, before, unit)})";
-        return
+        var tiles = new List<StatTile>();
+        if (fps is { } f)
+            tiles.Add(new("FPS MOY. (BANC)", $"{f:0}", "FPS", baselineFps is { } bf ? $"départ {bf:0} FPS ({TuningPlan.Delta(f, bf, "FPS")})" : ""));
+        tiles.AddRange(
         [
             new("FRÉQUENCE MOY.", $"{s.AvgClock:0}", "MHz", Before(x => x.AvgClock, "MHz")),
             new("CONSO. MOY.", s.AvgPower is { } p ? $"{p:0}" : "–", "W", Before(x => x.AvgPower, "W")),
             new("TEMPÉRATURE MAX", $"{s.MaxTemp}", "°C", Before(x => x.MaxTemp, "°C")),
             new("CHARGE GPU MOY.", $"{s.AvgLoad:0}", "%", Before(x => x.AvgLoad, "%"))
-        ];
+        ]);
+        return tiles;
     }
 }
