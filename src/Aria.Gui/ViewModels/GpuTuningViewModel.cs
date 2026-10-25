@@ -36,7 +36,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         };
     }
 
-    [ObservableProperty] private bool isAvailable;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand))] private bool isAvailable;
     [ObservableProperty] private bool capSupported = true;
     [ObservableProperty] private bool powerSupported = true;
     [ObservableProperty] private bool coreOffsetSupported = true;
@@ -62,6 +62,8 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private string currentText = "";
     [ObservableProperty] private string originText = "";
     [ObservableProperty] private bool hasOrigin;
+    [ObservableProperty] private string originNote = "";
+    [ObservableProperty] private bool hasOriginNote;
     [ObservableProperty] private string message = "";
     [ObservableProperty] private bool hasMessage;
     [ObservableProperty] private bool messageIsError;
@@ -148,6 +150,11 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         CurrentText = state.Describe();
         HasOrigin = origin is not null;
         OriginText = origin?.Describe() ?? "";
+        // Origine ≠ usine : la limite de puissance avait déjà été changée avant Aria (autre logiciel, réglage antérieur)
+        HasOriginNote = origin is not null && _defaultPower > 0 && origin.PowerLimitMilliwatts != _defaultPower;
+        OriginNote = HasOriginNote
+            ? $"Valeur d'usine : {_defaultPower / 1000} W. La carte était déjà à {origin!.PowerLimitWatts:0} W avant Aria (réglage d'un autre logiciel ou antérieur)."
+            : "";
         if (resetSliders) LoadSliders(state);
 
         // Plantages du pilote depuis le dernier réglage d'Aria

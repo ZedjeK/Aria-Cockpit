@@ -850,8 +850,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>Chiffres clés d'une mesure, avec ceux de la mesure de départ pour comparer.</summary>
     private static IReadOnlyList<StatTile> BuildTiles(PerformanceReport r, PerformanceStats? b, double? fps, double? baselineFps)
     {
-        if (!r.Conclusive) return [];
         var s = r.Stats;
+        // Non concluante : le temps de travail de la carte, pour savoir si la mesure a tourné ou si la carte n'était pas vue chargée
+        if (!r.Conclusive)
+            return [new("SECONDES ACTIVES", $"{s.ActiveSeconds}", "s", $"sur {s.Seconds} s mesurées, {PerformanceAnalyzer.MinActiveSeconds} s requises")];
         string Before(Func<PerformanceStats, double?> pick, string unit) =>
             b is null || pick(b) is not { } before || pick(s) is not { } now ? "" : $"départ {before:0} {unit} ({TuningPlan.Delta(now, before, unit)})";
         var tiles = new List<StatTile>();

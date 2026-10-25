@@ -513,6 +513,8 @@
               <StackPanel Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="ORIGINE (AVANT ARIA)" />
                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding OriginText}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding OriginNote}" TextWrapping="Wrap"
+                           Visibility="{Binding HasOriginNote, Converter={StaticResource BoolToVisibility}}" />
               </StackPanel>
             </StackPanel>
           </ContentControl>
