@@ -89,7 +89,8 @@ public sealed class GpuTuner
             if (lib == IntPtr.Zero) return null;
             if (Fn<InitFn>(lib, "nvmlInit_v2")?.Invoke() != Success) return null;
             if (Fn<HandleByIndexFn>(lib, "nvmlDeviceGetHandleByIndex_v2") is not { } byIndex || byIndex(0, out var dev) != Success) return null;
-            return ReadLimits(lib, dev) is { } limits ? new GpuTuner(lib, dev, limits) : null;
+            var name = Text(Fn<DeviceTextFn>(lib, "nvmlDeviceGetName") is { } getName ? b => getName(dev, b, (uint)b.Length) : null) ?? "";
+            return ReadLimits(lib, dev, name) is { } limits ? new GpuTuner(lib, dev, limits) : null;
         }
         catch (Exception e) when (e is EntryPointNotFoundException or DllNotFoundException or BadImageFormatException)
         {
@@ -105,9 +106,9 @@ public sealed class GpuTuner
     {
         lock (_gate)
         {
-            var power = Fn<UIntFn>(_lib, "nvmlDeviceGetPowerManagementLimit") is { } get && get(_device, out var p) == Success
-                ? p
-                : throw new GpuTuningException("Limite de puissance illisible.");
+            var power = ReadPower()
+                        ?? (Fn<UIntFn>(_lib, "nvmlDeviceGetEnforcedPowerLimit") is { } enforced && enforced(_device, out var e) == Success ? e : (uint?)null)
+                        ?? throw new GpuTuningException("Limite de puissance illisible.");
             return new GpuTuningState(power, knownMaxClock, ReadOffset(ClockGraphics), ReadOffset(ClockMemory), atStartup);
         }
     }
@@ -116,21 +117,32 @@ public sealed class GpuTuner
     /// Applique un réglage complet. Ordre : plafond retiré, décalages, puis plafond et limite de puissance
     /// (le plafond se calcule sur la courbe déjà décalée). Lève <see cref="GpuTuningException"/> au premier refus.
     /// </summary>
+    /// <remarks>
+    /// Seuls les réglages que la carte accepte sont envoyés : pas de plafond avant Volta/Turing, pas de limite de
+    /// puissance quand le pilote la verrouille (fréquent sur portable), et une valeur inchangée n'est pas réécrite.
+    /// </remarks>
     public void Apply(GpuTuningState target)
     {
         if (Limits.Check(target) is { } error) throw new GpuTuningException(error);
         lock (_gate)
         {
-            Call(Fn<DeviceFn>(_lib, "nvmlDeviceResetGpuLockedClocks")?.Invoke(_device), "Retrait du plafond de fréquence");
-            WriteOffset(ClockGraphics, target.CoreOffsetMHz, "Décalage GPU");
-            WriteOffset(ClockMemory, target.MemoryOffsetMHz, "Décalage mémoire");
+            if (Limits.SupportsClockLock)
+                Call(Fn<DeviceFn>(_lib, "nvmlDeviceResetGpuLockedClocks")?.Invoke(_device), "Retrait du plafond de fréquence");
+            if (Limits.SupportsCoreOffset && ReadOffset(ClockGraphics) != target.CoreOffsetMHz)
+                WriteOffset(ClockGraphics, target.CoreOffsetMHz, "Décalage GPU");
+            if (Limits.SupportsMemoryOffset && ReadOffset(ClockMemory) != target.MemoryOffsetMHz)
+                WriteOffset(ClockMemory, target.MemoryOffsetMHz, "Décalage mémoire");
             if (target.MaxClockMHz != 0)
                 Call(Fn<SetTwoUIntFn>(_lib, "nvmlDeviceSetGpuLockedClocks")?.Invoke(_device, Limits.MinClockMHz, target.MaxClockMHz),
                     "Plafond de fréquence");
-            Call(Fn<SetUIntFn>(_lib, "nvmlDeviceSetPowerManagementLimit")?.Invoke(_device, target.PowerLimitMilliwatts),
-                "Limite de puissance");
+            if (Limits.SupportsPowerLimit && ReadPower() != target.PowerLimitMilliwatts)
+                Call(Fn<SetUIntFn>(_lib, "nvmlDeviceSetPowerManagementLimit")?.Invoke(_device, target.PowerLimitMilliwatts),
+                    "Limite de puissance");
         }
     }
+
+    private uint? ReadPower() =>
+        Fn<UIntFn>(_lib, "nvmlDeviceGetPowerManagementLimit") is { } get && get(_device, out var p) == Success ? p : null;
 
     private int ReadOffset(int type)
     {
@@ -140,7 +152,10 @@ public sealed class GpuTuner
             if (get(_device, ref info) == Success) return info.OffsetMHz;
         }
         var old = Fn<IntFn>(_lib, type == ClockGraphics ? "nvmlDeviceGetGpcClkVfOffset" : "nvmlDeviceGetMemClkVfOffset");
-        return old is not null && old(_device, out var offset) == Success ? offset : throw new GpuTuningException("Décalage de fréquence illisible.");
+        if (old is not null && old(_device, out var offset) == Success) return offset;
+        // Décalages indisponibles sur cette carte : 0, et les curseurs correspondants sont désactivés
+        var supported = type == ClockGraphics ? Limits.SupportsCoreOffset : Limits.SupportsMemoryOffset;
+        return supported ? throw new GpuTuningException("Décalage de fréquence illisible.") : 0;
     }
 
     private void WriteOffset(int type, int offset, string label)
@@ -155,14 +170,40 @@ public sealed class GpuTuner
         Call(old?.Invoke(_device, offset), label);
     }
 
-    private static GpuTuningLimits? ReadLimits(IntPtr lib, IntPtr dev)
+    private static GpuTuningLimits? ReadLimits(IntPtr lib, IntPtr dev, string name)
     {
-        if (Fn<TwoUIntFn>(lib, "nvmlDeviceGetPowerManagementLimitConstraints") is not { } cons || cons(dev, out var minP, out var maxP) != Success) return null;
-        if (Fn<UIntFn>(lib, "nvmlDeviceGetPowerManagementDefaultLimit") is not { } def || def(dev, out var defP) != Success) return null;
+        // Limite de puissance actuelle : indispensable (c'est la valeur sauvegardée et restaurée)
+        uint current;
+        if (Fn<UIntFn>(lib, "nvmlDeviceGetPowerManagementLimit") is { } get && get(dev, out var p) == Success) current = p;
+        else if (Fn<UIntFn>(lib, "nvmlDeviceGetEnforcedPowerLimit") is { } enforced && enforced(dev, out var e) == Success) current = e;
+        else return null;
+
+        // Plage réglable : souvent verrouillée sur portable ; la limite reste alors celle du fabricant
+        uint min = current, max = current, dflt = current, minP = 0, maxP = 0;
+        var adjustable = Fn<TwoUIntFn>(lib, "nvmlDeviceGetPowerManagementLimitConstraints") is { } cons
+                         && cons(dev, out minP, out maxP) == Success && maxP > minP;
+        if (adjustable)
+        {
+            min = minP;
+            max = maxP;
+            if (Fn<UIntFn>(lib, "nvmlDeviceGetPowerManagementDefaultLimit") is { } def && def(dev, out var d) == Success) dflt = d;
+        }
+
         if (Fn<TypedUIntFn>(lib, "nvmlDeviceGetMaxClockInfo") is not { } maxClock || maxClock(dev, ClockGraphics, out var maxMHz) != Success) return null;
         var (coreMin, coreMax) = OffsetRange(lib, dev, ClockGraphics);
         var (memMin, memMax) = OffsetRange(lib, dev, ClockMemory);
-        return new GpuTuningLimits(minP, maxP, defP, LowestClock(lib, dev), maxMHz, coreMin, coreMax, memMin, memMax);
+        var arch = Architecture(lib, dev, name);
+        return new GpuTuningLimits(min, max, dflt, LowestClock(lib, dev), maxMHz, coreMin, coreMax, memMin, memMax,
+            GpuCapabilities.For(arch).ClockLock, adjustable, arch);
+    }
+
+    /// <summary>Architecture donnée par le pilote (R470+), sinon par la table des modèles, sinon par le nom.</summary>
+    private static GpuArchitecture Architecture(IntPtr lib, IntPtr dev, string name)
+    {
+        if (Fn<UIntFn>(lib, "nvmlDeviceGetArchitecture") is { } get && get(dev, out var a) == Success
+            && Enum.IsDefined(typeof(GpuArchitecture), (int)a) && a != 0)
+            return (GpuArchitecture)a;
+        return GpuCatalog.Find(name)?.Architecture ?? GpuCatalog.ArchitectureFromName(name);
     }
 
     private static (int Min, int Max) OffsetRange(IntPtr lib, IntPtr dev, int type)

@@ -1,0 +1,1219 @@
+{
+ "_source": "Table Aria Cockpit des cartes GeForce, de la GTX 750 (Maxwell) aux RTX 50 (Blackwell). Ne contient que ce qui est fixe pour un modèle (architecture, bureau ou portable, type et quantité de mémoire, RTX) ; fréquences et puissances sont lues en direct sur la carte, car elles varient d'un fabricant à l'autre. Quand plusieurs types de mémoire existent pour un même nom (ex. RTX 4070 GDDR6X puis GDDR6), ils sont tous listés.",
+ "models": [
+  {
+   "name": "GTX 750",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    1,
+    2
+   ]
+  },
+  {
+   "name": "GTX 750 Ti",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    1,
+    2
+   ]
+  },
+  {
+   "name": "GTX 950",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2
+   ]
+  },
+  {
+   "name": "GTX 960",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    4
+   ]
+  },
+  {
+   "name": "GTX 970",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 980",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 980 Ti",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    6
+   ]
+  },
+  {
+   "name": "GTX TITAN X",
+   "arch": "Maxwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    12
+   ]
+  },
+  {
+   "name": "GTX 950M",
+   "arch": "Maxwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5",
+    "DDR3"
+   ],
+   "vram": [
+    2,
+    4
+   ]
+  },
+  {
+   "name": "GTX 960M",
+   "arch": "Maxwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5",
+    "DDR3"
+   ],
+   "vram": [
+    2,
+    4
+   ]
+  },
+  {
+   "name": "GTX 965M",
+   "arch": "Maxwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 970M",
+   "arch": "Maxwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 980M",
+   "arch": "Maxwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GT 1030",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5",
+    "DDR4"
+   ],
+   "vram": [
+    2
+   ]
+  },
+  {
+   "name": "GTX 1050",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3
+   ]
+  },
+  {
+   "name": "GTX 1050 Ti",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 1060",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5",
+    "GDDR5X"
+   ],
+   "vram": [
+    3,
+    5,
+    6
+   ]
+  },
+  {
+   "name": "GTX 1070",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    8
+   ]
+  },
+  {
+   "name": "GTX 1070 Ti",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    8
+   ]
+  },
+  {
+   "name": "GTX 1080",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5X"
+   ],
+   "vram": [
+    8
+   ]
+  },
+  {
+   "name": "GTX 1080 Ti",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5X"
+   ],
+   "vram": [
+    11
+   ]
+  },
+  {
+   "name": "TITAN X (Pascal)",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5X"
+   ],
+   "vram": [
+    12
+   ]
+  },
+  {
+   "name": "TITAN Xp",
+   "arch": "Pascal",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5X"
+   ],
+   "vram": [
+    12
+   ]
+  },
+  {
+   "name": "GTX 1050 Laptop",
+   "arch": "Pascal",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 1050 Ti Laptop",
+   "arch": "Pascal",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 1060 Laptop",
+   "arch": "Pascal",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 1070 Laptop",
+   "arch": "Pascal",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    2,
+    3,
+    4,
+    6,
+    8
+   ]
+  },
+  {
+   "name": "GTX 1080 Laptop",
+   "arch": "Pascal",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5X"
+   ],
+   "vram": [
+    8
+   ]
+  },
+  {
+   "name": "GTX 1630",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 1650",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5",
+    "GDDR6"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 1650 SUPER",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 1660",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR5"
+   ],
+   "vram": [
+    6
+   ]
+  },
+  {
+   "name": "GTX 1660 SUPER",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6
+   ]
+  },
+  {
+   "name": "GTX 1660 Ti",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6
+   ]
+  },
+  {
+   "name": "GTX 1650 Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR5",
+    "GDDR6"
+   ],
+   "vram": [
+    4
+   ]
+  },
+  {
+   "name": "GTX 1650 Ti Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6
+   ]
+  },
+  {
+   "name": "GTX 1660 Ti Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6
+   ]
+  },
+  {
+   "name": "RTX 2060",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2060 SUPER",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2070",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2070 SUPER",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2080",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2080 SUPER",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2080 Ti",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    11
+   ],
+   "rtx": true
+  },
+  {
+   "name": "TITAN RTX",
+   "arch": "Turing",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2050 Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2060 Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2070 Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2070 SUPER Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2080 Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 2080 SUPER Laptop",
+   "arch": "Turing",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3050",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3060",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8,
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3060 Ti",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6",
+    "GDDR6X"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3070",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3070 Ti",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3080",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    10,
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3080 Ti",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3090",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3090 Ti",
+   "arch": "Ampere",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3050 Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3050 Ti Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3060 Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3070 Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3070 Ti Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3080 Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 3080 Ti Laptop",
+   "arch": "Ampere",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    4,
+    6,
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4060",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4060 Ti",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4070",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X",
+    "GDDR6"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4070 SUPER",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4070 Ti",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4070 Ti SUPER",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4080",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4080 SUPER",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4090",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4090 D",
+   "arch": "Ada",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6X"
+   ],
+   "vram": [
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4050 Laptop",
+   "arch": "Ada",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4060 Laptop",
+   "arch": "Ada",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4070 Laptop",
+   "arch": "Ada",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    6,
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4080 Laptop",
+   "arch": "Ada",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 4090 Laptop",
+   "arch": "Ada",
+   "segment": "laptop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5050",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR6"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5060",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5060 Ti",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5070",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    12
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5070 Ti",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5080",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    16
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5090",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    32
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5090 D",
+   "arch": "Blackwell",
+   "segment": "desktop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    32
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5050 Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5060 Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5070 Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5070 Ti Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5080 Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  },
+  {
+   "name": "RTX 5090 Laptop",
+   "arch": "Blackwell",
+   "segment": "laptop",
+   "memory": [
+    "GDDR7"
+   ],
+   "vram": [
+    8,
+    12,
+    16,
+    24
+   ],
+   "rtx": true
+  }
+ ]
+}

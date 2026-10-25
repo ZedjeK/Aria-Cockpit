@@ -131,12 +131,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (tuner() is not { } t) return;
         if (goal != TuningGoal.Balanced && Record?.ResultState is null) return;
 
+        var noLock = !t.Limits.SupportsClockLock;
         var (name, what, verdict) = goal switch
         {
+            TuningGoal.Balanced when noLock => ("Équilibre",
+                $"mesurer votre jeu au réglage d'origine, caler la limite de puissance sur la consommation mesurée, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
+                $"Votre carte ({GpuCatalog.Describe(t.Limits.Architecture)}) ne permet pas de plafond de fréquence : Équilibre lui donne plus de fréquence pour les mêmes watts, et Économie pourra ensuite échanger ce gain contre des watts",
+                "artefacts ou plantage → pas plus fin"),
             TuningGoal.Balanced => ("Équilibre",
                 "mesurer votre jeu au réglage d'origine, plafonner la carte à sa fréquence haute habituelle, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
                 "Résultat : les mêmes FPS avec moins de watts, gardé pour débloquer Économie et Performance",
                 "artefacts ou plantage → pas plus fin"),
+            TuningGoal.Economy when noLock => ("Économie",
+                "partir du réglage d'Équilibre et baisser la limite de puissance palier par palier (environ 10 %, puis 5 %, puis 5 W), jusqu'à 60 % de la valeur d'usine. À chaque palier, vous voyez la perte mesurée",
+                "perte trop grande → pas plus fin"),
             TuningGoal.Economy => ("Économie",
                 $"partir du réglage d'Équilibre et baisser le plafond palier par palier (environ 5 %, puis 2,5 %, puis 15 MHz), 15 % au plus. À chaque palier, vous voyez la perte mesurée",
                 "perte trop grande → pas plus fin"),
@@ -317,12 +325,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 _baseline = report.Stats;
                 _baselineGame = report.Incidents?.Game ?? game;
                 _lastStableReport = report;
-                if (TuningPlan.BalancedCap(report.Stats, t.Limits) is not { } cap)
+                // Plafond si la carte le permet (Turing et plus récentes), sinon limite de puissance, sinon décalage seul
+                if (TuningPlan.BalancedCap(report.Stats, t.Limits) is { } cap)
+                    _search = TuningSearch.Balanced(_start, t.Limits, cap);
+                else if (!t.Limits.SupportsClockLock && TuningPlan.BalancedPower(report.Stats, t.Limits) is { } power)
+                    _search = TuningSearch.BalancedByPower(_start, t.Limits, power);
+                else if (!t.Limits.SupportsClockLock && t.Limits.SupportsCoreOffset)
+                    _search = TuningSearch.Balanced(_start, t.Limits, 0);
+                else
                 {
-                    _ = FinishAsync("Fréquence de la carte en jeu introuvable dans la mesure de départ : impossible de placer le plafond.");
+                    _ = FinishAsync(t.Limits.SupportsClockLock
+                        ? "Fréquence de la carte en jeu introuvable dans la mesure de départ : impossible de placer le plafond."
+                        : "Cette carte ne permet ni plafond, ni limite de puissance, ni décalage réglables : Équilibre n'a rien à proposer.");
                     return;
                 }
-                _search = TuningSearch.Balanced(_start, t.Limits, cap);
             }
             else
             {

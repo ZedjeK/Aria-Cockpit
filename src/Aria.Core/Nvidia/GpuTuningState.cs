@@ -58,13 +58,22 @@ public sealed record GpuTuningLimits(
     int MinCoreOffsetMHz,
     int MaxCoreOffsetMHz,
     int MinMemoryOffsetMHz,
-    int MaxMemoryOffsetMHz)
+    int MaxMemoryOffsetMHz,
+    bool SupportsClockLock = true,
+    bool SupportsPowerLimit = true,
+    GpuArchitecture Architecture = GpuArchitecture.Unknown)
 {
+    /// <summary>Le pilote donne une plage de décalage GPU (sinon : décalages indisponibles sur cette carte).</summary>
+    public bool SupportsCoreOffset => MinCoreOffsetMHz != MaxCoreOffsetMHz;
+    public bool SupportsMemoryOffset => MinMemoryOffsetMHz != MaxMemoryOffsetMHz;
+
     /// <summary>null si le réglage tient dans les plages, sinon la raison du refus.</summary>
     public string? Check(GpuTuningState s)
     {
         if (s.PowerLimitMilliwatts < MinPowerMilliwatts || s.PowerLimitMilliwatts > MaxPowerMilliwatts)
             return $"Limite de puissance hors plage ({MinPowerMilliwatts / 1000} à {MaxPowerMilliwatts / 1000} W).";
+        if (s.MaxClockMHz != 0 && !SupportsClockLock)
+            return $"Plafond de fréquence indisponible sur cette carte ({GpuCatalog.Describe(Architecture)} : il faut une carte Turing, RTX 20 ou plus récente).";
         if (s.MaxClockMHz != 0 && (s.MaxClockMHz <= MinClockMHz || s.MaxClockMHz > MaxClockMHz))
             return $"Plafond de fréquence hors plage ({MinClockMHz} à {MaxClockMHz} MHz).";
         if (s.CoreOffsetMHz < MinCoreOffsetMHz || s.CoreOffsetMHz > MaxCoreOffsetMHz)

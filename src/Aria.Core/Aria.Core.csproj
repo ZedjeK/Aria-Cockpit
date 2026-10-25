@@ -26,6 +26,8 @@
     <EmbeddedResource Include="..\..\config\bios\*.json" LogicalName="Aria.Bios.%(Filename).json" />
     <!-- Table nom de carte → identifiant NVIDIA (ZenitH-AT/nvidia-data, domaine public), secours hors ligne -->
     <EmbeddedResource Include="Updates\nvidia-gpu-data.json" LogicalName="Aria.Nvidia.gpu-data.json" />
+    <!-- Table des cartes GeForce (GTX 750 → RTX 50) : architecture, mémoire, bureau ou portable -->
+    <EmbeddedResource Include="..\..\config\gpus\geforce.json" LogicalName="Aria.Gpus.geforce.json" />
   </ItemGroup>
 
 </Project>

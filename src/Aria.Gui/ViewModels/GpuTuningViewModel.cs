@@ -37,6 +37,12 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     }
 
     [ObservableProperty] private bool isAvailable;
+    [ObservableProperty] private bool capSupported = true;
+    [ObservableProperty] private bool powerSupported = true;
+    [ObservableProperty] private bool coreOffsetSupported = true;
+    [ObservableProperty] private bool memoryOffsetSupported = true;
+    [ObservableProperty] private string capNote = "";
+    [ObservableProperty] private string powerNote = "";
     [ObservableProperty] private bool isUnavailable;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand))] private bool isBusy;
 
@@ -100,6 +106,13 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     private void SetRanges(GpuTuningLimits l)
     {
+        // Réglages que la carte accepte : les autres curseurs sont désactivés, avec la raison
+        CapSupported = l.SupportsClockLock;
+        PowerSupported = l.SupportsPowerLimit;
+        CoreOffsetSupported = l.SupportsCoreOffset;
+        MemoryOffsetSupported = l.SupportsMemoryOffset;
+        CapNote = CapSupported ? "" : $"Indisponible sur votre carte ({GpuCatalog.Describe(l.Architecture)}) : le plafond de fréquence demande une carte Turing (RTX 20, GTX 16) ou plus récente.";
+        PowerNote = PowerSupported ? "" : "Verrouillée par le pilote sur cette carte (fréquent sur les portables, qui gèrent leur puissance eux-mêmes).";
         _defaultPower = l.DefaultPowerMilliwatts;
         PowerMin = Math.Ceiling(l.MinPowerMilliwatts / 1000.0);
         PowerMax = Math.Floor(l.MaxPowerMilliwatts / 1000.0);

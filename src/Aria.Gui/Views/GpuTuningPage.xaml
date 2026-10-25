@@ -367,16 +367,18 @@
             </Grid>
             <Slider
               Margin="0,6,0,0"
+              IsEnabled="{Binding PowerSupported}"
               IsSnapToTickEnabled="True"
               Maximum="{Binding PowerMax}"
               Minimum="{Binding PowerMin}"
               TickFrequency="5"
               Value="{Binding PowerWatts}" />
+            <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="{StaticResource NeonOrangeBrush}" Text="{Binding PowerNote}" TextWrapping="Wrap" Visibility="{Binding PowerSupported, Converter={StaticResource InverseBoolToVisibility}}" />
             <TextBlock Style="{StaticResource SliderHelp}" Text="Le plafond de consommation de la carte. 80 à 90 % de la valeur d'usine : nettement moins de chauffe et de bruit pour quelques pour cent de performance en moins." />
 
             <!-- Plafond de fréquence -->
             <Grid>
-              <CheckBox Content="PLAFOND DE FRÉQUENCE" FontWeight="SemiBold" Foreground="{StaticResource NeonBlueLightBrush}" IsChecked="{Binding CapEnabled}" />
+              <CheckBox Content="PLAFOND DE FRÉQUENCE" FontWeight="SemiBold" Foreground="{StaticResource NeonBlueLightBrush}" IsChecked="{Binding CapEnabled}" IsEnabled="{Binding CapSupported}" />
               <TextBlock Style="{StaticResource SliderValue}" Text="{Binding CapText}" />
             </Grid>
             <Slider
@@ -389,6 +391,7 @@
               SmallChange="5"
               TickFrequency="5"
               Value="{Binding CapMHz}" />
+            <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="{StaticResource NeonOrangeBrush}" Text="{Binding CapNote}" TextWrapping="Wrap" Visibility="{Binding CapSupported, Converter={StaticResource InverseBoolToVisibility}}" />
             <TextBlock Style="{StaticResource SliderHelp}" Text="La carte ne dépasse plus cette fréquence. Combiné à un décalage GPU positif, c'est l'undervolt : la même fréquence, atteinte avec moins de tension. La carte redescend normalement au repos." />
 
             <!-- Décalage GPU -->
@@ -397,6 +400,7 @@
               <TextBlock Style="{StaticResource SliderValue}" Text="{Binding CoreText}" />
             </Grid>
             <Slider
+              IsEnabled="{Binding CoreOffsetSupported}"
               Margin="0,6,0,0"
               IsSnapToTickEnabled="True"
               Maximum="{Binding CoreMax}"
@@ -414,6 +418,7 @@
             </Grid>
             <Slider
               Margin="0,6,0,0"
+              IsEnabled="{Binding MemoryOffsetSupported}"
               IsSnapToTickEnabled="True"
               Maximum="{Binding MemoryMax}"
               Minimum="{Binding MemoryMin}"
