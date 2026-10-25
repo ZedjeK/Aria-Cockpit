@@ -50,11 +50,11 @@ public sealed class BenchLog
 public sealed record GpuInfo(string Nom, string VendorId, string DeviceId, long MemoireMo, string PiloteWindows, string? PiloteNvidia,
     IReadOnlyList<string> CartesDetectees);
 
-public sealed record PassResult(string Definition, int Largeur, int Hauteur, int Images, double Secondes, double FpsMoyen,
+public sealed record PassResult(string Qualite, string Definition, int Largeur, int Hauteur, int Images, double Secondes, double FpsMoyen,
     double TempsMoyenMs, double Fps1PourcentBas, double TempsP99Ms, double TempsMaxMs)
 {
-    public static PassResult From(int definition, int width, int height, FrameSummary s) =>
-        new(BenchOptions.Label(definition), width, height, s.Frames, s.Seconds, s.AverageFps, s.AverageMs, s.Low1PercentFps, s.P99Ms, s.MaxMs);
+    public static PassResult From(QualityPreset quality, int definition, int width, int height, FrameSummary s) =>
+        new(quality.Label, BenchOptions.Label(definition), width, height, s.Frames, s.Seconds, s.AverageFps, s.AverageMs, s.Low1PercentFps, s.P99Ms, s.MaxMs);
 }
 
 /// <summary>Erreur attendue (carte absente, pilote qui lâche…) : son message va tel quel dans le journal.</summary>

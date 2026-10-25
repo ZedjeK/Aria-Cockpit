@@ -56,13 +56,14 @@ namespace Aria.Bench
             {
                 using var renderer = new Renderer(gpu);
                 var passLength = options.Warmup + options.Duration;
-                var total = passLength.TotalSeconds * options.Definitions.Count;
+                var passes = options.Qualities.SelectMany(q => options.Definitions.Select(d => (Quality: q, Definition: d))).ToList();
+                var total = passLength.TotalSeconds * passes.Count;
                 var done = 0.0;
 
-                foreach (var definition in options.Definitions)
+                foreach (var (quality, definition) in passes)
                 {
                     var (width, height) = BenchOptions.SizeOf(definition);
-                    renderer.Resize(width, height);
+                    renderer.Configure(quality, width, height);
                     var stats = new FrameStats();
                     var clock = Stopwatch.StartNew();
                     var last = clock.Elapsed;
@@ -71,7 +72,7 @@ namespace Aria.Bench
                     {
                         if (!window.PumpMessages())
                         {
-                            if (stats.Count > 0) log.Resultats.Add(PassResult.From(definition, width, height, stats.Summarize()));
+                            if (stats.Count > 0) log.Resultats.Add(PassResult.From(quality, definition, width, height, stats.Summarize()));
                             return false;
                         }
                         var elapsed = clock.Elapsed;
@@ -85,7 +86,7 @@ namespace Aria.Bench
                         last = now;
                     }
 
-                    log.Resultats.Add(PassResult.From(definition, width, height, stats.Summarize()));
+                    log.Resultats.Add(PassResult.From(quality, definition, width, height, stats.Summarize()));
                     done += passLength.TotalSeconds;
                 }
                 return true;

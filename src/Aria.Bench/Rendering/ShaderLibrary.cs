@@ -6,7 +6,18 @@ namespace Aria.Bench.Rendering;
 /// <summary>Shaders HLSL intégrés à l'exe, compilés en DXIL (modèle 6.0) par DXC au lancement.</summary>
 public static class ShaderLibrary
 {
-    public static IReadOnlyList<string> Names { get; } = ["Scene", "Blit"];
+    public static IReadOnlyList<string> Names { get; } = ["Scene", "Post"];
+
+    /// <summary>Tous les points d'entrée utilisés par le moteur (fichier, étape, nom) : vérifiés par les tests.</summary>
+    public static IReadOnlyList<(string File, DxcShaderStage Stage, string Entry)> Entries { get; } =
+    [
+        ("Scene", DxcShaderStage.Vertex, "VSSky"), ("Scene", DxcShaderStage.Pixel, "PSSky"),
+        ("Scene", DxcShaderStage.Vertex, "VSTerrain"), ("Scene", DxcShaderStage.Pixel, "PSTerrain"),
+        ("Scene", DxcShaderStage.Vertex, "VSObjects"), ("Scene", DxcShaderStage.Pixel, "PSObjects"),
+        ("Post", DxcShaderStage.Vertex, "VSFull"), ("Post", DxcShaderStage.Pixel, "PSSsao"),
+        ("Post", DxcShaderStage.Pixel, "PSBloomDown"), ("Post", DxcShaderStage.Pixel, "PSBloomUp"),
+        ("Post", DxcShaderStage.Pixel, "PSComposite")
+    ];
 
     public static string Source(string name)
     {
@@ -26,7 +37,7 @@ public static class ShaderLibrary
         return bytecode;
     }
 
-    /// <summary>Les deux étapes d'un shader : sommets (VSMain, qui porte la signature racine) et pixels (PSMain).</summary>
-    public static (byte[] Vertex, byte[] Pixel) CompilePair(string name) =>
-        (Compile(name, DxcShaderStage.Vertex, "VSMain"), Compile(name, DxcShaderStage.Pixel, "PSMain"));
+    /// <summary>Compile tous les points d'entrée une fois ; clé : nom du point d'entrée.</summary>
+    public static Dictionary<string, byte[]> CompileAll() =>
+        Entries.ToDictionary(e => e.Entry, e => Compile(e.File, e.Stage, e.Entry));
 }

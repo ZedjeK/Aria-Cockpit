@@ -4,9 +4,10 @@ namespace Aria.Bench;
 
 /// <summary>
 /// Options du banc d'essai, lues sur la ligne de commande.
-/// Sans option : les trois définitions à la suite, 20 secondes chacune, en plein écran.
+/// Sans option : préréglage Élevé, les trois définitions à la suite, 20 secondes chacune, en plein écran.
 /// </summary>
 public sealed record BenchOptions(
+    IReadOnlyList<QualityPreset> Qualities,
     IReadOnlyList<int> Definitions,
     TimeSpan Duration,
     TimeSpan Warmup,
@@ -19,10 +20,10 @@ public sealed record BenchOptions(
     public static readonly TimeSpan DefaultWarmup = TimeSpan.FromSeconds(3);
 
     public static BenchOptions Default { get; } =
-        new(AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
+        new([QualityPreset.High], AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
 
     public const string Help =
-        "Aria-Bench [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--sortie fichier.json]";
+        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--sortie fichier.json]";
 
     /// <summary>Taille du rendu interne (16:9) pour une définition.</summary>
     public static (int Width, int Height) SizeOf(int definition) => definition switch
@@ -44,6 +45,9 @@ public sealed record BenchOptions(
             var arg = args[i].ToLowerInvariant();
             switch (arg)
             {
+                case "--qualite":
+                    options = options with { Qualities = ParseQualities(Next(args, ref i, arg)) };
+                    break;
                 case "--def":
                     options = options with { Definitions = ParseDefinitions(Next(args, ref i, arg)) };
                     break;
@@ -73,6 +77,20 @@ public sealed record BenchOptions(
     {
         if (i + 1 >= args.Count) throw new ArgumentException($"Valeur manquante après {option}.");
         return args[++i];
+    }
+
+    private static QualityPreset[] ParseQualities(string raw)
+    {
+        if (raw.Equals("tout", StringComparison.OrdinalIgnoreCase)) return [.. QualityPreset.All];
+        var list = new List<QualityPreset>();
+        foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var preset = QualityPreset.Find(part)
+                ?? throw new ArgumentException($"Qualité invalide : « {part} » (faible, moyen, eleve, ultra ou tout).");
+            if (!list.Contains(preset)) list.Add(preset);
+        }
+        if (list.Count == 0) throw new ArgumentException("Aucune qualité indiquée après --qualite.");
+        return [.. list];
     }
 
     private static int[] ParseDefinitions(string raw)

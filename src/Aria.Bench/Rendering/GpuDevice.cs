@@ -136,12 +136,27 @@ internal sealed class GpuDevice : IDisposable
         _frameFenceValues[index] = Signal();
     }
 
-    /// <summary>Exécute tout de suite une liste ponctuelle (chargement) et attend la fin.</summary>
-    public void Submit(ID3D12GraphicsCommandList list)
+    /// <summary>
+    /// Tampon en mémoire vidéo rempli avec <paramref name="data"/> : copie depuis un tampon intermédiaire,
+    /// puis passage à l'état d'utilisation. Attend la fin de la copie (à faire hors mesure).
+    /// </summary>
+    public ID3D12Resource CreateBuffer<T>(T[] data, ResourceStates finalState, string name) where T : unmanaged
     {
+        var size = (ulong)(data.Length * System.Runtime.CompilerServices.Unsafe.SizeOf<T>());
+        var buffer = Device.CreateCommittedResource(HeapType.Default, ResourceDescription.Buffer(size), ResourceStates.Common);
+        buffer.Name = name;
+        using var staging = Device.CreateCommittedResource(HeapType.Upload, ResourceDescription.Buffer(size), ResourceStates.GenericRead);
+        staging.SetData(data);
+
+        using var allocator = Device.CreateCommandAllocator(CommandListType.Direct);
+        using var list = Device.CreateCommandList<ID3D12GraphicsCommandList>(CommandListType.Direct, allocator);
+        // Un tampon passe seul de COMMON à COPY_DEST à la copie (promotion implicite)
+        list.CopyBufferRegion(buffer, 0, staging, 0, size);
+        list.ResourceBarrierTransition(buffer, ResourceStates.CopyDest, finalState);
         list.Close();
         Queue.ExecuteCommandList(list);
         WaitIdle();
+        return buffer;
     }
 
     /// <summary>Attend que la carte ait fini tout le travail envoyé.</summary>
