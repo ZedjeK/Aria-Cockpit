@@ -5,4 +5,7 @@
     <Project Path="src/Aria.Cli/Aria.Cli.csproj" />
     <Project Path="src/Aria.Bench/Aria.Bench.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Aria.Tests/Aria.Tests.csproj" />
+  </Folder>
 </Solution>

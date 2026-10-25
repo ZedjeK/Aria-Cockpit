@@ -10,12 +10,12 @@ using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
 
-public enum AssistantPhase { Idle, Measuring, Review, MemoryPrompt, Done }
+public enum AssistantPhase { Idle, Preflight, Measuring, Review, MemoryPrompt, Done }
 
 /// <summary>
-/// Assistant guidé de l'onglet Réglage GPU. Équilibre passe en premier : mesure de départ au réglage d'origine,
-/// puis undervolt (plafond + décalage croissant). Son résultat est enregistré et débloque Économie (plafond plus bas)
-/// et Performance (puissance au maximum + décalage croissant), qui partent de lui et se comparent à la même mesure.
+/// Assistant guidé de l'onglet Réglage GPU. Contrôle avant mesure (overclock de NVIDIA App), puis Équilibre en premier :
+/// mesure de départ aux valeurs d'usine, puis undervolt (plafond + décalage croissant). Son résultat est enregistré et débloque
+/// Économie (plafond plus bas) et Performance (courbe d'usine à puissance maximale + décalage croissant), comparés à la même mesure.
 /// Chaque palier est appliqué jusqu'au redémarrage seulement ; rien n'est gardé sans le choix de l'utilisateur.
 /// </summary>
 public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func<Task> refresh) : ObservableObject
@@ -55,6 +55,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private BenchResult? _bench;
     /// <summary>Résultat du palier précédent, rappelé pendant la mesure suivante (verdict automatique).</summary>
     private string _previousStep = "";
+    /// <summary>Mode demandé, mis en attente par le contrôle avant mesure.</summary>
+    private TuningGoal _pendingGoal;
+    /// <summary>Overclock de NVIDIA App illisible : rappelé en tête de la première mesure.</summary>
+    private string _nvidiaAppNote = "";
     private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
 
     /// <summary>Aria-Bench.exe est livré à côté d'Aria Cockpit.</summary>
@@ -70,7 +74,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsDone))]
+    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsPreflight), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsDone))]
     [NotifyCanExecuteChangedFor(nameof(StartBalancedCommand), nameof(StartEconomyCommand), nameof(StartPerformanceCommand))]
     private AssistantPhase phase;
 
@@ -98,6 +102,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private string noText = "";
     [ObservableProperty] private bool showRetry;
     [ObservableProperty] private bool showGoBack;
+    [ObservableProperty] private string preflightText = "";
+    [ObservableProperty] private bool canOpenNvidiaApp;
     [ObservableProperty] private string doneText = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool doneChanged;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool validated;
@@ -107,6 +113,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
     public bool IsIdle => Phase == AssistantPhase.Idle;
     public bool IsActive => Phase != AssistantPhase.Idle;
+    public bool IsPreflight => Phase == AssistantPhase.Preflight;
     public bool IsMeasuring => Phase == AssistantPhase.Measuring;
     public bool IsReview => Phase == AssistantPhase.Review;
     public bool IsMemoryPrompt => Phase == AssistantPhase.MemoryPrompt;
@@ -129,9 +136,61 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         DriverChanged = Record?.DriverChanged(t.Identity) == true;
     }
 
-    [RelayCommand(CanExecute = nameof(CanStartBalanced))] private Task StartBalanced() => Begin(TuningGoal.Balanced);
-    [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartEconomy() => Begin(TuningGoal.Economy);
-    [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartPerformance() => Begin(TuningGoal.Performance);
+    [RelayCommand(CanExecute = nameof(CanStartBalanced))] private Task StartBalanced() => Check(TuningGoal.Balanced);
+    [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartEconomy() => Check(TuningGoal.Economy);
+    [RelayCommand(CanExecute = nameof(CanStartDerived))] private Task StartPerformance() => Check(TuningGoal.Performance);
+
+    /// <summary>
+    /// Contrôle avant mesure : un overclock de NVIDIA App se superpose aux réglages d'Aria et fausserait chaque palier.
+    /// Aria ne peut pas le couper (aucune interface officielle) : elle bloque, explique et laisse l'utilisateur décider.
+    /// </summary>
+    private async Task Check(TuningGoal goal)
+    {
+        _pendingGoal = goal;
+        var app = await Task.Run(() => NvidiaAppTuning.Read());
+        _nvidiaAppNote = app.Unreadable is { } why ? $"Overclock de NVIDIA App : vérification impossible ({why})." : "";
+        if (!app.Active)
+        {
+            if (IsPreflight) Title = "";
+            Phase = AssistantPhase.Idle;
+            await Begin(goal);
+            return;
+        }
+        SystemSounds.Asterisk.Play();
+        Title = "CONTRÔLE AVANT MESURE";
+        Headline = "L'overclock de NVIDIA App est actif";
+        PreflightText = $"{app.Describe()}. Il se superpose aux réglages d'Aria et fausserait chaque palier. " +
+                        "Dans NVIDIA App : Système → Performances → Réglage automatique : Désactivé, puis « Restaurer les valeurs par défaut ». " +
+                        "Revenez ensuite ici et vérifiez à nouveau.";
+        CanOpenNvidiaApp = NvidiaAppTuning.AppPath is not null;
+        Phase = AssistantPhase.Preflight;
+    }
+
+    [RelayCommand]
+    private void OpenNvidiaApp()
+    {
+        if (!NvidiaAppTuning.Open()) CanOpenNvidiaApp = false;
+    }
+
+    [RelayCommand] private Task RecheckNvidiaApp() => Check(_pendingGoal);
+
+    /// <summary>L'utilisateur garde l'overclock de NVIDIA App : la mesure démarre, avec un rappel en tête.</summary>
+    [RelayCommand]
+    private Task ContinueDespiteNvidiaApp()
+    {
+        _nvidiaAppNote = "Overclock de NVIDIA App laissé actif à votre demande : les mesures peuvent être faussées.";
+        Title = "";
+        Phase = AssistantPhase.Idle;
+        return Begin(_pendingGoal);
+    }
+
+    /// <summary>Fermer le contrôle : rien n'a encore été appliqué à la carte.</summary>
+    [RelayCommand]
+    private void DismissPreflight()
+    {
+        Title = "";
+        Phase = AssistantPhase.Idle;
+    }
 
     private bool CanStartDerived() => IsUnlocked && IsIdle && !MeasurementGate.AnalysisRunning;
     private bool CanStartBalanced() => IsIdle && !MeasurementGate.AnalysisRunning;
@@ -160,15 +219,19 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
         var noLock = !t.Limits.SupportsClockLock;
         var bench = UseBench && BenchAvailable;
-        var benchDefinition = BenchRunner.DefinitionFor(BenchRunner.PrimaryScreenHeight());
+        // Économie et Performance reprennent la définition où Équilibre a mesuré (relevée s'il butait sur une limite d'images) :
+        // pas de mesure plafonnée à refaire, et les FPS se comparent à ceux du départ
+        var benchDefinition = goal != TuningGoal.Balanced && Record?.BenchDefinition is { } measured
+            ? measured
+            : BenchRunner.DefinitionFor(BenchRunner.PrimaryScreenHeight());
         var (name, what, verdict) = goal switch
         {
             TuningGoal.Balanced when noLock => ("Équilibre",
-                $"mesurer votre jeu au réglage d'origine, caler la limite de puissance sur la consommation mesurée, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
+                $"mesurer votre jeu aux valeurs d'usine, caler la limite de puissance sur la consommation mesurée, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
                 $"Votre carte ({GpuCatalog.Describe(t.Limits.Architecture)}) ne permet pas de plafond de fréquence : Équilibre lui donne plus de fréquence pour les mêmes watts, et Économie pourra ensuite échanger ce gain contre des watts",
                 "artefacts ou plantage → pas plus fin"),
             TuningGoal.Balanced => ("Équilibre",
-                "mesurer votre jeu au réglage d'origine, plafonner la carte à sa fréquence haute habituelle, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
+                "mesurer votre jeu aux valeurs d'usine, plafonner la carte à sa fréquence haute habituelle, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15). " +
                 "Résultat : les mêmes FPS avec moins de watts, gardé pour débloquer Économie et Performance",
                 "artefacts ou plantage → pas plus fin"),
             TuningGoal.Economy when noLock => ("Économie",
@@ -178,7 +241,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 $"partir du réglage d'Équilibre et baisser le plafond palier par palier (environ 5 %, puis 2,5 %, puis 15 MHz), 15 % au plus. À chaque palier, vous voyez la perte mesurée",
                 "perte trop grande → pas plus fin"),
             _ => ("Performance",
-                $"partir du décalage d'Équilibre, retirer le plafond et monter la limite de puissance au maximum ({t.Limits.MaxPowerMilliwatts / 1000} W), puis augmenter le décalage GPU (+60, +30, puis +15)",
+                $"partir de la courbe d'usine, retirer le plafond et monter la limite de puissance au maximum ({t.Limits.MaxPowerMilliwatts / 1000} W), puis augmenter le décalage GPU (+60, +30, puis +15) jusqu'au plus haut palier stable",
                 "artefacts ou plantage → pas plus fin")
         };
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
@@ -190,7 +253,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     new(goal == TuningGoal.Balanced ? "1. Mesure de départ" : "1. Point de départ",
                         goal switch
                         {
-                            TuningGoal.Balanced => bench ? "réglage d'origine, 3 min de banc d'essai" : "réglage d'origine, 3 min de jeu",
+                            TuningGoal.Balanced => bench ? "valeurs d'usine, 3 min de banc d'essai" : "valeurs d'usine, 3 min de jeu",
                             TuningGoal.Performance => bench ? "réglage de base, 3 min de banc d'essai" : "réglage de base, 3 min de jeu",
                             _ => "résultat d'Équilibre"
                         }),
@@ -228,10 +291,12 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Validated = false;
         _search = null;
         _before = (await Task.Run(() => GpuProfile.ReadCurrent(t))) with { AtStartup = false };
+        _previousStep = string.Join("\n", new[] { PowerNote(t), _nvidiaAppNote }.Where(n => n.Length > 0));
 
         if (goal == TuningGoal.Balanced)
         {
-            _start = TuningPlan.Start(GpuProfile.OriginFor(t) ?? _before);
+            // Mesure de départ aux valeurs d'usine, même si un autre outil a changé la limite de puissance
+            _start = TuningPlan.Start(GpuProfile.Factory(t.Limits, _before.PowerLimitMilliwatts));
             _baseline = null;
             _baselineGame = null;
             _baselineFps = null;
@@ -265,6 +330,19 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (await ApplyAsync(_start)) await MeasureAsync();
     }
 
+    /// <summary>
+    /// Limite de puissance changée par un autre outil (NVIDIA App, Afterburner) : Aria pose ses propres valeurs pendant les mesures,
+    /// mais l'outil reposera la sienne au démarrage. Vide si la limite est celle d'usine (à 2 % près) ou si c'est Aria qui l'a réglée.
+    /// </summary>
+    private string PowerNote(GpuTuner t)
+    {
+        var factory = GpuProfile.Factory(t.Limits, _before.PowerLimitMilliwatts).PowerLimitMilliwatts;
+        if (!t.Limits.SupportsPowerLimit || GpuProfile.OriginFor(t) is not null
+            || Math.Abs((double)_before.PowerLimitMilliwatts - factory) < factory * 0.02) return "";
+        return $"Limite de puissance trouvée à {_before.PowerLimitWatts:0} W au lieu de {factory / 1000} W d'usine, réglée par un autre outil (NVIDIA App, Afterburner…) : " +
+               $"Aria pose ses propres valeurs pendant les mesures. Remettez cet outil par défaut, sinon il reposera {_before.PowerLimitWatts:0} W au prochain démarrage.";
+    }
+
     private async Task MeasureAsync()
     {
         if (await GpuTelemetry.OpenSharedAsync() is not { } gpu) return;
@@ -283,13 +361,16 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             ? "Jugez la fluidité : la perte mesurée s'affichera à la fin."
             : "Surveillez bandes, scintillements ou couleurs bizarres.";
         var sameGame = _baselineGame is { } g ? $" ({g} de préférence)" : "";
-        Instruction = _validating
+        // Rappels du départ (limite d'un autre outil, NVIDIA App) : affichés une fois, en tête de la première mesure
+        var notes = _previousStep.Length > 0 ? _previousStep + "\n" : "";
+        _previousStep = "";
+        Instruction = notes + (_validating
             ? $"Réglage retenu en place ({_lastStable.Describe()}). Jouez normalement pendant 15 minutes, idéalement une scène exigeante : c'est la vraie épreuve de stabilité."
             : step is not null
             ? $"Palier en place : {step.Describe()}. Retournez dans le jeu{sameGame}, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}"
             : _step == Step.Baseline
-                ? $"Réglage d'origine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
-                : $"Réglage de base en place ({_start.Describe()}). Retournez dans le jeu{sameGame} : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}";
+                ? $"Valeurs d'usine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
+                : $"Réglage de base en place ({_start.Describe()}). Retournez dans le jeu{sameGame} : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}");
         Phase = AssistantPhase.Measuring;
         Progress = 0;
         IsWaiting = true;
@@ -346,7 +427,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         var setting = _validating ? $"Réglage retenu en place ({_lastStable.Describe()})"
             : step is not null ? $"Palier en place : {step.Describe()}"
-            : $"{(_step == Step.Baseline ? "Réglage d'origine" : "Réglage de base")} en place ({_start.Describe()})";
+            : $"{(_step == Step.Baseline ? "Valeurs d'usine" : "Réglage de base")} en place ({_start.Describe()})";
         var minutes = _duration.TotalMinutes >= 2 ? $"{_duration.TotalMinutes:0} minutes" : $"{_duration.TotalSeconds:0} secondes";
         Instruction = (_previousStep.Length > 0 ? _previousStep + "\n" : "") +
                       $"{setting}. Le banc d'essai Aria tourne en plein écran pendant {minutes}, puis se ferme seul : laissez le PC travailler. Échap l'arrête.";
@@ -546,9 +627,9 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         }
         if (automatic && _search is null && _step == Step.Baseline && bench!.CalculationErrors)
         {
-            // Erreurs de calcul dès le réglage d'origine : inutile de chercher un undervolt
+            // Erreurs de calcul dès les valeurs d'usine : inutile de chercher un undervolt
             SystemSounds.Asterisk.Play();
-            Headline = "Erreurs de calcul dès le réglage d'origine";
+            Headline = "Erreurs de calcul dès les valeurs d'usine";
             ShowQuestion = false;
             ShowRetry = true;
             ShowGoBack = false;
@@ -648,7 +729,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             _lastStable = balanced;
             _lastStableReport = null;
         _lastStableFps = null;
-            await FinishAsync("Le décalage d'Équilibre ne tient pas sans plafond à pleine puissance : Performance n'a rien de plus à proposer. La carte revient au réglage d'Équilibre.");
+            await FinishAsync("La courbe d'usine ne tient pas sans plafond à pleine puissance : Performance n'a rien à proposer (vérifiez le refroidissement et l'alimentation de la carte). La carte revient au réglage d'Équilibre.");
             return;
         }
         if (_search is null) return;

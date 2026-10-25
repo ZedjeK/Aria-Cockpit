@@ -62,8 +62,6 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private string currentText = "";
     [ObservableProperty] private string originText = "";
     [ObservableProperty] private bool hasOrigin;
-    [ObservableProperty] private string originNote = "";
-    [ObservableProperty] private bool hasOriginNote;
     [ObservableProperty] private string message = "";
     [ObservableProperty] private bool hasMessage;
     [ObservableProperty] private bool messageIsError;
@@ -150,11 +148,6 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         CurrentText = state.Describe();
         HasOrigin = origin is not null;
         OriginText = origin?.Describe() ?? "";
-        // Origine ≠ usine : la limite de puissance avait déjà été changée avant Aria (autre logiciel, réglage antérieur)
-        HasOriginNote = origin is not null && _defaultPower > 0 && origin.PowerLimitMilliwatts != _defaultPower;
-        OriginNote = HasOriginNote
-            ? $"Valeur d'usine : {_defaultPower / 1000} W. La carte était déjà à {origin!.PowerLimitWatts:0} W avant Aria (réglage d'un autre logiciel ou antérieur)."
-            : "";
         if (resetSliders) LoadSliders(state);
 
         // Plantages du pilote depuis le dernier réglage d'Aria
@@ -246,10 +239,10 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
                 Title: "Revenir d'origine",
                 ConfirmText: "Revenir d'origine",
-                Message: OriginText.Length > 0 ? $"La carte retrouve son réglage d'avant Aria : {OriginText}." : "La carte retrouve son réglage d'avant Aria.",
+                Message: OriginText.Length > 0 ? $"La carte retrouve ses valeurs d'usine : {OriginText}." : "La carte retrouve ses valeurs d'usine.",
                 Note: "La tâche de démarrage « Aria Cockpit\\Profil GPU » est supprimée si elle existe.")))
             return;
-        await RunAsync(() => GpuProfile.RevertToOrigin(_tuner, ExePath()), "Réglage d'origine remis.");
+        await RunAsync(() => GpuProfile.RevertToOrigin(_tuner, ExePath()), "Valeurs d'usine remises.");
     }
 
     /// <summary>Remet les curseurs sur le réglage en place, sans rien appliquer.</summary>

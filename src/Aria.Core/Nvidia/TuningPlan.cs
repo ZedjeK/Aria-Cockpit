@@ -154,8 +154,9 @@ public sealed class TuningSearch
     }
 
     /// <summary>
-    /// Performance : réglage de départ = décalage d'Équilibre, sans plafond, limite de puissance au maximum de la carte
+    /// Performance : réglage de départ = courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte
     /// (à mesurer d'abord) ; puis décalage croissant par pas de 60, 30 puis 15 MHz ; recul de 15 MHz au bord.
+    /// Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe, pas aux fréquences hautes.
     /// </summary>
     public static TuningSearch Performance(GpuTuningState balanced, GpuTuningLimits limits)
     {
@@ -165,9 +166,9 @@ public sealed class TuningSearch
         { Goal = TuningGoal.Performance };
     }
 
-    /// <summary>Point de départ de Performance : le décalage d'Équilibre, sans plafond, puissance au maximum.</summary>
+    /// <summary>Point de départ de Performance : courbe d'usine (décalage mémoire d'Équilibre gardé), sans plafond, puissance au maximum.</summary>
     public static GpuTuningState PerformanceStart(GpuTuningState balanced, GpuTuningLimits limits) =>
-        balanced with { MaxClockMHz = 0, PowerLimitMilliwatts = limits.SupportsPowerLimit ? limits.MaxPowerMilliwatts : balanced.PowerLimitMilliwatts };
+        balanced with { MaxClockMHz = 0, CoreOffsetMHz = 0, PowerLimitMilliwatts = limits.SupportsPowerLimit ? limits.MaxPowerMilliwatts : balanced.PowerLimitMilliwatts };
 
     /// <summary>Décalage mémoire par paliers fixes de 250 MHz jusqu'à +1000 : au premier problème, on s'arrête.</summary>
     public static TuningSearch Memory(GpuTuningState stable, GpuTuningLimits limits) =>
@@ -192,7 +193,7 @@ public static class TuningPlan
     /// <summary>Plafond le plus bas proposé par Économie (part du plafond d'Équilibre) : 15 % de fréquence en moins au plus.</summary>
     public const double EconomyFloor = 0.85;
 
-    /// <summary>Le point de départ : le réglage d'origine (avant Aria), sans « au démarrage ».</summary>
+    /// <summary>Le point de départ : le réglage d'origine (valeurs d'usine), sans « au démarrage ».</summary>
     public static GpuTuningState Start(GpuTuningState origin) => origin with { AtStartup = false };
 
     /// <summary>

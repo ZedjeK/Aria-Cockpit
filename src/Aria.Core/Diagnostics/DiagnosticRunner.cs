@@ -19,6 +19,7 @@ public static class DiagnosticRunner
         new GsyncCheck(),
         new DlssAdviceCheck(),
         new GpuPowerLimitCheck(),
+        new NvidiaAppTuningCheck(),
         new BootModeCheck(),
         new SecurityCheck(),
         new CpuFeaturesCheck(),
