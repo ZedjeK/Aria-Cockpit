@@ -18,6 +18,7 @@ public static class DiagnosticRunner
         new NvapiCheck(),
         new GsyncCheck(),
         new DlssAdviceCheck(),
+        new GpuPowerLimitCheck(),
         new BootModeCheck(),
         new SecurityCheck(),
         new CpuFeaturesCheck(),

@@ -187,7 +187,12 @@ public sealed partial class DashboardViewModel : ObservableObject
         var gpuDetails = new List<string>();
         if (main is not null)
         {
-            if (!main.IsIntegrated) gpuDetails.Add($"{Format.Gb(main.VramBytes)} de mémoire vidéo");
+            // Fiche du modèle (architecture, type de mémoire, DLSS) : la table des cartes GeForce
+            var model = main == hw.NvidiaGpu ? Aria.Core.Nvidia.GpuCatalog.Find(main.Name) : null;
+            if (!main.IsIntegrated)
+                gpuDetails.Add($"{Format.Gb(main.VramBytes)} de mémoire vidéo" + (model is not null ? $" {model.MemoryText}" : ""));
+            if (model is not null)
+                gpuDetails.Add($"{Aria.Core.Nvidia.GpuCatalog.Describe(model.Architecture)}{(model.IsLaptop ? " · portable" : "")} · {Dlss(model.Dlss)}");
             gpuDetails.Add($"Pilote {main.VendorDriverVersion ?? main.DriverVersion}");
             if (main == hw.NvidiaGpu && hw.NvidiaLink is { } link)
                 gpuDetails.Add($"PCIe Gen{link.PcieGenMax} x{link.PcieWidthMax} · Resizable BAR {(link.Bar1TotalMiB > 256 ? "actif" : "inactif")}");
@@ -271,6 +276,14 @@ public sealed partial class DashboardViewModel : ObservableObject
 
         return cards;
     }
+
+    private static string Dlss(Aria.Core.Nvidia.DlssSupport dlss) => dlss switch
+    {
+        Aria.Core.Nvidia.DlssSupport.MultiFrameGeneration => "DLSS + génération multi-images",
+        Aria.Core.Nvidia.DlssSupport.FrameGeneration => "DLSS + génération d'images",
+        Aria.Core.Nvidia.DlssSupport.SuperResolution => "DLSS",
+        _ => "sans DLSS"
+    };
 
     /// <summary>Aperçu d'un bloc du cockpit : les deux premiers titres, ou un message si la liste est vide.</summary>
     private static string Preview(IEnumerable<FindingItem> items, string empty)

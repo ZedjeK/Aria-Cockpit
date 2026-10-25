@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.16 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.17 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -55,7 +55,13 @@ Branchement des écrans (carte graphique ou carte mère), câble et fréquence, 
 carte NVIDIA, mémoire (canal, vitesse, profil XMP/EXPO), P-cores et E-cores, microcode Intel 13e et 14e génération,
 mode de démarrage, Secure Boot et TPM, âge du BIOS et du pilote graphique, santé et espace libre des disques,
 réseau, programmes au démarrage, protection du système, redémarrage en attente, batterie, G-SYNC (disponible mais
-désactivé) et conseil DLSS selon la génération de la carte.
+désactivé), conseil DLSS au modèle près, et limite de puissance de la carte comparée à sa valeur d'usine (une carte
+bridée par NVIDIA App ou Afterburner est signalée).
+
+La carte NVIDIA est reconnue grâce à une table de 96 modèles GeForce, de la GTX 750 (Maxwell) aux RTX 50 (Blackwell),
+bureau et portable (`config/gpus/geforce.json`) : architecture, type de mémoire (GDDR5 à GDDR7) et niveau de DLSS
+s'affichent dans le cockpit. Fréquences et puissances ne sont pas dans la table : elles varient d'un fabricant à
+l'autre et sont lues en direct sur la carte.
 
 Les corrections qui se font dans le BIOS sont expliquées pas à pas pour ASUS, MSI, Gigabyte et ASRock (plus un guide
 générique), avec un bouton pour redémarrer directement dans le BIOS.
@@ -153,6 +159,10 @@ pas dépasser les limites de sécurité de la carte. Au pire, un jeu ou le pilot
 | Plafond de fréquence | La carte ne dépasse plus cette fréquence et redescend normalement au repos | de 1 200 MHz au maximum de la carte |
 | Décalage GPU | Décale la courbe fréquence/tension : plus de MHz à tension égale | ± 300 MHz |
 | Décalage mémoire | Fréquence de la mémoire vidéo | − 500 à + 1 500 MHz |
+
+**Selon la carte** : le plafond de fréquence n'existe qu'à partir de Turing (GTX 16, RTX 20) ; sur une GTX 900 ou 10,
+Équilibre cale la limite de puissance sur la consommation mesurée et Économie baisse cette limite. Sur beaucoup de
+portables, la limite de puissance est verrouillée par le fabricant : le curseur est alors désactivé, avec la raison.
 
 **Undervolt** = décalage GPU positif + plafond à la fréquence haute habituelle en jeu : même fréquence, donc mêmes FPS,
 atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
@@ -279,6 +289,7 @@ Version console en simulation, depuis la racine du projet :
 - `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe`
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
+- `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px
 
 Les fichiers BIOS sont intégrés à l'exécutable. Pour corriger un chemin sans recompiler : créer un dossier `bios` à
