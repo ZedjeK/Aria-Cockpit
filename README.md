@@ -346,6 +346,7 @@ ouvre l'interface.
     dotnet publish src/Aria.Gui -c Release           # exécutable unique autonome
     dotnet publish src/Aria.Gui -c Release -p:SelfContained=false   # version légère (runtime .NET 10 requis)
     dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=true -o <dossier d'Aria-Cockpit.exe>   # banc d'essai
+    dotnet test tests/Aria.Tests -c Release          # tests (sans droits administrateur ni carte NVIDIA)
 
 Résultat : `src/Aria.Gui/bin/Release/net10.0-windows/win-x64/publish/Aria-Cockpit.exe`
 
@@ -361,6 +362,9 @@ Version console en simulation, depuis la racine du projet :
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
 - `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; shaders dans `Shaders/*.hlsl`, précompilés dans
   `Shaders/Compiled` par `outils/compiler-shaders.py` (aucun compilateur n'est livré avec l'exe)
+- `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core (analyse de performance, recherche des paliers, origine
+  d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc, avis de Performance) ; rien n'y touche
+  à la carte ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px
