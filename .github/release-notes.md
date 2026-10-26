@@ -17,12 +17,14 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 
 ## Nouveautés de la {VERSION}
 
-- **Origine = valeurs d'usine** : « Revenir d'origine » et la mesure de départ d'Équilibre utilisent la limite de puissance d'usine lue sur la carte, même si NVIDIA App ou Afterburner l'avaient baissée
-- **Contrôle avant mesure** : si l'overclock de NVIDIA App est actif, l'assistant s'arrête et explique où le désactiver (lecture seule, rien n'est écrit chez NVIDIA) ; nouvelle vérification dans Mon PC
-- **Performance revu** : part de la courbe d'usine à puissance maximale et monte jusqu'au plus haut palier stable ; à la fin, l'**avis d'Aria** compare le gain à Équilibre (FPS, watts, température, FPS par watt) et dit si ça vaut le coup
-- **Revenir à Équilibre** en un clic à la fin d'Économie ou de Performance, et **Réglage d'Équilibre** dans le réglage manuel
-- **Corrections** : mesures jugées « non concluantes » à tort avec un plafond et un décalage, bouton « Revenir d'origine » grisé au démarrage, plafond fantôme affiché après un redémarrage, mesure plafonnée refaite à chaque mode
-- **Journal des réglages** (`gpu-profile.log`) et tests automatisés
+Version de correction du diagnostic de **Mon PC**, après les retours des premiers testeurs :
+
+- **HDR** : un écran à gamme de couleurs étendue (gestion automatique des couleurs des portables, écrans large gamut) n'est plus annoncé comme HDR
+- **Fausses alertes graves supprimées** : microcode Intel sur les i5 sans K (puce Alder Lake), écran « branché sur la carte mère » en Bureau à distance, écran virtuel ou dock USB, Resizable BAR conseillé sur des plateformes qui ne le permettent pas
+- **Problèmes enfin vus** : un SSD usé au-delà de 100 % n'apparaît plus « en bonne santé »
+- **Plus juste** : vitesse de la RAM (DDR4 rapportée en MHz, barrettes sans profil XMP), disque « presque plein » sur les grands disques, PCIe des cartes x8 et de la GT 1030, température des SSD selon le seuil du disque, écran intégré des portables, mémoire soudée, G-SYNC, adaptateurs CPL
+
+Rappel de la 0.19.0 : origine aux valeurs d'usine, contrôle de l'overclock de NVIDIA App, Performance revu avec l'avis d'Aria, retour à Équilibre en un clic, journal des réglages.
 
 ## Contenu
 
