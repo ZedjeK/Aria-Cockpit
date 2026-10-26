@@ -3,7 +3,7 @@ using Aria.Core.Models;
 namespace Aria.Core.Diagnostics.Checks;
 
 /// <summary>Profil XMP/EXPO : déduit de la vitesse configurée et de la référence des barrettes.</summary>
-public sealed class MemorySpeedCheck : IDiagnosticCheck
+public sealed partial class MemorySpeedCheck : IDiagnosticCheck
 {
     public string Name => "vitesse de la RAM";
 
@@ -40,17 +40,21 @@ public sealed class MemorySpeedCheck : IDiagnosticCheck
                 ? $" Vos barrettes viennent de plusieurs kits de {kitSizes.Max()} : les mélanger augmente le risque d'instabilité."
                 : "";
             var intel12 = ctx.Hardware.Cpu.IsIntel && ctx.Hardware.Cpu.Name.Contains("12th Gen", StringComparison.OrdinalIgnoreCase)
-                ? " Sur les Intel de 12e génération, la limite officielle avec 4 barrettes est de 4000 MT/s."
+                ? " Les Intel de 12e génération, les premiers à gérer la DDR5, sont les plus capricieux avec 4 barrettes."
                 : "";
 
             yield return new("memory.speed",
                 $"RAM à {configured} MT/s avec {mem.Modules.Count} barrettes DDR5 (kit vendu pour {kitSpeed})", Severity.Info,
-                $"Avec 4 barrettes DDR5, la vitesse garantie par le processeur est nettement plus basse qu'avec 2.{intel12}" +
-                $" Cette vitesse est donc normale sans profil {profile}.{mixedKits}",
-                $"Le profil {profile} peut être tenté, mais il est souvent instable avec 4 barrettes : régler alors la fréquence " +
-                "à la main, un cran au-dessus de la vitesse actuelle (ex. 4400 puis 4800 MT/s). Après chaque changement, tester " +
-                "la stabilité (ex. MemTest86) : une RAM instable peut corrompre des fichiers sans prévenir. Gain en jeu modeste.",
-                ctx.PlatformSteps("memory_profile"), NeedsBios: true);
+                "Avec 4 barrettes DDR5 (deux par canal), le contrôleur mémoire du processeur et la carte mère tiennent nettement moins vite " +
+                $"qu'avec 2 : les fabricants garantissent en général 3600 à 4000 MT/s dans ce cas, contre 6000 et plus avec 2 barrettes.{intel12}" +
+                $"{mixedKits} Le profil {profile} ({kitSpeed} MT/s) dépasse donc souvent ce que la plateforme tient : plantages, écrans bleus " +
+                "ou PC qui ne démarre plus sont fréquents, sans que la RAM soit défectueuse. Cette vitesse est normale. " +
+                "Gain à attendre en montant : quelques pour cent, surtout dans les jeux limités par le processeur ; " +
+                "presque rien quand la carte graphique limite (hautes définitions).",
+                "Le plus sûr : garder cette vitesse. Pour gagner un peu, monter la fréquence à la main par paliers plutôt que d'activer " +
+                $"le profil {profile} (étapes ci-dessous). Si 32 Go suffisent, ne garder que 2 barrettes : elles tiennent en général " +
+                $"le profil {profile} sans difficulté.",
+                FourDimmSteps(ctx.Hardware.Cpu.IsIntel, profile), NeedsBios: true);
         }
         else if (kitSpeed > configured + 100 && mem.Modules.All(m => MemoryParser.IsJedecOnly(m.PartNumber)))
         {
@@ -80,6 +84,30 @@ public sealed class MemorySpeedCheck : IDiagnosticCheck
             var detail = kitSpeed is null ? "" : $"Conforme à la vitesse du kit ({kitSpeed} MT/s).";
             yield return new("memory.speed", $"RAM à {configured} MT/s", Severity.Ok, detail);
         }
+    }
+}
+
+public sealed partial class MemorySpeedCheck
+{
+    /// <summary>
+    /// Montée prudente avec 4 barrettes DDR5 : par paliers, sans profil, avec un test de stabilité à chaque fois.
+    /// Tensions d'après les retours d'utilisateurs de Z690 en 4 barrettes (pas de consigne officielle) : rester prudent.
+    /// </summary>
+    internal static IReadOnlyList<string> FourDimmSteps(bool intel, string profile)
+    {
+        var steps = new List<string>
+        {
+            $"1. Dans le BIOS, laisser le profil {profile} désactivé et régler la fréquence de la RAM à la main, un cran au-dessus " +
+            "de la vitesse actuelle (ex. 4400 MT/s). Laisser timings et tensions en automatique.",
+            "2. Premier démarrage long, écran noir possible : la carte mère « entraîne » la mémoire. Patienter avant de couper.",
+            "3. Tester la stabilité : une nuit de MemTest86, puis vos jeux habituels. Une RAM instable peut corrompre des fichiers sans planter.",
+            "4. Si tout est stable, essayer le cran suivant (ex. 4800 MT/s). Au premier problème, revenir au cran précédent."
+        };
+        if (intel)
+            steps.Add("5. Pour aller plus loin (utilisateurs avertis) : tension VDD/VDDQ de la RAM sans dépasser 1,35 V, et tension " +
+                      "System Agent (SA) fixée à la main vers 1,20-1,25 V (en automatique, elle monte souvent trop haut). Au-delà, " +
+                      "risque d'abîmer le processeur avec le temps.");
+        return steps;
     }
 }
 
