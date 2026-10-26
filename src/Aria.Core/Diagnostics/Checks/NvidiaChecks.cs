@@ -147,3 +147,22 @@ public sealed class GpuPowerLimitCheck : IDiagnosticCheck
                 "Vérifiez que votre alimentation a la puissance recommandée et que le câble d'alimentation de la carte (12V-2x6 / 12VHPWR) est enfoncé à fond.");
     }
 }
+
+/// <summary>
+/// Overclock de NVIDIA App actif (réglage automatique, scan en arrière-plan, courbe enregistrée) : il se superpose
+/// aux réglages d'Aria. Lecture seule de sa base de réglages ; Aria ne peut pas le couper, elle guide.
+/// </summary>
+public sealed class NvidiaAppTuningCheck : IDiagnosticCheck
+{
+    public string Name => "overclock de NVIDIA App";
+
+    public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
+    {
+        if (ctx.Hardware.NvidiaGpu is null) yield break;
+        var app = NvidiaAppTuning.Read();
+        if (!app.Active) yield break;
+        yield return new("nvidia.app-oc", "Overclock de NVIDIA App actif", Severity.Info,
+            $"{app.Describe()}. Il se superpose aux réglages de l'onglet Réglage GPU et fausse les mesures de l'assistant.",
+            "Dans NVIDIA App : Système → Performances → Réglage automatique : Désactivé, puis « Restaurer les valeurs par défaut ».");
+    }
+}

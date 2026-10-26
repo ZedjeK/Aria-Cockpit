@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.18 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.19 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -58,8 +58,9 @@ Branchement des écrans (carte graphique ou carte mère), câble et fréquence, 
 carte NVIDIA, mémoire (canal, vitesse, profil XMP/EXPO), P-cores et E-cores, microcode Intel 13e et 14e génération,
 mode de démarrage, Secure Boot et TPM, âge du BIOS et du pilote graphique, santé et espace libre des disques,
 réseau, programmes au démarrage, protection du système, redémarrage en attente, batterie, G-SYNC (disponible mais
-désactivé), conseil DLSS au modèle près, et limite de puissance de la carte comparée à sa valeur d'usine (une carte
-bridée par NVIDIA App ou Afterburner est signalée).
+désactivé), conseil DLSS au modèle près, limite de puissance de la carte comparée à sa valeur d'usine (une carte
+bridée par NVIDIA App ou Afterburner est signalée), et overclock de NVIDIA App (réglage automatique, scan en
+arrière-plan, courbe enregistrée).
 
 La carte NVIDIA est reconnue grâce à une table de 96 modèles GeForce, de la GTX 750 (Maxwell) aux RTX 50 (Blackwell),
 bureau et portable (`config/gpus/geforce.json`) : architecture, type de mémoire (GDDR5 à GDDR7) et niveau de DLSS
@@ -175,10 +176,20 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 - **Essayer** : le réglage s'efface au prochain redémarrage.
 - **Garder au démarrage** : la tâche planifiée « Aria Cockpit\Profil GPU » le réapplique à chaque ouverture de session
   (Aria Cockpit en mode silencieux, droits administrateur, sans fenêtre).
-- **Revenir d'origine**, ici ou dans Restauration : remet la carte comme avant Aria Cockpit et supprime la tâche.
+- **Revenir d'origine** : remet la carte à ses **valeurs d'usine** (limite de puissance par défaut lue sur la carte, sans
+  plafond ni décalage) et supprime la tâche. Une limite posée avant par un autre outil (NVIDIA App, Afterburner) ne
+  compte pas comme origine ; elle reste dans la sauvegarde « Avant réglage GPU », que la page Restauration peut remettre.
+- **Réglage d'Équilibre** : remet le résultat d'Équilibre dans les curseurs (Appliquer le pose ensuite). À la fin
+  d'Économie ou de Performance, « Revenir à Équilibre » le pose directement, même après un redémarrage entre les deux.
 - **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale.
 
 ### L'assistant guidé : Équilibre, puis Économie ou Performance
+
+**Contrôle avant mesure.** Avant chaque mode, Aria lit (sans rien y écrire) la base de réglages de NVIDIA App. Si son
+overclock est actif, il se superposerait aux paliers : l'assistant s'arrête, explique où le désactiver, propose d'ouvrir
+NVIDIA App, puis de vérifier à nouveau (ou de continuer quand même, à tes risques). NVIDIA ne publie aucune interface
+pour le couper : c'est toi qui le fais. Une limite de puissance posée par un autre outil est aussi signalée : Aria pose
+ses propres valeurs pendant les mesures, mais l'outil la reposera au démarrage tant qu'il n'est pas remis par défaut.
 
 Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton jeu**, au choix avant de commencer :
 
@@ -194,12 +205,16 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 
 | Mode | Ce qu'il cherche | Comment |
 |---|---|---|
-| **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ au réglage d'origine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
+| **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ aux valeurs d'usine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
 | **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
-| **Performance** | Quelques pour cent de fréquence en plus | Part du décalage d'Équilibre, sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz |
+| **Performance** | La fréquence la plus haute qui reste stable | Part de la courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz. Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe |
 
+- **Avis d'Aria à la fin de Performance** : le gain est comparé au réglage d'Équilibre (FPS, watts, température,
+  FPS par watt). Moins de 3 % de FPS en plus, ou plus de 3 W par FPS gagné : « ne vaut pas le coup », et « Revenir à
+  Équilibre » passe en tête ; au moins 8 % pour 3 W par FPS au plus : « vaut le coup » ; entre les deux : « gain réel mais
+  cher ». Les mesures d'Équilibre viennent de sa validation de 15 minutes si elle a réussi.
 - **Équilibre débloque les deux autres.** Son résultat (réglage retenu, mesure de départ, jeu, carte, pilote) est gardé
-  dans `equilibre.json` : Économie et Performance partent de lui et se comparent à la même mesure. Il est invalidé si tu
+  dans `equilibre.json` : Économie part de lui, Performance en garde le décalage mémoire, et tous deux se comparent à la même mesure. Il est invalidé si tu
   changes de carte graphique ; après une mise à jour du pilote, refaire Équilibre est conseillé.
 - **Recherche du grossier vers le fin** : grands pas tant que ça tient, puis pas moyens à partir du dernier palier
   stable, puis un dernier affinage (exemple : +100 ✓, +200 ✓, +300 ✗, +230 ✓, +260 ✗, +245 ✓).
@@ -331,6 +346,7 @@ ouvre l'interface.
     dotnet publish src/Aria.Gui -c Release           # exécutable unique autonome
     dotnet publish src/Aria.Gui -c Release -p:SelfContained=false   # version légère (runtime .NET 10 requis)
     dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=true -o <dossier d'Aria-Cockpit.exe>   # banc d'essai
+    dotnet test tests/Aria.Tests -c Release          # tests (sans droits administrateur ni carte NVIDIA)
 
 Résultat : `src/Aria.Gui/bin/Release/net10.0-windows/win-x64/publish/Aria-Cockpit.exe`
 
@@ -346,6 +362,9 @@ Version console en simulation, depuis la racine du projet :
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
 - `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; shaders dans `Shaders/*.hlsl`, précompilés dans
   `Shaders/Compiled` par `outils/compiler-shaders.py` (aucun compilateur n'est livré avec l'exe)
+- `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core (analyse de performance, recherche des paliers, origine
+  d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc, avis de Performance) ; rien n'y touche
+  à la carte ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px

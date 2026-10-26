@@ -219,7 +219,7 @@
                 <StackPanel>
                   <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource HudCode}" Text="2 · APRÈS ÉQUILIBRE" />
                   <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Text="Performance" />
-                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Le décalage d'Équilibre sans plafond, limite de puissance au maximum, puis décalage croissant : quelques pour cent de fréquence en plus." TextWrapping="Wrap" />
+                  <TextBlock Margin="0,4,0,12" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Courbe d'usine sans plafond, limite de puissance au maximum, puis décalage croissant : la fréquence la plus haute qui reste stable." TextWrapping="Wrap" />
                   <Button HorizontalAlignment="Left" Command="{Binding StartPerformanceCommand}" Content="COMMENCER" Style="{StaticResource HudButtonGhost}" />
                 </StackPanel>
               </Border>
@@ -242,6 +242,18 @@
               <ui:SymbolIcon VerticalAlignment="Top" FontSize="18" Foreground="{StaticResource NeonCyanBrush}" Symbol="CheckmarkCircle24" Visibility="{Binding IsUnlocked, Converter={StaticResource BoolToVisibility}}" />
               <TextBlock Grid.Column="1" Margin="10,0,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding RecordText}" TextWrapping="Wrap" />
             </Grid>
+          </StackPanel>
+
+          <!-- Contrôle avant mesure : overclock de NVIDIA App -->
+          <StackPanel Margin="0,14,0,0" Visibility="{Binding IsPreflight, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock FontFamily="{StaticResource TechFont}" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Headline}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,8,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding PreflightText}" TextWrapping="Wrap" />
+            <WrapPanel Margin="0,12,0,0">
+              <Button Margin="0,0,10,8" Command="{Binding OpenNvidiaAppCommand}" Content="OUVRIR NVIDIA APP" Style="{StaticResource HudButton}" Visibility="{Binding CanOpenNvidiaApp, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding RecheckNvidiaAppCommand}" Content="VÉRIFIER À NOUVEAU" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,8" Command="{Binding ContinueDespiteNvidiaAppCommand}" Content="CONTINUER QUAND MÊME" Style="{StaticResource HudButtonGhost}" ToolTip="Les mesures risquent d'être faussées par l'overclock de NVIDIA App" />
+              <Button Margin="0,0,10,8" Command="{Binding DismissPreflightCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" />
+            </WrapPanel>
           </StackPanel>
 
           <!-- Mesure en cours -->
@@ -353,10 +365,25 @@
           <!-- Résultat -->
           <StackPanel Margin="0,14,0,0" Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}">
             <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding DoneText}" TextWrapping="Wrap" />
+            <!-- Avis d'Aria (Performance) : le gain par rapport à Équilibre vaut-il le coût ? -->
+            <Border
+              Margin="0,12,0,0"
+              Padding="12,8"
+              BorderBrush="{StaticResource NeonOrangeBrush}"
+              BorderThickness="2,0,0,0"
+              Visibility="{Binding HasVerdict, Converter={StaticResource BoolToVisibility}}">
+              <StackPanel>
+                <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource TechLabel}" Text="AVIS D'ARIA" />
+                <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding VerdictTitle}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding VerdictDetails}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
             <WrapPanel Margin="0,12,0,0">
+              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButton}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedFirst, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding ValidateCommand}" Content="VALIDER 15 MIN (CONSEILLÉ)" Style="{StaticResource HudButton}" ToolTip="15 minutes de jeu sur le réglage retenu : la vraie épreuve de stabilité" Visibility="{Binding CanValidate, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedSecond, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
             </WrapPanel>
@@ -466,7 +493,21 @@
                 Content="REVENIR D'ORIGINE"
                 Style="{StaticResource HudButtonGhost}"
                 Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}" />
+              <Button
+                Margin="10,0,0,0"
+                Command="{Binding LoadBalancedCommand}"
+                Content="RÉGLAGE D'ÉQUILIBRE"
+                Style="{StaticResource HudButtonGhost}"
+                ToolTip="Remet le résultat d'Équilibre dans les curseurs ; Appliquer le pose ensuite"
+                Visibility="{Binding HasBalanced, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
+            <TextBlock
+              Margin="0,8,0,0"
+              FontSize="12.5"
+              Foreground="{StaticResource NeonOrangeBrush}"
+              Text="Le pilote NVIDIA a changé depuis Équilibre : son réglage reste disponible, mais refaire Équilibre est conseillé."
+              TextWrapping="Wrap"
+              Visibility="{Binding BalancedDriverChanged, Converter={StaticResource BoolToVisibility}}" />
           </StackPanel>
         </ContentControl>
 
@@ -511,7 +552,7 @@
               <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="EN PLACE" />
               <TextBlock Margin="0,4,0,0" Text="{Binding CurrentText}" TextWrapping="Wrap" />
               <StackPanel Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}">
-                <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="ORIGINE (AVANT ARIA)" />
+                <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="ORIGINE (VALEURS D'USINE)" />
                 <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding OriginText}" TextWrapping="Wrap" />
               </StackPanel>
             </StackPanel>
@@ -527,7 +568,7 @@
                 <Run FontWeight="SemiBold" Text="Économie : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="le réglage d'Équilibre avec un plafond 5 à 10 % plus bas, ou simplement la limite de puissance à 80-90 %." />
               </TextBlock>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
-                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU par paliers de +30 MHz." />
+                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU croissant depuis la courbe d'usine (+60, puis +30, puis +15 MHz) jusqu'au plus haut palier stable." />
               </TextBlock>
               <TextBlock
                 Margin="0,10,0,0"

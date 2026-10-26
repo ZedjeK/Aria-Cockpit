@@ -85,8 +85,9 @@ public static class PerformanceAnalyzer
 
     public static PerformanceReport Analyze(IReadOnlyList<PerfSample> samples, DateTime at)
     {
-        var active = samples.Where(s => s.Gpu.LoadPercent is { } load && load >= ActiveLoadPercent
-                                        && !Has(s, GpuLimitReasons.Idle)).ToList();
+        // La charge seule fait foi : avec un plafond et un décalage GPU, NVML peut lever la raison « Idle »
+        // en pleine charge (vu sur RTX 4080 SUPER, pilote 621.01 : 100 % de charge, Idle à chaque seconde)
+        var active = samples.Where(s => s.Gpu.LoadPercent is { } load && load >= ActiveLoadPercent).ToList();
         var stats = Stats(samples.Count, active);
 
         if (active.Count < MinActiveSeconds)

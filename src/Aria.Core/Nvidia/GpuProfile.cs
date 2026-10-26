@@ -6,7 +6,7 @@ using Aria.Core.Models;
 
 namespace Aria.Core.Nvidia;
 
-/// <summary>Réglage GPU posé par Aria : la valeur d'origine (avant Aria) et celle en place.</summary>
+/// <summary>Réglage GPU posé par Aria : la valeur d'origine (valeurs d'usine de la carte) et celle en place.</summary>
 /// <param name="GpuUuid">Carte pour laquelle le réglage a été posé (identifiant NVML) ; vide pour les profils d'avant la 0.17.</param>
 public sealed record GpuProfileFile(string Origin, string Current, DateTime AppliedAt, string GpuUuid = "", string GpuName = "")
 {
@@ -34,24 +34,45 @@ public static class GpuProfile
     /// <summary>Carte réglable (NVIDIA, NVML disponible) ; null sinon.</summary>
     public static GpuTuner? Tuner => SharedTuner.Value;
 
+    /// <summary>Profil en place ; null s'il n'y en a pas, ou si un redémarrage a effacé le réglage (le fichier est alors supprimé).</summary>
     public static GpuProfileFile? Load()
     {
+        GpuProfileFile? file;
         try
         {
-            return File.Exists(FilePath) ? JsonSerializer.Deserialize<GpuProfileFile>(File.ReadAllText(FilePath), Json) : null;
+            file = File.Exists(FilePath) ? JsonSerializer.Deserialize<GpuProfileFile>(File.ReadAllText(FilePath), Json) : null;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
         {
             return null;
         }
+        if (file is null || !WipedByRestart(file, BootTime)) return file;
+        // Réglage « Essayer » effacé par le redémarrage : le garder ferait afficher un plafond qui n'existe plus
+        try { File.Delete(FilePath); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        Log($"Redémarrage depuis le réglage du {file.AppliedAt:yyyy-MM-dd HH:mm:ss} (non gardé au démarrage) : profil oublié.");
+        return null;
     }
 
-    /// <summary>Valeur d'origine, avant le premier réglage d'Aria ; null si Aria n'a rien réglé.</summary>
-    public static GpuTuningState? Origin => Load() is { } f && GpuTuningState.TryParse(f.Origin, out var o) ? o : null;
+    /// <summary>Démarrage de Windows (le temps écoulé depuis inclut les mises en veille).</summary>
+    private static DateTime BootTime => DateTime.Now - TimeSpan.FromMilliseconds(Environment.TickCount64);
 
-    /// <summary>Valeur d'origine de cette carte ; null si Aria n'a rien réglé, ou si le réglage enregistré concerne une autre carte.</summary>
+    /// <summary>Un réglage non gardé au démarrage, posé avant le dernier démarrage de Windows, n'est plus en place.</summary>
+    internal static bool WipedByRestart(GpuProfileFile file, DateTime bootTime) =>
+        GpuTuningState.TryParse(file.Current, out var current) && !current.AtStartup && file.AppliedAt < bootTime;
+
+    /// <summary>
+    /// Valeurs d'usine de la carte : limite de puissance par défaut du pilote, sans plafond ni décalage.
+    /// L'état trouvé au premier réglage peut venir d'un autre outil (NVIDIA App, Afterburner) : il ne sert pas d'origine.
+    /// </summary>
+    /// <param name="fallbackPowerMilliwatts">Limite gardée si le pilote ne donne pas sa valeur par défaut.</param>
+    public static GpuTuningState Factory(GpuTuningLimits limits, uint fallbackPowerMilliwatts) =>
+        new(limits.DefaultPowerMilliwatts > 0 ? limits.DefaultPowerMilliwatts : fallbackPowerMilliwatts, 0, 0, 0, false);
+
+    /// <summary>Valeur d'origine de cette carte (valeurs d'usine) ; null si Aria n'a rien réglé, ou si le réglage enregistré concerne une autre carte.</summary>
     public static GpuTuningState? OriginFor(GpuTuner tuner) =>
-        Load() is { } f && !f.IsForOtherGpu(tuner.Identity) && GpuTuningState.TryParse(f.Origin, out var o) ? o : null;
+        Load() is { } f && !f.IsForOtherGpu(tuner.Identity) && GpuTuningState.TryParse(f.Origin, out var o)
+            ? Factory(tuner.Limits, o.PowerLimitMilliwatts) : null;
 
     /// <summary>État actuel de la carte (le plafond de fréquence, illisible par NVML, vient du profil d'Aria).</summary>
     public static GpuTuningState ReadCurrent(GpuTuner tuner)
@@ -78,7 +99,7 @@ public static class GpuProfile
                 saved = null;
             }
             var before = ReadCurrent(tuner);
-            var origin = saved is not null && GpuTuningState.TryParse(saved.Origin, out var o) ? o : before with { AtStartup = false };
+            var origin = Factory(tuner.Limits, before.PowerLimitMilliwatts);
 
             if (saved is null && saveBackup)
                 BackupStore.Save("Avant réglage GPU",
@@ -88,11 +109,14 @@ public static class GpuProfile
             {
                 tuner.Apply(target);
             }
-            catch (GpuTuningException)
+            catch (GpuTuningException e)
             {
+                Log($"Refusé par le pilote : {target.Describe()} ({e.Message}) ; retour à {before.Describe()}");
                 try { tuner.Apply(before); } catch (GpuTuningException) { /* le redémarrage remettra l'origine */ }
                 throw;
             }
+            // Trace de chaque réglage : un retour d'origine ou un abandon qui n'a pas eu lieu se voit dans le journal
+            Log($"Appliqué : {target.Describe()} (avant : {before.Describe()})");
 
             if (target.AtStartup) StartupTask.Create(exePath);
             else StartupTask.Delete();
@@ -108,11 +132,11 @@ public static class GpuProfile
         }
     }
 
-    /// <summary>Remet la carte comme avant Aria et supprime la tâche de démarrage.</summary>
+    /// <summary>Remet la carte à ses valeurs d'usine et supprime la tâche de démarrage.</summary>
     public static void RevertToOrigin(GpuTuner tuner, string exePath)
     {
         if (Load()?.IsForOtherGpu(tuner.Identity) == true) Forget();
-        else if (Origin is { } origin) Apply(tuner, origin with { AtStartup = false }, exePath, saveBackup: false);
+        else if (OriginFor(tuner) is { } origin) Apply(tuner, origin, exePath, saveBackup: false);
         else StartupTask.Delete();
     }
 
@@ -127,6 +151,7 @@ public static class GpuProfile
             StartupTask.Delete();
             try { File.Delete(FilePath); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            Log("Réglage enregistré oublié (carte changée) : rien n'a été appliqué.");
         }
     }
 
