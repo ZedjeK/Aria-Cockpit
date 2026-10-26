@@ -365,11 +365,25 @@
           <!-- Résultat -->
           <StackPanel Margin="0,14,0,0" Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}">
             <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding DoneText}" TextWrapping="Wrap" />
+            <!-- Avis d'Aria (Performance) : le gain par rapport à Équilibre vaut-il le coût ? -->
+            <Border
+              Margin="0,12,0,0"
+              Padding="12,8"
+              BorderBrush="{StaticResource NeonOrangeBrush}"
+              BorderThickness="2,0,0,0"
+              Visibility="{Binding HasVerdict, Converter={StaticResource BoolToVisibility}}">
+              <StackPanel>
+                <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource TechLabel}" Text="AVIS D'ARIA" />
+                <TextBlock Margin="0,4,0,0" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding VerdictTitle}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding VerdictDetails}" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
             <WrapPanel Margin="0,12,0,0">
+              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButton}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedFirst, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding ValidateCommand}" Content="VALIDER 15 MIN (CONSEILLÉ)" Style="{StaticResource HudButton}" ToolTip="15 minutes de jeu sur le réglage retenu : la vraie épreuve de stabilité" Visibility="{Binding CanValidate, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
-              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding CanReturnToBalanced, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedSecond, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
             </WrapPanel>

@@ -209,6 +209,10 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 | **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
 | **Performance** | La fréquence la plus haute qui reste stable | Part de la courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz. Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe |
 
+- **Avis d'Aria à la fin de Performance** : le gain est comparé au réglage d'Équilibre (FPS, watts, température,
+  FPS par watt). Moins de 3 % de FPS en plus, ou plus de 3 W par FPS gagné : « ne vaut pas le coup », et « Revenir à
+  Équilibre » passe en tête ; au moins 8 % pour 3 W par FPS au plus : « vaut le coup » ; entre les deux : « gain réel mais
+  cher ». Les mesures d'Équilibre viennent de sa validation de 15 minutes si elle a réussi.
 - **Équilibre débloque les deux autres.** Son résultat (réglage retenu, mesure de départ, jeu, carte, pilote) est gardé
   dans `equilibre.json` : Économie part de lui, Performance en garde le décalage mémoire, et tous deux se comparent à la même mesure. Il est invalidé si tu
   changes de carte graphique ; après une mise à jour du pilote, refaire Équilibre est conseillé.

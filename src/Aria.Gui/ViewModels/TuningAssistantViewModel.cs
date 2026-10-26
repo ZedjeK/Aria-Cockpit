@@ -104,7 +104,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private bool showGoBack;
     [ObservableProperty] private string preflightText = "";
     [ObservableProperty] private bool canOpenNvidiaApp;
-    [ObservableProperty] private bool canReturnToBalanced;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ReturnToBalancedSecond))] private bool canReturnToBalanced;
+    [ObservableProperty] private bool hasVerdict;
+    [ObservableProperty] private string verdictTitle = "";
+    [ObservableProperty] private string verdictDetails = "";
+    /// <summary>L'avis recommande Équilibre : son bouton passe en tête, en bouton principal.</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ReturnToBalancedSecond))] private bool returnToBalancedFirst;
+    public bool ReturnToBalancedSecond => CanReturnToBalanced && !ReturnToBalancedFirst;
     [ObservableProperty] private string doneText = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool doneChanged;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool validated;
@@ -695,6 +701,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         {
             _validating = false;
             Validated = true;
+            if (_current is { Conclusive: true } validation)
+            {
+                // 15 minutes sur le réglage retenu : mesure plus fiable que celle du dernier palier (pris avant le recul de sécurité)
+                _lastStableReport = validation;
+                _lastStableFps = _benchMode ? _bench?.Pass?.FpsMoyen : null;
+            }
+            SaveBalancedRecord();
             await FinishAsync($"Validé : 15 minutes sans plantage ni artefact. Réglage retenu : {_lastStable.Describe()}.");
             return;
         }
@@ -841,7 +854,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (_goal != TuningGoal.Balanced || _baseline is null || tuner() is not { } t) return;
         var record = new BalancedRecord(DateTime.Now, t.Identity.Name, t.Identity.Uuid, t.Identity.DriverVersion, _baselineGame,
             _start.ToRaw(), (_lastStable with { AtStartup = false }).ToRaw(), _lastStable.CoreOffsetMHz > _start.CoreOffsetMHz, _baseline,
-            _baselineFps, _benchMode && _baselineFps is not null ? _benchDefinition : null);
+            _baselineFps, _benchMode && _baselineFps is not null ? _benchDefinition : null,
+            _lastStableReport?.Stats, _benchMode && _baselineFps is not null ? _lastStableFps : null, Validated);
         try
         {
             record.Save();
@@ -868,6 +882,15 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Tiles = changed && _lastStableReport is { } r ? BuildTiles(r, _baseline, _lastStableFps, _baselineFps) : [];
         // Économie ou Performance : retour possible au réglage d'Équilibre s'il n'est pas déjà celui en place
         CanReturnToBalanced = _goal != TuningGoal.Balanced && Record?.ResultState is { } balanced && !_lastStable.SameTuning(balanced);
+        // Performance : avis d'Aria sur le gain par rapport à Équilibre (FPS du banc seulement s'ils sont à la même définition)
+        var verdict = _goal == TuningGoal.Performance && changed && _lastStableReport is { } perf
+            ? PerformanceVerdict.Judge(perf.Stats, _lastStableFps, Record?.ResultStats,
+                Record?.BenchDefinition == _benchDefinition ? Record?.ResultFps : null)
+            : null;
+        HasVerdict = verdict is not null;
+        VerdictTitle = verdict?.Title ?? "";
+        VerdictDetails = verdict is null ? "" : string.Join("\n", verdict.Details);
+        ReturnToBalancedFirst = CanReturnToBalanced && verdict?.RecommendsBalanced == true;
         if (_benchMode) SystemSounds.Asterisk.Play();
         Phase = AssistantPhase.Done;
     }
