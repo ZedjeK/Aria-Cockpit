@@ -29,14 +29,26 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         Assistant.WatchMeasurements();
         Assistant.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName is nameof(TuningAssistantViewModel.Record) or nameof(TuningAssistantViewModel.DriverChanged))
+            {
+                OnPropertyChanged(nameof(HasBalanced));
+                OnPropertyChanged(nameof(BalancedDriverChanged));
+            }
             if (e.PropertyName != nameof(TuningAssistantViewModel.IsActive)) return;
             ApplyCommand.NotifyCanExecuteChanged();
             RevertCommand.NotifyCanExecuteChanged();
             ResetSlidersCommand.NotifyCanExecuteChanged();
+            LoadBalancedCommand.NotifyCanExecuteChanged();
         };
     }
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand))] private bool isAvailable;
+    /// <summary>Un résultat d'Équilibre existe pour cette carte : il peut être rechargé dans les curseurs.</summary>
+    public bool HasBalanced => Assistant.Record?.ResultState is not null;
+
+    /// <summary>Le pilote NVIDIA a changé depuis Équilibre : son résultat reste chargeable, mais le refaire est conseillé.</summary>
+    public bool BalancedDriverChanged => HasBalanced && Assistant.DriverChanged;
+
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand))] private bool isAvailable;
     [ObservableProperty] private bool capSupported = true;
     [ObservableProperty] private bool powerSupported = true;
     [ObservableProperty] private bool coreOffsetSupported = true;
@@ -44,7 +56,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private string capNote = "";
     [ObservableProperty] private string powerNote = "";
     [ObservableProperty] private bool isUnavailable;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand))] private bool isBusy;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand))] private bool isBusy;
 
     // ---- Curseurs ----
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(PowerText), nameof(HasChanges))] private double powerWatts;
@@ -250,6 +262,16 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     private void ResetSliders()
     {
         if (Current is { } c) LoadSliders(c);
+    }
+
+    /// <summary>
+    /// Charge le résultat d'Équilibre dans les curseurs, sans rien appliquer : « Appliquer » le pose ensuite
+    /// (confirmation, case « Garder au démarrage » laissée telle quelle, journal).
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private void LoadBalanced()
+    {
+        if (Assistant.Record?.ResultState is { } balanced) LoadSliders(balanced with { AtStartup = AtStartup });
     }
 
     /// <summary>Carte changée : oublie le réglage de l'ancienne carte (profil et tâche de démarrage), sans toucher à la nouvelle.</summary>

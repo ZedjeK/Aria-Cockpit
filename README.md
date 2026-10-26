@@ -179,6 +179,8 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 - **Revenir d'origine** : remet la carte à ses **valeurs d'usine** (limite de puissance par défaut lue sur la carte, sans
   plafond ni décalage) et supprime la tâche. Une limite posée avant par un autre outil (NVIDIA App, Afterburner) ne
   compte pas comme origine ; elle reste dans la sauvegarde « Avant réglage GPU », que la page Restauration peut remettre.
+- **Réglage d'Équilibre** : remet le résultat d'Équilibre dans les curseurs (Appliquer le pose ensuite). À la fin
+  d'Économie ou de Performance, « Revenir à Équilibre » le pose directement, même après un redémarrage entre les deux.
 - **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale.
 
 ### L'assistant guidé : Équilibre, puis Économie ou Performance

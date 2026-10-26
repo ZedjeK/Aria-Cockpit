@@ -369,6 +369,7 @@
               <Button Margin="0,0,10,8" Command="{Binding ValidateCommand}" Content="VALIDER 15 MIN (CONSEILLÉ)" Style="{StaticResource HudButton}" ToolTip="15 minutes de jeu sur le réglage retenu : la vraie épreuve de stabilité" Visibility="{Binding CanValidate, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding CanReturnToBalanced, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
             </WrapPanel>
@@ -478,7 +479,21 @@
                 Content="REVENIR D'ORIGINE"
                 Style="{StaticResource HudButtonGhost}"
                 Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}" />
+              <Button
+                Margin="10,0,0,0"
+                Command="{Binding LoadBalancedCommand}"
+                Content="RÉGLAGE D'ÉQUILIBRE"
+                Style="{StaticResource HudButtonGhost}"
+                ToolTip="Remet le résultat d'Équilibre dans les curseurs ; Appliquer le pose ensuite"
+                Visibility="{Binding HasBalanced, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
+            <TextBlock
+              Margin="0,8,0,0"
+              FontSize="12.5"
+              Foreground="{StaticResource NeonOrangeBrush}"
+              Text="Le pilote NVIDIA a changé depuis Équilibre : son réglage reste disponible, mais refaire Équilibre est conseillé."
+              TextWrapping="Wrap"
+              Visibility="{Binding BalancedDriverChanged, Converter={StaticResource BoolToVisibility}}" />
           </StackPanel>
         </ContentControl>
 

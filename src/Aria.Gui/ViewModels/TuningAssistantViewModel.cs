@@ -104,6 +104,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private bool showGoBack;
     [ObservableProperty] private string preflightText = "";
     [ObservableProperty] private bool canOpenNvidiaApp;
+    [ObservableProperty] private bool canReturnToBalanced;
     [ObservableProperty] private string doneText = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool doneChanged;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanValidate))] private bool validated;
@@ -865,8 +866,21 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                         ? $"Meilleur réglage stable : {_lastStable.Describe()}. Il est en place jusqu'au prochain redémarrage."
                         : "Aucun palier n'a tenu : la carte est revenue à son réglage de départ.")) + unlocked;
         Tiles = changed && _lastStableReport is { } r ? BuildTiles(r, _baseline, _lastStableFps, _baselineFps) : [];
+        // Économie ou Performance : retour possible au réglage d'Équilibre s'il n'est pas déjà celui en place
+        CanReturnToBalanced = _goal != TuningGoal.Balanced && Record?.ResultState is { } balanced && !_lastStable.SameTuning(balanced);
         if (_benchMode) SystemSounds.Asterisk.Play();
         Phase = AssistantPhase.Done;
+    }
+
+    /// <summary>
+    /// Revenir à Équilibre (fin d'Économie ou de Performance) : pose toujours le résultat d'Équilibre, même si l'état
+    /// d'avant l'assistant était autre (redémarrage entre les deux), jusqu'au redémarrage.
+    /// </summary>
+    [RelayCommand]
+    private async Task ReturnToBalanced()
+    {
+        if (Record?.ResultState is not { } balanced) return;
+        if (await ApplyAsync(balanced with { AtStartup = false })) Phase = AssistantPhase.Idle;
     }
 
     [RelayCommand]
