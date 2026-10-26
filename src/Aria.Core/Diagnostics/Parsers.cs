@@ -48,8 +48,29 @@ internal static partial class MemoryParser
         return m.Success ? int.Parse(m.Groups["n"].Value) : null;
     }
 
-    /// <summary>Certains BIOS rapportent la fréquence réelle (MHz) au lieu du débit (MT/s) : on corrige.</summary>
-    public static int NormalizeSpeed(int value) => value is > 0 and < 1400 ? value * 2 : value;
+    /// <summary>
+    /// Certains BIOS rapportent la fréquence réelle (MHz) au lieu du débit (MT/s) : on corrige selon la génération
+    /// (DDR4 sous 2133 et DDR5 sous 3200 ne sont pas des débits réels : DDR4-3200 lue « 1600 » → 3200), puis on arrondit
+    /// à la vitesse commerciale la plus proche (1066 × 2 = 2132 → 2133).
+    /// </summary>
+    public static int NormalizeSpeed(int value, string generation = "")
+    {
+        if (value <= 0) return value;
+        var floor = generation switch { "DDR4" => 2133, "DDR5" => 3200, _ => 1400 };
+        var speed = value < floor ? value * 2 : value;
+        var nearest = KnownSpeeds.MinBy(k => Math.Abs(k - speed));
+        return Math.Abs(nearest - speed) <= 40 ? nearest : speed;
+    }
+
+    /// <summary>
+    /// Barrettes sans profil XMP/EXPO (vitesse JEDEC seulement) : Kingston ValueRAM (KVR), Crucial standard (CT),
+    /// Samsung (M3xx), SK hynix (HMA, HMC…), Micron (MTA, MTC). Un écart avec la vitesse du kit vient alors du processeur
+    /// ou de la carte mère, pas d'un profil oublié.
+    /// </summary>
+    public static bool IsJedecOnly(string partNumber) => JedecOnly().IsMatch(partNumber.Trim().ToUpperInvariant());
+
+    [GeneratedRegex(@"^(KVR|CT\d|M3[2-9]\d|HM[AC][A-Z0-9]|MT[AC]\d)")]
+    private static partial Regex JedecOnly();
 
     /// <summary>
     /// Identifiant du canal mémoire d'une barrette, ou null si l'emplacement n'est pas interprétable.

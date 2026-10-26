@@ -16,7 +16,7 @@ public sealed class MemorySpeedCheck : IDiagnosticCheck
         var mem = ctx.Hardware.Memory;
         if (mem.Modules.Count == 0) yield break;
 
-        var configured = MemoryParser.NormalizeSpeed(mem.ConfiguredSpeedMTs);
+        var configured = MemoryParser.NormalizeSpeed(mem.ConfiguredSpeedMTs, mem.Generation);
         if (configured == 0) yield break;
 
         var profile = ctx.Hardware.Cpu.IsAmd ? "EXPO" : "XMP";
@@ -52,6 +52,13 @@ public sealed class MemorySpeedCheck : IDiagnosticCheck
                 "la stabilité (ex. MemTest86) : une RAM instable peut corrompre des fichiers sans prévenir. Gain en jeu modeste.",
                 ctx.PlatformSteps("memory_profile"), NeedsBios: true);
         }
+        else if (kitSpeed > configured + 100 && mem.Modules.All(m => MemoryParser.IsJedecOnly(m.PartNumber)))
+        {
+            yield return new("memory.speed",
+                $"RAM à {configured} MT/s (barrettes vendues pour {kitSpeed})", Severity.Info,
+                $"Ces barrettes n'ont pas de profil {profile} : leur vitesse est bridée par le processeur ou la carte mère, " +
+                "ce qui est normal. Il n'y a rien à activer.");
+        }
         else if (kitSpeed > configured + 100)
         {
             yield return new("memory.speed",
@@ -86,6 +93,15 @@ public sealed class MemoryChannelCheck : IDiagnosticCheck
         var modules = ctx.Hardware.Memory.Modules;
         if (modules.Count == 0) yield break;
 
+        // Mémoire soudée (portables, consoles portables) : souvent annoncée comme un seul module, avec plusieurs canaux
+        // internes et aucun emplacement libre ; « une seule barrette » n'a pas de sens
+        if (modules.All(IsSoldered))
+        {
+            yield return new("memory.channel", "Mémoire soudée (LPDDR)", Severity.Ok,
+                "Mémoire intégrée à la carte mère, organisée en plusieurs canaux par le fabricant : rien à ajouter ni à déplacer.");
+            yield break;
+        }
+
         if (modules.Count == 1)
         {
             yield return new("memory.channel", "Une seule barrette : mode simple canal",
@@ -112,4 +128,7 @@ public sealed class MemoryChannelCheck : IDiagnosticCheck
                 $"{modules.Count} barrettes réparties sur plusieurs canaux.");
         }
     }
+
+    /// <summary>Types SMBIOS LPDDR, LPDDR2, LPDDR3, LPDDR4 et LPDDR5 (27 à 30, 35) : mémoire soudée.</summary>
+    internal static bool IsSoldered(MemoryModule module) => module.SmbiosType is 27 or 28 or 29 or 30 or 35;
 }

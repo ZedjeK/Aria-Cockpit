@@ -7,8 +7,8 @@ namespace Aria.Core.Nvidia;
 /// <param name="InVrrMode">L'écran est en ce moment en mode VRR (jeu en cours, par exemple).</param>
 public sealed record VrrState(bool Enabled, bool Possible, bool Requested, bool InVrrMode)
 {
-    /// <summary>G-SYNC activé pour cet écran.</summary>
-    public bool IsOn => Requested || Enabled || InVrrMode;
+    /// <summary>G-SYNC activé pour cet écran (seulement s'il le permet : G-SYNC activé globalement ne rend pas VRR un écran qui ne l'est pas).</summary>
+    public bool IsOn => Possible && (Requested || Enabled || InVrrMode);
 }
 
 public enum ColorPolicy { Driver, User }

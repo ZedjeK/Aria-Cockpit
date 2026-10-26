@@ -20,6 +20,7 @@ internal static class CpuCollector
             MaxClockMHz: Wmi.Int(first, "MaxClockSpeed"),
             PerformanceCores: performance,
             EfficientCores: efficient,
-            Microcode: CpuTopology.ReadMicrocode());
+            Microcode: CpuTopology.ReadMicrocode(),
+            Model: CpuTopology.ReadModel());
     }
 }
