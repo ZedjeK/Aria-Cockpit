@@ -15,7 +15,7 @@ namespace Aria.Core.Nvidia;
 /// <param name="BenchFps">FPS moyens du banc d'essai à la mesure de départ (absent si mesurée dans un jeu).</param>
 /// <param name="BenchDefinition">Définition du banc d'essai pour cette mesure (1080, 1440 ou 2160).</param>
 /// <param name="ResultStats">Mesures du réglage retenu (validation de 15 minutes si elle a réussi, sinon dernier palier stable) ;
-/// absentes des résultats enregistrés avant la 0.18.1. Performance s'y compare pour son avis.</param>
+/// absentes des résultats enregistrés avant la 0.19.0. Performance s'y compare pour son avis.</param>
 /// <param name="ResultFps">FPS moyens du banc pour le réglage retenu, à la même définition que <paramref name="BenchFps"/>.</param>
 /// <param name="Validated">Le réglage retenu a passé la validation de 15 minutes.</param>
 public sealed record BalancedRecord(

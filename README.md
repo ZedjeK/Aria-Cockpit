@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.18 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.19 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
