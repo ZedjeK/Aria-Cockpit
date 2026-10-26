@@ -12,6 +12,9 @@ internal static class DisplayConfig
     private const int GetSourceName = 1;
     private const int GetTargetName = 2;
     private const int GetAdvancedColorInfo = 9;
+    /// <summary>Windows 11 : distingue le HDR de la gamme de couleurs étendue (WCG) et donne le mode actif.</summary>
+    private const int GetAdvancedColorInfo2 = 15;
+    private const int ColorModeHdr = 2;   // DISPLAYCONFIG_ADVANCED_COLOR_MODE_HDR (0 SDR, 1 WCG)
 
     [StructLayout(LayoutKind.Sequential)]
     internal struct Luid
@@ -100,6 +103,16 @@ internal static class DisplayConfig
         public uint BitsPerColorChannel;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct AdvancedColorInfo2
+    {
+        public DeviceInfoHeader Header;
+        public uint Value;
+        public int ColorEncoding;
+        public uint BitsPerColorChannel;
+        public int ActiveColorMode;
+    }
+
     [DllImport("user32.dll")]
     private static extern int GetDisplayConfigBufferSizes(uint flags, out uint pathCount, out uint modeCount);
 
@@ -115,6 +128,9 @@ internal static class DisplayConfig
 
     [DllImport("user32.dll")]
     private static extern int DisplayConfigGetDeviceInfo(ref AdvancedColorInfo request);
+
+    [DllImport("user32.dll")]
+    private static extern int DisplayConfigGetDeviceInfo(ref AdvancedColorInfo2 request);
 
     /// <summary>Par nom système (\\.\DISPLAY1) : connexion, HDR pris en charge, HDR activé.</summary>
     public static Dictionary<string, (DisplayConnection Connection, bool? HdrSupported, bool? HdrEnabled)> Read()
@@ -142,20 +158,44 @@ internal static class DisplayConfig
                 ? Classify(target.OutputTechnology)
                 : Classify(path.TargetInfo.OutputTechnology);
 
+            var color2 = new AdvancedColorInfo2
+            {
+                Header = Header<AdvancedColorInfo2>(GetAdvancedColorInfo2, path.TargetInfo.AdapterId, path.TargetInfo.Id)
+            };
             var color = new AdvancedColorInfo
             {
                 Header = Header<AdvancedColorInfo>(GetAdvancedColorInfo, path.TargetInfo.AdapterId, path.TargetInfo.Id)
             };
-            bool? supported = null, enabled = null;
-            if (DisplayConfigGetDeviceInfo(ref color) == 0)
-            {
-                supported = (color.Value & 0x1) != 0; // advancedColorSupported
-                enabled = (color.Value & 0x2) != 0;   // advancedColorEnabled
-            }
+            var (supported, enabled) = DisplayConfigGetDeviceInfo(ref color2) == 0
+                ? DecodeHdr(color2.Value, color2.ActiveColorMode)
+                : DisplayConfigGetDeviceInfo(ref color) == 0
+                    ? DecodeHdrLegacy(color.Value)
+                    : (null, null);
 
             result.TryAdd(source.ViewGdiDeviceName, (connection, supported, enabled));
         }
         return result;
+    }
+
+    /// <summary>
+    /// HDR d'après DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO_2 : « couleur avancée » recouvre aussi la gamme étendue (WCG) en SDR
+    /// (gestion automatique des couleurs des portables, écrans large gamut) ; seuls le bit HDR et le mode actif HDR comptent.
+    /// </summary>
+    internal static (bool? Supported, bool? Enabled) DecodeHdr(uint value, int activeColorMode)
+    {
+        var hdrSupported = (value & 0x10) != 0;   // highDynamicRangeSupported
+        return (hdrSupported, hdrSupported && activeColorMode == ColorModeHdr);
+    }
+
+    /// <summary>
+    /// Secours sans INFO_2 (DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO) : la couleur avancée active n'est du HDR que si ce n'est pas
+    /// la gamme étendue forcée ; la prise en charge reste inconnue, car un écran large gamut sans HDR lève le même bit.
+    /// </summary>
+    internal static (bool? Supported, bool? Enabled) DecodeHdrLegacy(uint value)
+    {
+        var active = (value & 0x2) != 0;        // advancedColorEnabled
+        var wideColor = (value & 0x4) != 0;     // wideColorEnforced
+        return active && !wideColor ? (true, true) : (null, false);
     }
 
     private static DeviceInfoHeader Header<T>(int type, Luid adapter, uint id) => new()
@@ -173,7 +213,8 @@ internal static class DisplayConfig
         4 => DisplayConnection.Dvi,
         5 => DisplayConnection.Hdmi,
         6 => DisplayConnection.Internal,                   // LVDS
-        10 or 11 or 18 => DisplayConnection.DisplayPort,   // externe, intégré, USB-C (tunnel)
+        11 or 13 => DisplayConnection.Internal,            // DisplayPort et UDI intégrés (eDP : écran d'un portable)
+        10 or 18 => DisplayConnection.DisplayPort,         // externe, USB-C (tunnel)
         15 => DisplayConnection.Wireless,                  // Miracast
         unchecked((int)0x80000000) => DisplayConnection.Internal,
         -1 => DisplayConnection.Other,

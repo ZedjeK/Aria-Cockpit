@@ -54,6 +54,15 @@ internal static class CpuTopology
         return (classes.Count(c => c == top), classes.Count(c => c != top));
     }
 
+    /// <summary>Modèle CPUID du premier processeur (« Intel64 Family 6 Model 183 Stepping 1 » → 183).</summary>
+    public static int? ReadModel() =>
+        ParseModel(Registry.GetValue(@"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\CentralProcessor\0", "Identifier", null) as string);
+
+    internal static int? ParseModel(string? identifier) =>
+        identifier is not null && System.Text.RegularExpressions.Regex.Match(identifier, @"\bModel (\d+)") is { Success: true } m
+            ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+
     /// <summary>Révision du microcode chargé par le BIOS ou Windows (ex. 0x12F).</summary>
     public static uint? ReadMicrocode()
     {

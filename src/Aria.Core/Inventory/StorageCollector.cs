@@ -44,7 +44,8 @@ internal static class StorageCollector
                     DriveLetters: letters.TryGetValue(number, out var l) ? l.Order().ToList() : [],
                     WearPercent: h.Wear,
                     TemperatureC: h.Temperature,
-                    PowerOnHours: h.Hours);
+                    PowerOnHours: h.Hours,
+                    TemperatureMaxC: h.TemperatureMax);
             })
             .OrderBy(d => d.Number)
             .ToList();
@@ -54,21 +55,24 @@ internal static class StorageCollector
     /// Compteurs de fiabilité (usure, température, heures de fonctionnement), par numéro de disque.
     /// Certains disques ou pilotes ne les fournissent pas : les valeurs restent alors vides.
     /// </summary>
-    private static Dictionary<string, (int? Wear, int? Temperature, long? Hours)> ReadHealth()
+    private static Dictionary<string, (int? Wear, int? Temperature, long? Hours, int? TemperatureMax)> ReadHealth()
     {
-        var result = new Dictionary<string, (int?, int?, long?)>();
+        var result = new Dictionary<string, (int?, int?, long?, int?)>();
         try
         {
-            foreach (var c in Wmi.Query("SELECT DeviceId, Wear, Temperature, PowerOnHours FROM MSFT_StorageReliabilityCounter", Wmi.Storage))
+            foreach (var c in Wmi.Query("SELECT DeviceId, Wear, Temperature, TemperatureMax, PowerOnHours FROM MSFT_StorageReliabilityCounter", Wmi.Storage))
             {
                 var wear = Wmi.Raw(c, "Wear") is null ? (int?)null : Wmi.Int(c, "Wear");
                 var temp = Wmi.Raw(c, "Temperature") is null ? (int?)null : Wmi.Int(c, "Temperature");
+                // Température de fonctionnement maximale normale indiquée par le disque (seuil d'alerte propre au modèle)
+                var tempMax = Wmi.Raw(c, "TemperatureMax") is null ? (int?)null : Wmi.Int(c, "TemperatureMax");
                 var hours = Wmi.Raw(c, "PowerOnHours") is null ? (long?)null : Wmi.Long(c, "PowerOnHours");
-                // 0 °C ou une usure > 100 % signifient « non fourni » sur de nombreux disques
+                // 0 °C signifie « non fourni » sur de nombreux disques
                 result[Wmi.Str(c, "DeviceId")] = (
-                    wear is >= 0 and <= 100 ? wear : null,
+                    UsableWear(wear),
                     temp is > 0 and < 120 ? temp : null,
-                    hours is > 0 ? hours : null);
+                    hours is > 0 ? hours : null,
+                    tempMax is > 0 and < 120 ? tempMax : null);
             }
         }
         catch (Exception)
@@ -77,4 +81,10 @@ internal static class StorageCollector
         }
         return result;
     }
+
+    /// <summary>
+    /// Usure en % de la durée de vie prévue : 100 = limite atteinte, et un NVMe continue au-delà (« Percentage Used »
+    /// jusqu'à 254) ; un SSD usé au-delà de 100 % est le cas le plus grave, pas une valeur à ignorer. 255 = non fourni.
+    /// </summary>
+    internal static int? UsableWear(int? wear) => wear is >= 0 and < 255 ? wear : null;
 }

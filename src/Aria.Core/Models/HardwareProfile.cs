@@ -21,6 +21,7 @@ public sealed record MachineInfo(string Manufacturer, string Model, MachineType 
 /// <param name="PerformanceCores">Cœurs performants (P-cores). 0 si le processeur n'est pas hybride.</param>
 /// <param name="EfficientCores">Cœurs économes (E-cores). 0 si le processeur n'est pas hybride.</param>
 /// <param name="Microcode">Révision du microcode chargé (ex. 0x12F), si lisible.</param>
+/// <param name="Model">Modèle CPUID affiché par Windows (« Family 6 Model 183 ») : distingue les puces d'un même nom commercial.</param>
 public sealed record CpuInfo(
     string Name,
     string Manufacturer,
@@ -29,7 +30,8 @@ public sealed record CpuInfo(
     int MaxClockMHz,
     int PerformanceCores = 0,
     int EfficientCores = 0,
-    uint? Microcode = null)
+    uint? Microcode = null,
+    int? Model = null)
 {
     public bool IsHybrid => PerformanceCores > 0 && EfficientCores > 0;
 
@@ -112,7 +114,8 @@ public sealed record MemoryInfo(IReadOnlyList<MemoryModule> Modules)
 
     public ulong TotalBytes => (ulong)Modules.Sum(m => (decimal)m.CapacityBytes);
 
-    public int ConfiguredSpeedMTs => Modules.Count == 0 ? 0 : Modules.Min(m => m.ConfiguredSpeedMTs);
+    /// <summary>Débit configuré en MT/s, corrigé quand le BIOS le rapporte en MHz (même valeur partout : Mon PC, diagnostic, fiche).</summary>
+    public int ConfiguredSpeedMTs => Modules.Count == 0 ? 0 : Diagnostics.MemoryParser.NormalizeSpeed(Modules.Min(m => m.ConfiguredSpeedMTs), Generation);
 
     public string Generation => Modules.FirstOrDefault()?.SmbiosType switch
     {
@@ -132,7 +135,8 @@ public sealed record DiskInfo(
     IReadOnlyList<char> DriveLetters,
     int? WearPercent = null,
     int? TemperatureC = null,
-    long? PowerOnHours = null);
+    long? PowerOnHours = null,
+    int? TemperatureMaxC = null);
 
 /// <param name="DeviceName">Nom système de la sortie (ex. \\.\DISPLAY1).</param>
 /// <param name="AdapterName">Carte graphique qui pilote cet écran.</param>

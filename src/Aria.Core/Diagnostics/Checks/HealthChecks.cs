@@ -13,11 +13,13 @@ public sealed partial class MicrocodeCheck : IDiagnosticCheck
 
     internal const uint Recommended = 0x12F;
     internal const uint FirstFix = 0x12B;
+    /// <summary>Puce Raptor Lake (CPUID modèle 0xB7), seule touchée ; les i5 sans K sur puce Alder Lake ont une autre lignée de microcode (0x3x).</summary>
+    internal const int RaptorLakeModel = 183;
 
     public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
     {
         var cpu = ctx.Hardware.Cpu;
-        if (!IsAffectedModel(cpu.Name)) yield break;
+        if (!IsAffectedModel(cpu.Name) || !IsRaptorLakeDie(cpu.Model)) yield break;
 
         var steps = new List<string> { ctx.Bios.Brand.UpdateTool, "Puis, dans le BIOS : charger le profil « Intel Default Settings »." };
         const string context = "Les Core i5, i7 et i9 de 13e et 14e génération pour PC fixe peuvent devenir instables " +
@@ -57,6 +59,9 @@ public sealed partial class MicrocodeCheck : IDiagnosticCheck
     /// </summary>
     internal static bool IsAffectedModel(string name) => AffectedModel().IsMatch(name);
 
+    /// <summary>Puce Raptor Lake, ou modèle illisible (on reste prudent : la vérification s'applique).</summary>
+    internal static bool IsRaptorLakeDie(int? model) => model is null or RaptorLakeModel;
+
     [GeneratedRegex(@"\bi[579]-1[34]\d{3}(K|KF|KS|F)?(?![A-Z0-9])", RegexOptions.IgnoreCase)]
     private static partial Regex AffectedModel();
 }
@@ -83,14 +88,22 @@ public sealed class SsdHealthCheck : IDiagnosticCheck
                 yield return new("ssd.wear", $"{label} : usure avancée ({disk.WearPercent} %)", Severity.Warning,
                     $"{disk.Model} · {facts}.",
                     "Vérifier que les sauvegardes sont à jour et surveiller l'évolution.");
-            else if (disk.TemperatureC >= 70)
+            else if (disk.TemperatureC >= HotThreshold(disk))
                 yield return new("ssd.temperature", $"{label} chaud ({disk.TemperatureC} °C)", Severity.Warning,
-                    $"{disk.Model} · {facts}. Au-delà de 70-80 °C, un SSD NVMe ralentit pour se protéger.",
+                    $"{disk.Model} · {facts}. " + (disk.TemperatureMaxC is { } max
+                        ? $"Le disque indique {max} °C comme température maximale normale : au-delà, il ralentit pour se protéger."
+                        : "Au-delà de 75-80 °C, un SSD ralentit pour se protéger."),
                     "Installer le dissipateur M.2 fourni avec la carte mère, ou améliorer le flux d'air du boîtier.");
             else
                 yield return new("ssd.health", $"{label} en bonne santé", Severity.Ok, $"{disk.Model} · {facts}.");
         }
     }
+
+    /// <summary>
+    /// Seuil d'alerte : la température maximale normale annoncée par le disque, sinon 75 °C (beaucoup de NVMe Gen4 et Gen5
+    /// tournent à 70-75 °C en charge et ne ralentissent qu'au-delà de 80 °C).
+    /// </summary>
+    internal static int HotThreshold(DiskInfo disk) => disk.TemperatureMaxC ?? 75;
 
     public static string Describe(DiskInfo d)
     {
@@ -118,9 +131,9 @@ public sealed class DisplayLinkCheck : IDiagnosticCheck
                 var highResolution = (long)d.Width * d.Height >= 2560L * 1440;
 
                 if (d.Connection == DisplayConnection.Hdmi && highResolution && d.MaxRefreshHz <= 60)
-                    yield return new("display.link", $"{d.MonitorName} : HDMI limité à {d.MaxRefreshHz} Hz", Severity.Info,
-                        $"En {d.Width}x{d.Height}, la connexion HDMI n'offre pas plus de {d.MaxRefreshHz} Hz. " +
-                        "Si l'écran est vendu pour une fréquence plus élevée, c'est le câble ou la version HDMI qui la bride.",
+                    yield return new("display.link", $"{d.MonitorName} en HDMI à {d.MaxRefreshHz} Hz", Severity.Info,
+                        $"En {d.Width}x{d.Height}, la connexion HDMI n'offre pas plus de {d.MaxRefreshHz} Hz. Normal pour un écran " +
+                        $"ou un téléviseur {d.MaxRefreshHz} Hz ; s'il est vendu pour une fréquence plus élevée, c'est le câble ou la version HDMI qui la bride.",
                         "Utiliser un câble DisplayPort, ou un câble HDMI 2.1 certifié « Ultra High Speed ».");
                 else if (d.Connection is DisplayConnection.Vga or DisplayConnection.Dvi)
                     yield return new("display.link", $"{d.MonitorName} : connexion {connection} ancienne", Severity.Info,
@@ -170,8 +183,10 @@ public sealed class NetworkCheck : IDiagnosticCheck
             if (e.SpeedBps is > 0 and < 1_000_000_000)
                 yield return new("network.ethernet", $"Ethernet bridé à {Speed(e.SpeedBps)}", Severity.Warning,
                     $"{e.Description}. Un lien en dessous de 1 Gb/s vient presque toujours d'un câble abîmé ou trop ancien " +
-                    "(catégorie 5), d'une prise mal enfoncée, ou d'un switch / port de box limité à 100 Mb/s.",
-                    "Essayer un autre câble (catégorie 5e, 6 ou plus) et un autre port de la box ou du switch.");
+                    "(catégorie 5), d'une prise mal enfoncée, ou d'un équipement limité à 100 Mb/s : switch, port de box, " +
+                    "ou adaptateur CPL (courant porteur), dont beaucoup n'ont que des ports à 100 Mb/s.",
+                    "Essayer un autre câble (catégorie 5e, 6 ou plus) et un autre port de la box ou du switch. " +
+                    "Avec un adaptateur CPL, vérifier sa fiche : s'il est limité à 100 Mb/s, seul un modèle à port gigabit lèvera la limite.");
             else if (e.SpeedBps > 0)
                 yield return new("network.ethernet", $"Ethernet à {Speed(e.SpeedBps)}", Severity.Ok, e.Description);
         }

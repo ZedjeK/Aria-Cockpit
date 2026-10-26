@@ -28,16 +28,23 @@ public sealed class StorageCheck : IDiagnosticCheck
         var root = Path.GetPathRoot(Environment.SystemDirectory);
         if (root is null) yield break;
         var drive = new DriveInfo(root);
-        var freeGb = drive.AvailableFreeSpace / 1e9;
+        // Go au sens de l'Explorateur (1024³ octets), pour afficher le même chiffre que lui
+        var freeGb = drive.AvailableFreeSpace / 1073741824.0;
         var freeRatio = (double)drive.AvailableFreeSpace / drive.TotalSize;
 
-        if (freeGb < 20 || freeRatio < 0.10)
+        if (NearlyFull(freeGb, freeRatio))
             yield return new("storage.free", $"Disque système presque plein ({freeGb:0} Go libres)", Severity.Warning,
                 "Windows et le pilote graphique ont besoin d'espace (cache des shaders, mises à jour).",
                 "Libérer de l'espace : Paramètres → Système → Stockage → Recommandations de nettoyage.");
         else
             yield return new("storage.free", $"Disque système : {freeGb:0} Go libres", Severity.Ok, "");
     }
+
+    /// <summary>
+    /// Moins de 20 Go, ou moins de 10 % s'il reste aussi moins de 50 Go : sur un disque de 2 To, 190 Go libres
+    /// (moins de 10 %) laissent largement la place au cache des shaders et aux mises à jour.
+    /// </summary>
+    internal static bool NearlyFull(double freeGb, double freeRatio) => freeGb < 20 || (freeRatio < 0.10 && freeGb < 50);
 }
 
 /// <summary>Repère les dossiers de jeux de Steam, Epic Games et de l'application Xbox.</summary>
