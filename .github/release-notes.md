@@ -17,7 +17,10 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 
 ## Nouveautés de la {VERSION}
 
-Version de correction du diagnostic de **Mon PC**, après les retours des premiers testeurs :
+- **RAM avec 4 barrettes DDR5** : Mon PC explique pourquoi le profil XMP/EXPO plante souvent dans ce cas (vitesse garantie bien plus basse avec deux barrettes par canal), le gain réel à attendre, et comment monter la fréquence à la main par paliers en restant stable
+- **Tests automatiques** : chaque modification est désormais vérifiée sur une machine Windows indépendante avant d'être publiée
+
+Rappel de la 0.19.1, correction du diagnostic de **Mon PC** après les retours des premiers testeurs :
 
 - **HDR** : un écran à gamme de couleurs étendue (gestion automatique des couleurs des portables, écrans large gamut) n'est plus annoncé comme HDR
 - **Fausses alertes graves supprimées** : microcode Intel sur les i5 sans K (puce Alder Lake), écran « branché sur la carte mère » en Bureau à distance, écran virtuel ou dock USB, Resizable BAR conseillé sur des plateformes qui ne le permettent pas
