@@ -200,7 +200,7 @@ Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton j
 |---|---|---|
 | Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul | La mesure démarre quand Aria voit ton jeu en action |
 | Verdict (Équilibre, Performance, validation) | **Automatique** : image ou calcul faux, donnée relue fausse, ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne | Le tien : artefacts ou plantage ? |
-| Contrôles de stabilité | Après le rendu de chaque palier : 1 min de calcul vérifié à pleine puissance, ou le test de la mémoire vidéo pour un palier mémoire | Aucun |
+| Contrôles de stabilité | Avant le rendu de chaque palier : 1 min de calcul vérifié à pleine puissance, puis 2 min de banc ; un palier mémoire est jugé par 2 min de test mémoire, sans banc | Aucun |
 | Mesures comparées | Fréquence, watts, température et **FPS** | Fréquence, watts, température |
 
 Économie garde ta décision à chaque palier (la fluidité acceptable, c'est toi qui la juges), avec la perte de FPS mesurée par le banc.
@@ -212,9 +212,12 @@ aucun écart. Les contrôles d'Aria-Bench (voir plus bas) s'ajoutent donc au ren
 
 - **Auto-contrôle** (20 s, au départ) : des erreurs de calcul et de mémoire sont injectées exprès, le test doit toutes
   les retrouver. Sinon, ses verdicts ne valent rien sur ce PC : l'assistant se fie au seul rendu 3D, et le dit.
-- **Calcul vérifié** (1 min) après chaque palier qui touche au cœur : paliers d'Équilibre et d'Économie, réglage de base
-  et paliers de Performance. La mesure de départ aux valeurs d'usine n'en a pas : c'est la référence.
-- **Mémoire vidéo** (1 min 30) après chaque palier mémoire : 30 s de calcul seul, puis 1 min de mémoire seule. Le palier
+- **Calcul vérifié** (1 min) en tête de chaque palier qui touche au cœur : paliers d'Équilibre et d'Économie, réglage de
+  base et paliers de Performance. C'est le juge le plus sévère : un palier instable est rejeté en une minute, et le banc 3D
+  (2 min, 3 pour le réglage de base) tourne ensuite sur une carte déjà chaude. La mesure de départ aux valeurs d'usine n'en
+  a pas : c'est la référence.
+- **Mémoire vidéo** (2 min, sans banc 3D) pour chaque palier mémoire : 40 s de calcul seul, puis 80 s de mémoire seule.
+  Une référence d'une minute au réglage retenu précède le premier palier, pour que +250 soit déjà comparé. Le palier
   échoue au premier mot relu faux, ou s'il ne va pas plus vite que le précédent (au moins 0,5 % de bande passante en
   plus) : au-delà d'un certain point, la GDDR6X corrige ses erreurs en renvoyant les données, et ralentit au lieu de planter.
 - **Validation** : aux 15 minutes de banc s'ajoutent 2 min de calcul vérifié, et 2 min de mémoire si elle est poussée.
@@ -246,7 +249,7 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 - **Ton verdict à chaque palier** : artefacts ou plantage (pour Équilibre et Performance), perte jugée acceptable ou non
   (pour Économie). Un plantage du pilote ou du jeu détecté par Windows fait passer à un palier plus prudent.
 - **Équilibre fait toujours le parcours complet** : paliers du cœur, puis paliers mémoire, puis validation de 15 minutes,
-  sans question entre les étapes (environ 1 h à 1 h 30). C'est lui qui sert de base aux deux autres modes.
+  sans question entre les étapes (environ 45 minutes sur une RTX 4080 SUPER). C'est lui qui sert de base aux deux autres modes.
 - **Mémoire** : paliers de + 250 MHz jusqu'à + 1 000, chacun avec son test de la mémoire vidéo. Toujours testée par
   Équilibre, en option à la fin de Performance.
 - **Validation de 15 minutes** sur le réglage retenu, avant de le garder (enchaînée par Équilibre, conseillée pour les
