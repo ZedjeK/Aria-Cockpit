@@ -50,13 +50,21 @@ namespace Aria.Bench
         public static bool Execute(BenchOptions options, BenchLog log)
         {
             Win32Window.EnablePerMonitorDpi();
-            using var window = new Win32Window("Aria Bench", fullscreen: !options.Windowed);
+            // Les contrôles de stabilité n'affichent rien : une fenêtre suffit (Échap les arrête)
+            var stability = options.Stability != StabilityMode.None;
+            using var window = new Win32Window(stability ? "Aria Bench · contrôle de stabilité" : "Aria Bench", fullscreen: !options.Windowed && !stability);
             using var gpu = new GpuDevice(window.Handle, window.ClientWidth, window.ClientHeight, options.Debug, log.Remarques);
             log.Carte = gpu.Info;
             log.Contexte = SystemInfo.Read();
             if (log.Contexte.OnBattery) log.Remarques.Add("PC sur batterie : la carte est souvent bridée (60 FPS, puissance réduite). Branchez-le pour une vraie mesure.");
             if (log.Contexte.EconomieEnergie) log.Remarques.Add("Économiseur d'énergie de Windows actif : les performances peuvent être réduites.");
             log.Remarques.Add($"Écran : {window.ClientWidth} × {window.ClientHeight}{(window.Fullscreen ? ", plein écran" : ", fenêtre")}.");
+
+            if (stability)
+            {
+                try { return Stability.StabilityRun.Run(gpu, window, options, log); }
+                finally { log.MessagesDirect3D.AddRange(gpu.DrainDebugMessages()); }
+            }
 
             try
             {

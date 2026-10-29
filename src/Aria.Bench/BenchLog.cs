@@ -23,6 +23,8 @@ public sealed class BenchLog
     public List<string> Remarques { get; init; } = [];
     public List<string> Erreurs { get; init; } = [];
     public List<string> MessagesDirect3D { get; init; } = [];
+    /// <summary>Contrôle de stabilité (--calcul, --vram) ; absent pour le rendu 3D.</summary>
+    public Stability.StabilityReport? Stabilite { get; set; }
 
     private static readonly JsonSerializerOptions Json = new()
     {

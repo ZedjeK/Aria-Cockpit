@@ -81,6 +81,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     // ---- Garde-fous ----
     [ObservableProperty] private string crashText = "";
     [ObservableProperty] private bool hasCrashes;
+    /// <summary>Accès mémoire invalides avec un overclock mémoire actif : le bandeau propose de remettre la mémoire à +0.</summary>
     [ObservableProperty] private string taskText = "";
     [ObservableProperty] private bool hasTaskProblem;
     [ObservableProperty] private string otherGpuText = "";
@@ -143,7 +144,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         {
             var s = GpuProfile.ReadCurrent(tuner);
             var file = GpuProfile.Load();
-            var crashList = file is null ? [] : GpuProfile.DriverCrashesSince(file.AppliedAt);
+            var crashList = file is null ? [] : DriverIncidents.Since(file.AppliedAt);
             var command = s.AtStartup ? StartupTask.Command() : null;
             return (s, GpuProfile.OriginFor(tuner), file, crashList, command);
         });
@@ -162,12 +163,9 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         OriginText = origin?.Describe() ?? "";
         if (resetSliders) LoadSliders(state);
 
-        // Plantages du pilote depuis le dernier réglage d'Aria
+        // Incidents du pilote depuis le dernier réglage d'Aria, avec un conseil selon leur nature
         HasCrashes = saved is not null && crashes.Count > 0;
-        CrashText = HasCrashes
-            ? $"Le pilote NVIDIA a planté {crashes.Count} fois depuis le réglage du {saved!.AppliedAt:dd/MM à HH:mm} " +
-              $"(dernière fois le {crashes[^1]:dd/MM à HH:mm}). Ce réglage est probablement instable : revenez au réglage d'origine ou réduisez les décalages."
-            : "";
+        CrashText = HasCrashes ? DriverIncidents.Advise(crashes, saved!.AppliedAt, state) : "";
 
         // Tâche de démarrage absente ou pointant vers un ancien emplacement d'Aria
         var exe = Environment.ProcessPath ?? "";

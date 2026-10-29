@@ -21,6 +21,13 @@ public static class ShaderLibrary
         ("Post", "ps_6_0", "PSComposite")
     ];
 
+    /// <summary>
+    /// Shaders de calcul des contrôles de stabilité (Shaders/Vram.hlsl, cs_5_1) : compilés par outils/compiler-shaders-calcul.py
+    /// avec le compilateur fourni avec Windows. Nom du point d'entrée → nom du fichier compilé.
+    /// </summary>
+    public static IReadOnlyList<(string Entry, string Compiled)> ComputeEntries { get; } =
+        [("Fill", "CSFill"), ("Verify", "CSVerify"), ("Burn", "CSBurn")];
+
     /// <summary>Code compilé d'un point d'entrée.</summary>
     public static byte[] Load(string entry)
     {

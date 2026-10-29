@@ -14,7 +14,10 @@ public sealed record BenchOptions(
     bool Windowed,
     bool Debug,
     string? OutputPath,
-    bool SaveImages = false)
+    bool SaveImages = false,
+    StabilityMode Stability = StabilityMode.None,
+    bool SelfCheck = false,
+    string? PreviousPath = null)
 {
     public static readonly int[] AllDefinitions = [1080, 1440, 2160];
     public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(20);
@@ -24,7 +27,7 @@ public sealed record BenchOptions(
         new([QualityPreset.High], AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
 
     public const string Help =
-        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--sortie fichier.json]";
+        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--calcul | --vram] [--auto-controle] [--precedent ancien.json] [--sortie fichier.json]";
 
     /// <summary>Taille du rendu interne (16:9) pour une définition.</summary>
     public static (int Width, int Height) SizeOf(int definition) => definition switch
@@ -67,6 +70,22 @@ public sealed record BenchOptions(
                 case "--images":
                     options = options with { SaveImages = true };
                     break;
+                case "--calcul":
+                    // Contrôle de stabilité au lieu du rendu 3D : calcul vérifié à pleine puissance (voir StabilityRun)
+                    options = options with { Stability = StabilityMode.Compute };
+                    break;
+                case "--vram":
+                    // Contrôle de stabilité : mémoire vidéo et calcul vérifié (voir StabilityRun)
+                    options = options with { Stability = StabilityMode.Memory };
+                    break;
+                case "--auto-controle":
+                    // Erreurs injectées exprès : le contrôle doit toutes les retrouver
+                    options = options with { SelfCheck = true };
+                    break;
+                case "--precedent":
+                    // Journal du palier mémoire précédent : la bande passante doit augmenter
+                    options = options with { PreviousPath = Next(args, ref i, arg) };
+                    break;
                 case "--sortie":
                     options = options with { OutputPath = Next(args, ref i, arg) };
                     break;
@@ -74,6 +93,8 @@ public sealed record BenchOptions(
                     throw new ArgumentException($"Option inconnue : « {args[i]} ». Utilisation : {Help}");
             }
         }
+        // L'auto-contrôle porte sur la mémoire et le calcul ensemble, sauf si --calcul est demandé
+        if (options.SelfCheck && options.Stability == StabilityMode.None) options = options with { Stability = StabilityMode.Memory };
         return options;
     }
 
@@ -113,3 +134,6 @@ public sealed record BenchOptions(
         return [.. list];
     }
 }
+
+/// <summary>Contrôle de stabilité demandé à la place du rendu 3D.</summary>
+public enum StabilityMode { None, Compute, Memory }

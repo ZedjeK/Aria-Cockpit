@@ -192,30 +192,11 @@ public static class GpuProfile
     }
 
     /// <summary>
-    /// Plantages du pilote graphique notés par Windows depuis une date (journal Système) :
-    /// « Le pilote d'affichage nvlddmkm a cessé de répondre » (Display, 4101) et les erreurs de nvlddmkm.
+    /// Plantages du pilote graphique depuis une date, un par incident (les lignes écrites ensemble par le pilote
+    /// ne comptent qu'une fois) : voir <see cref="DriverIncidents"/>.
     /// </summary>
-    public static IReadOnlyList<DateTime> DriverCrashesSince(DateTime since)
-    {
-        if (!OperatingSystem.IsWindows()) return [];
-        var ms = (long)Math.Max(0, (DateTime.Now - since).TotalMilliseconds);
-        var query = new EventLogQuery("System", PathType.LogName,
-            "*[System[((Provider[@Name='Display'] and EventID=4101) or (Provider[@Name='nvlddmkm'] and (Level=1 or Level=2)))" +
-            $" and TimeCreated[timediff(@SystemTime) <= {ms}]]]");
-        var found = new List<DateTime>();
-        try
-        {
-            using var reader = new EventLogReader(query);
-            for (var e = reader.ReadEvent(); e is not null; e = reader.ReadEvent())
-                using (e)
-                    if (e.TimeCreated is { } at) found.Add(at);
-        }
-        catch (Exception e) when (e is EventLogException or UnauthorizedAccessException)
-        {
-            // Journal illisible : pas de garde-fou, mais pas d'alerte inventée
-        }
-        return found.Order().ToList();
-    }
+    public static IReadOnlyList<DateTime> DriverCrashesSince(DateTime since) =>
+        DriverIncidents.Since(since).Select(i => i.At).ToList();
 
     private static void Log(string message)
     {

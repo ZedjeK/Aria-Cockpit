@@ -71,10 +71,12 @@
           </Grid.ColumnDefinitions>
           <ui:SymbolIcon VerticalAlignment="Top" FontSize="22" Foreground="{StaticResource NeonRedBrush}" Symbol="ErrorCircle24" />
           <StackPanel Grid.Column="1" Margin="12,0,16,0">
-            <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="PLANTAGES DU PILOTE DÉTECTÉS" />
+            <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="INCIDENTS DU PILOTE DÉTECTÉS" />
             <TextBlock Margin="0,4,0,0" Text="{Binding CrashText}" TextWrapping="Wrap" />
           </StackPanel>
-          <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
+          <StackPanel Grid.Column="2" VerticalAlignment="Center">
+            <Button HorizontalAlignment="Stretch" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
+          </StackPanel>
         </Grid>
       </Border>
 
@@ -294,12 +296,12 @@
           <ItemsControl Margin="0,14,0,0" Focusable="False" ItemsSource="{Binding Tiles}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <UniformGrid Rows="1" />
+                <UniformGrid Columns="{Binding TileColumns}" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Border Margin="0,0,14,0" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
+                <Border Margin="0,0,14,10" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
                   <StackPanel>
                     <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
                     <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">

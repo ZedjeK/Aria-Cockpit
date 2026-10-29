@@ -167,6 +167,26 @@ internal sealed class GpuDevice : IDisposable
         WaitIdle();
     }
 
+    /// <summary>
+    /// Un second device sur la même carte, sans chaîne d'affichage : les contrôles de stabilité y tournent à part du rendu,
+    /// comme dans l'outil d'origine (Test VRAM discriminant).
+    /// </summary>
+    public ID3D12Device CreateSeparateDevice()
+    {
+        if (D3D12.D3D12CreateDevice(_adapter, FeatureLevel.Level_12_0, out ID3D12Device? device).Failure || device is null)
+            throw new BenchException("Impossible de créer un second accès Direct3D 12 à la carte pour le contrôle de stabilité.");
+        device.Name = "Aria-Bench contrôle de stabilité";
+        return device;
+    }
+
+    /// <summary>Mémoire vidéo dédiée : budget accordé par Windows et part déjà utilisée (octets).</summary>
+    public (ulong Budget, ulong Usage) LocalMemory()
+    {
+        using var adapter = _adapter.QueryInterface<IDXGIAdapter3>();
+        var info = adapter.QueryVideoMemoryInfo(0, MemorySegmentGroup.Local);
+        return (info.Budget, info.CurrentUsage);
+    }
+
     /// <summary>Attend que la carte ait fini tout le travail envoyé.</summary>
     public void WaitIdle() => WaitForFence(Signal(), "la fin du travail en cours");
 
