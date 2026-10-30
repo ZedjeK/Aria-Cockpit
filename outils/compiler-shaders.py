@@ -5,7 +5,7 @@ Aria-Bench n'embarque pas de compilateur : il charge ce code compilé, intégré
 d'un .hlsl, relancer ce script avec l'un des deux compilateurs DXC :
   - Windows : dxc.exe du paquet NuGet officiel Microsoft.Direct3D.DXC (build/native/bin/x64, avec dxil.dll à côté
     pour signer le code ; sans elle, le pilote refuse les shaders) :
-        python outils/compiler-shaders.py C:\cheminers\dxc.exe
+        python outils/compiler-shaders.py C:/chemin/vers/dxc.exe
   - Linux ou WSL : la bibliothèque du paquet NuGet Vortice.Dxc.Native :
         python3 outils/compiler-shaders.py ~/.nuget/packages/vortice.dxc.native/1.0.5/runtimes/linux-x64/native/libdxcompiler.so
 """

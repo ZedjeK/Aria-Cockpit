@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.19 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.20 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -22,8 +22,8 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria ; un garde-fou signale les plantages du pilote |
-| **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul, de mémoire vidéo et de ray tracing ; un garde-fou signale les plantages du pilote |
+| **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra RT (ray tracing) : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
@@ -237,7 +237,14 @@ aucun écart. Les contrôles d'Aria-Bench (voir plus bas) s'ajoutent donc au ren
   Une référence d'une minute au réglage retenu précède le premier palier, pour que +250 soit déjà comparé. Le palier
   échoue au premier mot relu faux, ou s'il ne va pas plus vite que le précédent (au moins 0,5 % de bande passante en
   plus) : au-delà d'un certain point, la GDDR6X corrige ses erreurs en renvoyant les données, et ralentit au lieu de planter.
-- **Validation** : aux 15 minutes de banc s'ajoutent 2 min de calcul vérifié, et 2 min de mémoire si elle est poussée.
+- **Validation** : aux 15 minutes de banc s'ajoutent, sur une carte RTX, 130 s d'Ultra RT (un tour de caméra, à la
+  définition de l'écran, images vérifiées), puis 2 min de calcul vérifié, et 2 min de mémoire si elle est poussée. Le
+  premier qui lâche arrête la suite ; une image fausse en ray tracing fait reculer le décalage de 15 MHz.
+- **Pourquoi le ray tracing en contrôle, et pas en mesure.** Sur la RTX 4080 SUPER de l'auteur, l'Ultra en 4K bute sur la
+  limite de puissance (318 W, fréquence entre 2610 et 2685 MHz), alors que l'Ultra RT en 1440p reste à 260 W, collé au
+  plafond de 2685 MHz : les cœurs RT limitent avant les watts. Le RT éprouve donc mieux la fréquence (la carte reste au
+  point où le décalage est le plus exposé) mais jugerait mal les watts d'Économie et le gain de Performance. Les mesures
+  restent en Ultra.
 - Les tuiles de résultat montrent ce qui a été vérifié : « Calcul vérifié » (exécutions, écarts) et « Mémoire vidéo »
   (bande passante, passes, erreurs).
 
@@ -292,9 +299,9 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
-mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Le banc ne sollicite pas
-encore les cœurs de ray tracing ni les cœurs Tensor (DLSS) : un jeu qui s'en sert peut révéler un réglage que le banc
-n'a pas vu. Les contrôles de calcul et de mémoire réduisent le risque sous une IA locale ou un rendu, sans le supprimer :
+mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Les cœurs de ray
+tracing ne sont éprouvés qu'à la validation (pas à chaque palier), et les cœurs Tensor (DLSS) pas encore : un jeu qui
+s'en sert peut révéler un réglage que le banc n'a pas vu. Les contrôles de calcul et de mémoire réduisent le risque sous une IA locale ou un rendu, sans le supprimer :
 essaie ton usage réel avant de garder un réglage au démarrage.
 
 ## Banc d'essai Aria
@@ -311,6 +318,15 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
 | Moyen | 512² | 12 100 | 2048 px, adoucies | 32 | 8 échantillons | 3 niveaux |
 | Élevé | 768² | 28 900 | 4096 px, adoucies | 64 | 12 échantillons | 4 niveaux |
 | Ultra | 1024² | 57 600 | 4096 px, très adoucies | 96 | 16 échantillons | 5 niveaux |
+| Ultra RT | 1024² | 57 600 | tracées (1 rayon) | 96 | 4 rayons tracés | 5 niveaux |
+
+- **Ultra RT** : la scène d'Ultra, éclairée par ray tracing DXR 1.1 en ligne (RayQuery, Shader Model 6.5) : ombre du
+  soleil, occlusion ambiante et reflets tracés à chaque pixel, à travers une structure d'accélération construite
+  une fois au démarrage (une instance par tour ou rocher). Les directions des rayons sont fixes pour chaque pixel : l'image
+  de contrôle reste identique au pixel près, et se vérifie comme les autres. Il faut une carte DXR 1.1 (NVIDIA RTX,
+  AMD Radeon RX 6000 et plus récentes, Intel Arc) ; sinon le banc le refuse avec un message clair. Il ne fait pas partie
+  de `--qualite tout` : il se demande avec `--qualite ultra-rt`. Sur une RTX 4080 SUPER en 1440p, il triple environ le
+  temps d'image d'Ultra (mesuré sur les mêmes 20 secondes de scène).
 
 - **Vérification des images** : une image de contrôle (toujours le même instant de la scène) est calculée après la
   chauffe, puis recalculée toutes les 3 secondes et comparée au pixel près. Sur une carte stable, le résultat est
@@ -339,6 +355,7 @@ Lancement à la main (Échap arrête) :
 
     Aria-Bench.exe                                  Élevé, 1080p puis 1440p puis 4K, 20 s chacune
     Aria-Bench.exe --qualite tout --def 1440        Les quatre préréglages en 1440p
+    Aria-Bench.exe --qualite ultra,ultra-rt --def 1440   Ultra puis Ultra RT, pour mesurer le coût du ray tracing
     Aria-Bench.exe --qualite ultra --def 4k --duree 60 --fenetre --debug --images --sortie resultat.json
     Aria-Bench.exe --calcul --duree 60              Calcul vérifié à pleine puissance
     Aria-Bench.exe --vram --duree 90                Calcul seul (un tiers du temps), puis mémoire vidéo seule
@@ -444,7 +461,10 @@ Version console en simulation, depuis la racine du projet :
 - `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; contrôles de stabilité dans `Stability/`.
   Shaders dans `Shaders/*.hlsl`, précompilés dans `Shaders/Compiled` par `outils/compiler-shaders.py` (rendu) et
   `outils/compiler-shaders-calcul.py` (contrôles, avec le compilateur fourni avec Windows) : aucun compilateur n'est
-  livré avec l'exe
+  livré avec l'exe. Pour le rendu, ray tracing compris (Shader Model 6.5), le plus simple est le `dxc.exe` du paquet
+  NuGet officiel `Microsoft.Direct3D.DXC`, avec sa `dxil.dll` à côté pour signer le code (sans signature, le pilote
+  refuse les shaders) : `python outils/compiler-shaders.py <chemin>/dxc.exe`. `RayTracingScene.cs` construit les
+  structures d'accélération du préréglage Ultra RT
 - `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core et des verdicts d'Aria-Bench (analyse de performance,
   recherche des paliers, origine d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc,
   contrôles de stabilité, incidents du pilote, avis de Performance) ; rien n'y touche à la carte ni au système
