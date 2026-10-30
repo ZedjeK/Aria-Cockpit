@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Aria.Core.Reporting;
 
-public enum ReportKind { Settings, Simulation, Restore, Updates, PcSheet, Cleanup }
+public enum ReportKind { Settings, Simulation, Restore, Updates, PcSheet, Cleanup, GpuTuning }
 
 /// <summary>Un rapport enregistré : type, date et ligne de bilan.</summary>
 public sealed record ReportInfo(string Path, ReportKind Kind, DateTime At, string Summary);
@@ -56,7 +56,12 @@ public static class ReportIndex
             return new ReportInfo(path, ReportKind.PcSheet, sheetAt, text);
         }
 
-        if (name.StartsWith(CleanupPrefix, StringComparison.OrdinalIgnoreCase))
+        if (name.StartsWith(GpuTuningReport.FilePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            kind = ReportKind.GpuTuning;
+            stamp = name[GpuTuningReport.FilePrefix.Length..];
+        }
+        else if (name.StartsWith(CleanupPrefix, StringComparison.OrdinalIgnoreCase))
         {
             kind = ReportKind.Cleanup;
             stamp = name[CleanupPrefix.Length..];

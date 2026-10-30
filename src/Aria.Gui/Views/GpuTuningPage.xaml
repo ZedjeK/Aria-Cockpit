@@ -253,7 +253,7 @@
             <WrapPanel Margin="0,12,0,0">
               <Button Margin="0,0,10,8" Command="{Binding OpenNvidiaAppCommand}" Content="OUVRIR NVIDIA APP" Style="{StaticResource HudButton}" Visibility="{Binding CanOpenNvidiaApp, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding RecheckNvidiaAppCommand}" Content="VÉRIFIER À NOUVEAU" Style="{StaticResource HudButtonGhost}" />
-              <Button Margin="0,0,10,8" Command="{Binding ContinueDespiteNvidiaAppCommand}" Content="CONTINUER QUAND MÊME" Style="{StaticResource HudButtonGhost}" ToolTip="Les mesures risquent d'être faussées par l'overclock de NVIDIA App" />
+              <Button Margin="0,0,10,8" Command="{Binding ContinueDespiteNvidiaAppCommand}" Content="CONTINUER QUAND MÊME" Style="{StaticResource HudButtonGhost}" ToolTip="Les mesures risquent d'être faussées" />
               <Button Margin="0,0,10,8" Command="{Binding DismissPreflightCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" />
             </WrapPanel>
           </StackPanel>
@@ -386,6 +386,8 @@
               <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedSecond, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding OpenReportCommand}" Content="VOIR LE RAPPORT" Style="{StaticResource HudButtonGhost}" ToolTip="Conclusion détaillée, déroulé palier par palier ; aussi dans la page Rapports" Visibility="{Binding HasReport, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding SaveAsProfileCommand}" Content="ENREGISTRER COMME PROFIL" Style="{StaticResource HudButtonGhost}" ToolTip="Le garde dans « Mes profils », à recharger plus tard dans les curseurs" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
             </WrapPanel>
@@ -560,6 +562,68 @@
             </StackPanel>
           </ContentControl>
 
+          <!-- Profils enregistrés pour cette carte -->
+          <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanelMirror}" Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="MES PROFILS" />
+              <TextBlock
+                Margin="0,4,0,0"
+                FontSize="12.5"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="Aucun profil pour cette carte. Enregistrez le réglage des curseurs, ou un résultat de l'assistant."
+                TextWrapping="Wrap"
+                Visibility="{Binding HasProfiles, Converter={StaticResource InverseBoolToVisibility}}" />
+              <ItemsControl Focusable="False" ItemsSource="{Binding Profiles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="0,8" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1">
+                      <StackPanel>
+                        <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Profile.Name}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0" Text="{Binding Tuning}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Details}" TextWrapping="Wrap" />
+                        <TextBlock
+                          Margin="0,2,0,0"
+                          FontSize="12.5"
+                          Foreground="{StaticResource NeonOrangeBrush}"
+                          Text="Pilote changé depuis : à revalider avant de le garder."
+                          TextWrapping="Wrap"
+                          Visibility="{Binding DriverChanged, Converter={StaticResource BoolToVisibility}}" />
+                        <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                          <Button
+                            Padding="16,0"
+                            Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="CHARGER"
+                            Style="{StaticResource HudButtonGhost}"
+                            ToolTip="Met ce profil dans les curseurs ; Appliquer le pose ensuite" />
+                          <Button
+                            Margin="8,0,0,0"
+                            Padding="16,0"
+                            Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="SUPPRIMER"
+                            Style="{StaticResource HudButtonGhost}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="NOM DU NOUVEAU PROFIL" />
+              <TextBox
+                Margin="0,4,0,0"
+                MaxLength="60"
+                Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" />
+              <Button
+                Margin="0,8,0,0"
+                HorizontalAlignment="Left"
+                Command="{Binding SaveProfileCommand}"
+                Content="ENREGISTRER"
+                Style="{StaticResource HudButtonGhost}"
+                ToolTip="Enregistre le réglage des curseurs (celui en place si vous n'y avez pas touché)" />
+            </StackPanel>
+          </ContentControl>
+
           <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanelMirror}">
             <StackPanel>
               <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource TechLabel}" Text="RECETTES" />
@@ -567,10 +631,10 @@
                 <Run FontWeight="SemiBold" Text="Équilibre : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="plafond à la fréquence haute habituelle en jeu (lisez-la en direct), puis décalage GPU de +100 à +200 MHz par paliers." />
               </TextBlock>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
-                <Run FontWeight="SemiBold" Text="Économie : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="le réglage d'Équilibre avec un plafond 5 à 10 % plus bas, ou simplement la limite de puissance à 80-90 %." />
+                <Run FontWeight="SemiBold" Text="Économie : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="le réglage d'Équilibre avec un plafond 5 à 10 % plus bas, ou simplement la limite de puissance à 80-90 %. Moins de fréquence, c'est moins de tension : watts et chaleur baissent avec. Le plafond garde une fréquence régulière ; la limite de watts garantit une consommation maximale, mais la fréquence varie dans les scènes lourdes." />
               </TextBlock>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
-                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU croissant depuis la courbe d'usine (+60, puis +30, puis +15 MHz) jusqu'au plus haut palier stable." />
+                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU croissant depuis la courbe d'usine (+60, puis +30, puis +15 MHz) jusqu'au plus haut palier stable. La limite au maximum n'est qu'un plafond (elle ne rend pas instable) : ce sont les watts en plus pour chaque FPS gagné qui disent si ça vaut le coup." />
               </TextBlock>
               <TextBlock
                 Margin="0,10,0,0"

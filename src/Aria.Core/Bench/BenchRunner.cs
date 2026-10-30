@@ -1,12 +1,14 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Aria.Core.Inventory;
 
 namespace Aria.Core.Bench;
 
 /// <summary>Une passe du banc d'essai, telle qu'Aria-Bench l'écrit dans son journal JSON.</summary>
+/// <param name="ArrierePlanS">Secondes mesurées hors du premier plan (le pilote bride alors le banc, souvent à 30 FPS).</param>
 public sealed record BenchPass(string Qualite, string Definition, int Images, double FpsMoyen, double FpsMedian, double Fps1PourcentBas,
-    int Saccades, int Verifications, int ErreursCalcul, long PixelsDifferents, string? Plafond);
+    int Saccades, int Verifications, int ErreursCalcul, long PixelsDifferents, string? Plafond, double Secondes = 0, double ArrierePlanS = 0);
 
 /// <summary>
 /// Contrôle de stabilité d'Aria-Bench (--calcul, --vram, --auto-controle) : calcul vérifié à pleine puissance et test de la
@@ -55,6 +57,21 @@ public sealed record BenchResult(string Statut, IReadOnlyList<BenchPass> Resulta
     /// <summary>L'auto-contrôle a retrouvé toutes les erreurs injectées : les verdicts des contrôles sont fiables.</summary>
     public bool SelfCheckPassed => Completed && Stabilite is { AutoControle: true, Statut: "reussi" };
 
+    /// <summary>Temps hors du premier plan toléré : quelques secondes (une notification), au plus 2 % de la mesure au-delà.</summary>
+    public const double MinBackgroundSeconds = 5;
+    public const double MaxBackgroundShare = 0.02;
+    /// <summary>Charge moyenne en dessous de laquelle des FPS collés à une limite veulent dire « carte pas mesurée à fond ».</summary>
+    public const double FullLoadPercent = 90;
+
+    /// <summary>Le banc a passé plus de quelques secondes hors du premier plan : le pilote l'a bridé, la mesure est faussée.</summary>
+    public bool RanInBackground => Pass is { } p && p.ArrierePlanS > Math.Max(MinBackgroundSeconds, p.Secondes * MaxBackgroundShare);
+
+    /// <summary>
+    /// FPS collés à une limite alors que la carte n'a pas été chargée à fond : elle n'a pas été mesurée. Une petite carte qui fait
+    /// vraiment 30 FPS en 4K tourne, elle, à pleine charge.
+    /// </summary>
+    public bool CappedBelowFullLoad(double averageLoadPercent) => Pass?.Plafond is not null && averageLoadPercent < FullLoadPercent;
+
     /// <summary>Verdict de stabilité : erreur de calcul (image ou contrôle), donnée relue fausse, ou plantage du pilote.</summary>
     public bool Unstable => CalculationErrors || DriverFailure || StabilityFailed;
 
@@ -95,6 +112,8 @@ public static class BenchRunner
     public static readonly TimeSpan LeadTime = TimeSpan.FromSeconds(6);
     /// <summary>Marge ajoutée à la durée du banc pour couvrir la mesure de télémétrie qui démarre après <see cref="LeadTime"/>.</summary>
     public static readonly TimeSpan Tail = TimeSpan.FromSeconds(5);
+
+    [DllImport("user32.dll", ExactSpelling = true)] private static extern bool AllowSetForegroundWindow(int processId);
 
     public static string? FindExe(string? folder = null)
     {
@@ -169,6 +188,8 @@ public static class BenchRunner
         var start = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
         foreach (var arg in arguments) start.ArgumentList.Add(arg);
         using var process = Process.Start(start) ?? throw new InvalidOperationException($"{ExeName} n'a pas démarré.");
+        // Le banc peut prendre le premier plan même lancé sans clic (sinon le pilote le bride, souvent à 30 FPS)
+        AllowSetForegroundWindow(process.Id);
         try
         {
             // Garde-fou : démarrage, chauffe, vérifications et fermeture tiennent largement dans 2 minutes de plus

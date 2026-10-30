@@ -65,7 +65,7 @@ internal sealed unsafe class Win32Window : IDisposable
         }
 
         ShowWindow(Handle, SW_SHOW);
-        SetForegroundWindow(Handle);
+        TakeForeground();
         if (fullscreen) ShowCursor(0);
 
         RECT client;
@@ -73,6 +73,33 @@ internal sealed unsafe class Win32Window : IDisposable
         ClientWidth = Math.Max(1, client.right - client.left);
         ClientHeight = Math.Max(1, client.bottom - client.top);
     }
+
+    /// <summary>La fenêtre a le premier plan. Sans lui, le pilote bride les FPS (limite d'arrière-plan, souvent 30).</summary>
+    public bool IsForeground => GetForegroundWindow() == Handle;
+
+    /// <summary>
+    /// Prend le premier plan. Windows le refuse à un programme lancé sans clic (après la fermeture d'un contrôle, par exemple) :
+    /// on se rattache un instant à la file d'entrée de la fenêtre active, ce qui lève ce refus.
+    /// </summary>
+    public void TakeForeground()
+    {
+        if (IsForeground) return;
+        var other = GetWindowThreadProcessId(GetForegroundWindow(), IntPtr.Zero);
+        var self = GetCurrentThreadId();
+        var attached = other != 0 && other != self && AttachThreadInput(self, other, 1) != 0;
+        try
+        {
+            BringWindowToTop(Handle);
+            SetForegroundWindow(Handle);
+        }
+        finally
+        {
+            if (attached) AttachThreadInput(self, other, 0);
+        }
+    }
+
+    /// <summary>Écran et PC restent allumés pendant la mesure (l'effet cesse à la fermeture du banc).</summary>
+    public static void KeepAwake() => SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
 
     /// <summary>Traite les messages en attente. Renvoie faux si l'utilisateur a demandé l'arrêt.</summary>
     public bool PumpMessages()
@@ -126,6 +153,7 @@ internal sealed unsafe class Win32Window : IDisposable
     private static readonly IntPtr VK_ESCAPE = 0x1B, VK_RETURN = 0x0D, IDC_ARROW = 32512;
     private static readonly IntPtr DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
     private const int ERROR_CLASS_ALREADY_EXISTS = 1410;
+    private const uint ES_CONTINUOUS = 0x80000000, ES_SYSTEM_REQUIRED = 0x1, ES_DISPLAY_REQUIRED = 0x2;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct WNDCLASSEXW
@@ -169,6 +197,12 @@ internal sealed unsafe class Win32Window : IDisposable
     [DllImport("user32.dll", ExactSpelling = true)] private static extern IntPtr DispatchMessageW(MSG* msg);
     [DllImport("user32.dll", ExactSpelling = true)] private static extern int ShowWindow(IntPtr hwnd, int cmd);
     [DllImport("user32.dll", ExactSpelling = true)] private static extern int SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll", ExactSpelling = true)] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", ExactSpelling = true)] private static extern int BringWindowToTop(IntPtr hwnd);
+    [DllImport("user32.dll", ExactSpelling = true)] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, IntPtr processId);
+    [DllImport("user32.dll", ExactSpelling = true)] private static extern int AttachThreadInput(uint attach, uint attachTo, int doAttach);
+    [DllImport("kernel32.dll", ExactSpelling = true)] private static extern uint GetCurrentThreadId();
+    [DllImport("kernel32.dll", ExactSpelling = true)] private static extern uint SetThreadExecutionState(uint flags);
     [DllImport("user32.dll", ExactSpelling = true)] private static extern int DestroyWindow(IntPtr hwnd);
     [DllImport("user32.dll", ExactSpelling = true)] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll", ExactSpelling = true)] private static extern int AdjustWindowRectEx(RECT* rect, uint style, int menu, uint exStyle);

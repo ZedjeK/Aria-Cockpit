@@ -7,9 +7,19 @@ public enum TuningGoal
 {
     /// <summary>Undervolt : plafond à la fréquence haute habituelle en jeu + décalage GPU croissant. Mêmes FPS, moins de watts.</summary>
     Balanced,
-    /// <summary>À partir d'Équilibre : plafond plus bas, palier par palier, jusqu'à la perte jugée acceptable.</summary>
+    /// <summary>
+    /// À partir d'Équilibre : plafond plus bas, palier par palier, jusqu'à la perte jugée acceptable. Moins de fréquence,
+    /// c'est moins de tension : les watts et la chaleur baissent avec, et la perte affichée les compte. Sans plafond
+    /// possible (Maxwell, Pascal), c'est la limite de puissance qui baisse. Le plafond garde une fréquence régulière ; une
+    /// limite de watts garantirait une consommation maximale, mais ferait varier la fréquence dans les scènes lourdes.
+    /// </summary>
     Economy,
-    /// <summary>À partir d'Équilibre : limite de puissance au maximum, sans plafond, décalage GPU croissant.</summary>
+    /// <summary>
+    /// À partir d'Équilibre : limite de puissance au maximum dès le départ, sans plafond, décalage GPU croissant. La limite
+    /// n'est qu'un plafond de consommation : la monter ne rend pas la carte instable, elle la laisse tenir sa fréquence
+    /// (Équilibre reste souvent bridé par ses watts). C'est le décalage qui se cherche par paliers ; les watts en plus
+    /// servent ensuite de juge, dans l'avis d'Aria (gain de FPS contre watts et degrés en plus).
+    /// </summary>
     Performance,
     /// <summary>Phase facultative : décalage mémoire croissant, à partir du réglage GPU retenu.</summary>
     Memory

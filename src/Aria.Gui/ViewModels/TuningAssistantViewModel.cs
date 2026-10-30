@@ -6,6 +6,7 @@ using Aria.Core.Bench;
 using Aria.Core.Models;
 using Aria.Core.Nvidia;
 using Aria.Core.Performance;
+using Aria.Core.Reporting;
 using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
@@ -85,6 +86,23 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private TuningGoal _pendingGoal;
     /// <summary>Overclock de NVIDIA App illisible : rappelé en tête de la première mesure.</summary>
     private string _nvidiaAppNote = "";
+    private string _vramNote = "";
+    /// <summary>Le contrôle avant mesure affiché porte sur la mémoire vidéo (sinon sur NVIDIA App).</summary>
+    private bool _vramPreflight;
+
+    // ---- Rapport de fin : chaque étape, avec la raison de son verdict ----
+    private readonly List<TuningStep> _steps = [];
+    private readonly List<string> _notes = [];
+    private DateTime _startedAt;
+    /// <summary>Équilibre enregistré avant ce passage (comparaison pour Équilibre, référence pour les deux autres).</summary>
+    private BalancedRecord? _previousRecord;
+    private PerformanceVerdict? _verdict;
+    /// <summary>Un passage est en cours et son rapport n'est pas encore écrit.</summary>
+    private bool _runOpen;
+
+    /// <summary>Rapport du dernier passage (page Rapports, bouton « Voir le rapport »).</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasReport))] private string? reportPath;
+    public bool HasReport => ReportPath is not null;
     private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
 
     /// <summary>Aria-Bench.exe est livré à côté d'Aria Cockpit.</summary>
@@ -186,11 +204,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _nvidiaAppNote = app.Unreadable is { } why ? $"Overclock de NVIDIA App : vérification impossible ({why})." : "";
         if (!app.Active)
         {
-            if (IsPreflight) Title = "";
-            Phase = AssistantPhase.Idle;
-            await Begin(goal);
+            await CheckVram();
             return;
         }
+        _vramPreflight = false;
         SystemSounds.Asterisk.Play();
         Title = "CONTRÔLE AVANT MESURE";
         Headline = "L'overclock de NVIDIA App est actif";
@@ -207,13 +224,44 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (!NvidiaAppTuning.Open()) CanOpenNvidiaApp = false;
     }
 
-    [RelayCommand] private Task RecheckNvidiaApp() => Check(_pendingGoal);
+    /// <summary>
+    /// Contrôle avant mesure : un programme qui occupe la mémoire vidéo (un LLM chargé, un jeu resté ouvert) réduit le test
+    /// mémoire, fausse les mesures s'il travaille, et peut planter avec un réglage en cours d'essai.
+    /// </summary>
+    private async Task CheckVram()
+    {
+        _vramNote = "";
+        var users = await Task.Run(VramUsers.Read);
+        if (users.Count == 0)
+        {
+            if (IsPreflight) Title = "";
+            Phase = AssistantPhase.Idle;
+            await Begin(_pendingGoal);
+            return;
+        }
+        _vramPreflight = true;
+        SystemSounds.Asterisk.Play();
+        Title = "CONTRÔLE AVANT MESURE";
+        Headline = users.Count == 1 ? "Un programme occupe la mémoire vidéo" : "Des programmes occupent la mémoire vidéo";
+        PreflightText = $"{VramUsers.Describe(users)}. Pendant l'assistant, la mémoire qu'il garde n'est pas testée, et s'il travaille " +
+                        "(un LLM qui répond, un jeu en arrière-plan) il fausse chaque mesure ; un réglage en cours d'essai peut aussi le faire planter. " +
+                        "Fermez-le, puis vérifiez à nouveau.";
+        CanOpenNvidiaApp = false;
+        Phase = AssistantPhase.Preflight;
+    }
 
-    /// <summary>L'utilisateur garde l'overclock de NVIDIA App : la mesure démarre, avec un rappel en tête.</summary>
+    [RelayCommand] private Task RecheckNvidiaApp() => _vramPreflight ? CheckVram() : Check(_pendingGoal);
+
+    /// <summary>L'utilisateur passe outre le contrôle affiché : la mesure démarre (après le contrôle suivant), avec un rappel en tête.</summary>
     [RelayCommand]
     private Task ContinueDespiteNvidiaApp()
     {
-        _nvidiaAppNote = "Overclock de NVIDIA App laissé actif à votre demande : les mesures peuvent être faussées.";
+        if (!_vramPreflight)
+        {
+            _nvidiaAppNote = "Overclock de NVIDIA App laissé actif à votre demande : les mesures peuvent être faussées.";
+            return CheckVram();
+        }
+        _vramNote = "Mémoire vidéo laissée occupée à votre demande : le test mémoire est réduit, et les mesures peuvent être faussées.";
         Title = "";
         Phase = AssistantPhase.Idle;
         return Begin(_pendingGoal);
@@ -274,10 +322,14 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 "partir du réglage d'Équilibre et baisser la limite de puissance palier par palier (environ 10 %, puis 5 %, puis 5 W), jusqu'à 60 % de la valeur d'usine. À chaque palier, vous voyez la perte mesurée",
                 "perte trop grande → pas plus fin"),
             TuningGoal.Economy => ("Économie",
-                $"partir du réglage d'Équilibre et baisser le plafond palier par palier (environ 5 %, puis 2,5 %, puis 15 MHz), 15 % au plus. À chaque palier, vous voyez la perte mesurée",
+                $"partir du réglage d'Équilibre et baisser le plafond palier par palier (environ 5 %, puis 2,5 %, puis 15 MHz), 15 % au plus. " +
+                "Moins de fréquence, c'est moins de tension : les watts et la chaleur baissent avec, la limite de puissance restant celle d'Équilibre. " +
+                "À chaque palier, vous voyez la perte mesurée (FPS, watts, degrés)",
                 "perte trop grande → pas plus fin"),
             _ => ("Performance",
-                $"partir de la courbe d'usine, retirer le plafond et monter la limite de puissance au maximum ({t.Limits.MaxPowerMilliwatts / 1000} W), puis augmenter le décalage GPU (+60, +30, puis +15) jusqu'au plus haut palier stable",
+                $"partir de la courbe d'usine, retirer le plafond et monter la limite de puissance au maximum ({t.Limits.MaxPowerMilliwatts / 1000} W), puis augmenter le décalage GPU (+60, +30, puis +15) jusqu'au plus haut palier stable. " +
+                "La limite de puissance passe au maximum d'emblée : ce n'est qu'un plafond de consommation, elle ne rend pas la carte instable, elle la laisse tenir sa fréquence. " +
+                "À la fin, l'avis d'Aria met le gain de FPS en regard des watts et des degrés en plus",
                 "artefacts ou plantage → pas plus fin")
         };
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
@@ -331,6 +383,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _goal = goal;
         _benchMode = bench;
         _benchDefinition = benchDefinition;
+        _steps.Clear();
+        _notes.Clear();
+        _startedAt = DateTime.Now;
+        _previousRecord = Record;
+        _verdict = null;
+        _runOpen = true;
+        ReportPath = null;
         _previousStep = "";
         _memoryPhase = false;
         _aborted = false;
@@ -338,7 +397,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Validated = false;
         _search = null;
         _before = (await Task.Run(() => GpuProfile.ReadCurrent(t))) with { AtStartup = false };
-        _previousStep = string.Join("\n", new[] { PowerNote(t), _nvidiaAppNote }.Where(n => n.Length > 0));
+        _previousStep = string.Join("\n", new[] { PowerNote(t), _nvidiaAppNote, _vramNote }.Where(n => n.Length > 0));
+        _notes.AddRange(new[] { PowerNote(t), _nvidiaAppNote, _vramNote }.Where(n => n.Length > 0));
         _checks = false;
         _checksCut = null;
         _lastStableStability = null;
@@ -541,13 +601,28 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
         _bench = bench;
         _current = report;
+        // Banc passé en arrière-plan : le pilote l'a bridé. Rien n'est jugé, contrôles compris : ils repassent avec la mesure refaite
+        if (bench.RanInBackground)
+        {
+            ShowUnmeasured($"Mesure faussée : le banc d'essai est resté {bench.Pass!.ArrierePlanS:0} s en arrière-plan et le pilote l'a bridé. "
+                           + "Laissez-le au premier plan, écran allumé, puis recommencez.");
+            return;
+        }
         // FPS bridés par une limite (V-Sync, limite du pilote) : on charge davantage la carte et on refait la mesure (sans contrôle)
         if (bench.Pass?.Plafond is not null && !bench.Unstable && BenchRunner.NextDefinition(_benchDefinition) is { } next)
         {
             _benchDefinition = next;
             _baselineFps = null;
             _previousStep = $"FPS plafonnés par une limite d'images : mesure refaite en {BenchLabel(next)} pour charger la carte à fond.";
+            Log(StepPhase, Stage(), InPlace, StepVerdict.Unjudged, $"FPS plafonnés à {bench.Pass!.FpsMedian:0} par une limite d'images : mesure refaite en {BenchLabel(next)}");
             await Retry();
+            return;
+        }
+        // Toujours bridé à la plus haute définition, carte peu chargée : la mesure ne dit rien de la carte
+        if (report is not null && bench.CappedBelowFullLoad(report.Stats.AvgLoad))
+        {
+            ShowUnmeasured($"Mesure faussée : FPS bloqués à {bench.Pass!.FpsMedian:0} par une limite, carte chargée à {report.Stats.AvgLoad:0} % seulement. "
+                           + "Vérifiez qu'aucune limite d'images ne vise Aria-Bench et laissez-le au premier plan, puis recommencez.");
             return;
         }
         if (early.Count > 0)
@@ -571,6 +646,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             Incidents = [];
             HasIncidents = false;
             Headline = bench.Erreurs.FirstOrDefault() ?? "Mesure arrêtée avant d'avoir commencé";
+            Log(StepPhase, Stage(), InPlace, StepVerdict.Unjudged, Headline);
             ShowQuestion = false;
             ShowRetry = true;
             ShowGoBack = false;
@@ -647,8 +723,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Title = "MÉMOIRE · RÉFÉRENCE";
         Instruction = $"Réglage retenu en place ({_lastStable.Describe()}). Mesure de la bande passante de départ " +
                       $"({MemoryReferenceDuration.TotalSeconds:0} s, dans une petite fenêtre) : chaque palier mémoire devra aller plus vite.";
+        var busy = await Task.Run(VramUsers.Read);
         var result = await CheckAsync(BenchCheck.Memory, MemoryReferenceDuration, "RÉFÉRENCE MÉMOIRE");
         if (_aborted) return false;
+        Log(TuningPhase.Check, "Référence mémoire", _lastStable, StepVerdict.Reference,
+            result.Stabilite is { Passes: > 0, BandePassanteLectureMedianeGoS: { } bandwidth } st
+                ? $"{bandwidth:0} Go/s en lecture, {st.MotsFaux} mot(s) faux" : result.Erreurs.FirstOrDefault() ?? "indisponible");
+        if (busy.Count > 0) _notes.Add($"Mémoire vidéo occupée par {VramUsers.Describe(busy)} pendant les paliers mémoire : ils n'en ont testé qu'une partie.");
         if (result is { Completed: true, Unstable: false, Stabilite: { Passes: > 0, BandePassanteLectureMedianeGoS: { } read } })
         {
             try
@@ -665,6 +746,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             _previousStep = result.Unstable && result.Stabilite is { } s
                 ? $"Référence mémoire : {StabilityTitle(s).ToLowerInvariant()} dès le réglage retenu ; la validation tranchera."
                 : "Référence mémoire indisponible : le premier palier ne sera pas comparé.";
+        // Programme ouvert pendant l'assistant : Aria-Bench ne teste que la mémoire restée libre
+        if (busy.Count > 0) _previousStep += $"\nMémoire vidéo occupée par {VramUsers.Describe(busy)} : les paliers mémoire n'en testent qu'une partie.";
         return true;
     }
 
@@ -715,10 +798,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         var result = await CheckAsync(BenchCheck.SelfCheck, SelfCheckDuration, "AUTO-CONTRÔLE DES TESTS");
         if (_aborted) return false;
         _checks = result.SelfCheckPassed;
+        if (_checks)
+            Log(TuningPhase.Check, "Auto-contrôle des tests", _start, StepVerdict.Info, "réussi : les erreurs injectées exprès ont toutes été retrouvées");
         if (!_checks)
         {
             var why = result.Interrupted ? "auto-contrôle arrêté"
                 : result.Stabilite?.Raisons?.FirstOrDefault() ?? result.Erreurs.FirstOrDefault() ?? "résultat illisible";
+            Log(TuningPhase.Check, "Auto-contrôle des tests", _start, StepVerdict.Info, $"échoué ({why}) : verdicts sur le seul rendu 3D");
             _previousStep = string.Join("\n", new[] { _previousStep, $"Contrôles de calcul et de mémoire indisponibles ({why}) : verdict sur le seul rendu 3D." }
                 .Where(n => n.Length > 0));
         }
@@ -816,6 +902,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 // Mesure de départ d'Équilibre réussie : elle devient la référence, puis premier palier
                 _baseline = report.Stats;
                 _baselineFps = fps;
+                Log(TuningPhase.Start, Stage(), _start, StepVerdict.Reference, Facts());
                 _baselineGame = bench is not null ? game : report.Incidents?.Game ?? game;
                 _lastStableReport = report;
                 _lastStableFps = fps;
@@ -901,6 +988,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             // Erreurs de calcul dès les valeurs d'usine : inutile de chercher un undervolt
             SystemSounds.Asterisk.Play();
             Headline = "Erreurs de calcul dès les valeurs d'usine";
+            Log(TuningPhase.Start, Stage(), _start, StepVerdict.Unstable, $"erreurs de calcul dès les valeurs d'usine ; {Facts()}");
             ShowQuestion = false;
             ShowRetry = true;
             ShowGoBack = false;
@@ -928,12 +1016,22 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>Mesure trop faible pour juger (carte peu chargée) ou contrôle arrêté : on propose de refaire.</summary>
     private void ShowInconclusive(string headline = "Mesure non concluante : la carte n'a pas assez travaillé")
     {
+        Log(StepPhase, Stage(), InPlace, StepVerdict.Unjudged, headline);
         SystemSounds.Asterisk.Play();
         Headline = headline;
         ShowQuestion = false;
         ShowRetry = true;
         ShowGoBack = false;
         Phase = AssistantPhase.Review;
+    }
+
+    /// <summary>Mesure faussée (banc bridé) : rien n'est jugé ni gardé, on propose de refaire la même mesure.</summary>
+    private void ShowUnmeasured(string why)
+    {
+        Tiles = [];
+        Incidents = [];
+        HasIncidents = false;
+        ShowInconclusive(why);
     }
 
     /// <summary>« , 142 FPS (-1 %) » d'après la mesure de départ.</summary>
@@ -965,6 +1063,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         if (_validating)
         {
+            Log(TuningPhase.Validation, Stage(), _lastStable, StepVerdict.Stable, Facts());
             _validating = false;
             Validated = true;
             if (_current is { Conclusive: true } validation)
@@ -981,6 +1080,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (_search is null && _step == Step.PerformanceBase && tuner() is { } t)
         {
             // Réglage de base stable : la recherche du décalage part de lui
+            Log(TuningPhase.Start, Stage(), _start, StepVerdict.Stable, Facts());
             _lastStableReport = _current;
             _lastStableFps = _bench?.Pass?.FpsMoyen;
             _lastStableStability = _bench?.Stabilite;
@@ -990,6 +1090,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             return;
         }
         if (_search is null) return;
+        Log(StepPhase, Stage(), _search.Current, StepVerdict.Stable, Facts());
         _search.Report(true);
         _lastStable = _search.LastStable;
         // Palier mémoire sans banc 3D : fréquence, watts et FPS restent ceux du dernier palier rendu
@@ -1014,11 +1115,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         if (_validating)
         {
+            Log(TuningPhase.Validation, Stage(), _lastStable, StepVerdict.Unstable, Reason());
             await BackOffAfterValidationAsync();
             return;
         }
         if (_search is null && _step == Step.PerformanceBase && Record?.ResultState is { } balanced)
         {
+            Log(TuningPhase.Start, Stage(), _start, StepVerdict.Unstable, Reason());
             _lastStable = balanced;
             _lastStableReport = null;
             _lastStableFps = null;
@@ -1027,6 +1130,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             return;
         }
         if (_search is null) return;
+        Log(StepPhase, Stage(), _search.Current, _memoryPhase && _bench?.NotFaster == true ? StepVerdict.NotFaster : StepVerdict.Unstable, Reason());
         _search.Report(false);
         await ContinueAsync();
     }
@@ -1049,6 +1153,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         if (_search is not null)
         {
+            Log(StepPhase, Stage(), _search.Current, StepVerdict.Kept, Facts());
             _lastStable = _search.Current;
             if (!_renderless)
             {
@@ -1146,6 +1251,24 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>Fin des paliers : Équilibre enchaîne la validation de 15 minutes, les autres modes passent au choix final.</summary>
     private Task EndAsync() => _goal == TuningGoal.Balanced && !Validated ? Validate() : FinishAsync(null);
 
+    /// <summary>« Enregistrer comme profil » en fin d'assistant : la page l'enregistre (réglage, nom proposé, provenance).</summary>
+    public event Func<GpuTuningState, string, string, Task>? SaveProfileRequested;
+
+    [RelayCommand]
+    private Task SaveAsProfile() =>
+        SaveProfileRequested?.Invoke(_lastStable, GpuProfiles.DefaultName(GoalName, DateTime.Now), ProfileNote()) ?? Task.CompletedTask;
+
+    private string GoalName => GpuTuningReport.ModeName(_goal);
+
+    /// <summary>« Assistant Équilibre · 104,8 FPS au banc (2160p) · validé 15 min ».</summary>
+    private string ProfileNote()
+    {
+        var parts = new List<string> { $"Assistant {GoalName}" };
+        if (_benchMode && _lastStableFps is { } fps) parts.Add($"{fps:0.0} FPS au banc ({_benchDefinition}p)");
+        if (Validated) parts.Add("validé 15 min");
+        return string.Join(" · ", parts);
+    }
+
     /// <summary>Équilibre terminé : son réglage et sa mesure de départ débloquent Économie et Performance.</summary>
     private void SaveBalancedRecord()
     {
@@ -1189,8 +1312,90 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         VerdictTitle = verdict?.Title ?? "";
         VerdictDetails = verdict is null ? "" : string.Join("\n", verdict.Details);
         ReturnToBalancedFirst = CanReturnToBalanced && verdict?.RecommendsBalanced == true;
+        _verdict = verdict;
         if (_benchMode) SystemSounds.Asterisk.Play();
         Phase = AssistantPhase.Done;
+        await WriteReportAsync(aborted: false, DoneText);
+    }
+
+    // ---------------------------------------------------------------- Rapport de fin
+
+    private void Log(TuningPhase phase, string label, GpuTuningState setting, StepVerdict verdict, string detail = "") =>
+        _steps.Add(new TuningStep(DateTime.Now, phase, label, setting with { AtStartup = false }, verdict, detail));
+
+    private TuningPhase StepPhase => _validating ? TuningPhase.Validation
+        : _search is not null ? (_memoryPhase ? TuningPhase.Memory : TuningPhase.Search) : TuningPhase.Start;
+
+    /// <summary>« Palier 3 », « Mémoire, palier 2 », « Validation 15 min » : appelé avant que la recherche passe au palier suivant.</summary>
+    private string Stage() => _validating ? "Validation 15 min"
+        : _search is not null ? $"{(_memoryPhase ? "Mémoire, palier" : "Palier")} {_search.Tested + 1}"
+        : _step == Step.Baseline ? "Mesure de départ" : "Réglage de base";
+
+    /// <summary>Réglage en place pendant la mesure en cours.</summary>
+    private GpuTuningState InPlace => _validating ? _lastStable : _search is { Finished: false } s ? s.Current : _start;
+
+    /// <summary>« 104,8 FPS, 2675 MHz, 304 W, 72 °C max, calcul : 0 écart(s) sur 4976 » : ce que la mesure a relevé.</summary>
+    private string Facts()
+    {
+        var parts = new List<string>();
+        if (!_renderless && _bench?.Pass is { } pass)
+            parts.Add($"{pass.FpsMoyen:0.0} FPS" + (pass.ErreursCalcul > 0 ? $", {pass.ErreursCalcul} image(s) fausse(s) sur {pass.Verifications}" : ""));
+        if (_current is { Conclusive: true } report)
+        {
+            var s = report.Stats;
+            parts.Add($"{s.AvgClock:0} MHz");
+            if (s.AvgPower is { } power) parts.Add($"{power:0} W");
+            parts.Add($"{s.MaxTemp} °C max");
+        }
+        if (_bench?.Stabilite is { } st)
+        {
+            if (st.ExecutionsCalcul > 0) parts.Add($"calcul : {st.EcartsCalcul} écart(s) sur {st.ExecutionsCalcul}");
+            if (st.Passes > 0)
+                parts.Add($"mémoire : {st.MotsFaux} mot(s) faux" + (st.BandePassanteLectureMedianeGoS is { } read ? $", {read:0} Go/s" : ""));
+        }
+        if (_bench?.DriverFailure == true) parts.Add(_bench.Erreurs.FirstOrDefault() ?? "le pilote a lâché");
+        return string.Join(", ", parts);
+    }
+
+    /// <summary>Pourquoi un palier est rejeté : ce qu'ont vu les contrôles, Windows, ou l'utilisateur.</summary>
+    private string Reason()
+    {
+        var why = _bench is { Unstable: true } bench ? UnstableReason(bench)
+            : _memoryPhase && _bench?.NotFaster == true ? "la mémoire corrige ses erreurs au lieu d'accélérer"
+            : _current?.Unstable == true ? "plantage noté par Windows"
+            : _current is { Conclusive: false } ? "mesure non concluante, palier abandonné"
+            : _search?.Goal == TuningGoal.Economy ? "perte jugée trop grande"
+            : "problème vu à l'écran (votre verdict)";
+        var facts = Facts();
+        return facts.Length > 0 ? $"{why} ; {facts}" : why;
+    }
+
+    /// <summary>Écrit le rapport du passage (une seule fois) dans le dossier Rapports.</summary>
+    private async Task WriteReportAsync(bool aborted, string outcome)
+    {
+        if (!_runOpen || tuner() is not { } t) return;
+        _runOpen = false;
+        var comparable = _benchMode && _baselineFps is not null;
+        var run = new TuningRun(_goal, t.Identity.Name, t.Identity.DriverVersion, _startedAt, DateTime.Now,
+            _benchMode ? $"banc d'essai Aria (Ultra {BenchLabel(_benchDefinition)})" : _baselineGame ?? "votre jeu",
+            _before, _start, aborted ? _before : _lastStable, !aborted && !_lastStable.SameTuning(_before), aborted, outcome, Validated,
+            _baseline, _baselineFps, _lastStableReport?.Stats, comparable ? _lastStableFps : null, _lastStableStability,
+            _previousRecord, _verdict, [.. _steps], [.. _notes], []);
+        try
+        {
+            var since = _startedAt;
+            ReportPath = await Task.Run(() => GpuTuningReport.Save(run with { Incidents = DriverIncidents.Since(since) }));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ErrorLog.WriteLine($"Rapport de réglage GPU non enregistré : {e.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void OpenReport()
+    {
+        if (ReportPath is { } path && File.Exists(path)) Shell.OpenFile(path);
     }
 
     /// <summary>
@@ -1227,11 +1432,13 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [RelayCommand]
     private async Task CancelAll()
     {
+        var stage = Stage();
         _aborted = true;
         _validating = false;
         _stop?.Cancel();
         await ApplyAsync(_before);
         Phase = AssistantPhase.Idle;
+        await WriteReportAsync(aborted: true, $"Assistant abandonné ({stage}) : la carte est revenue à son réglage d'avant ({_before.Describe()}).");
     }
 
     /// <summary>Arrêter la mesure maintenant : le verdict porte sur ce qui a été enregistré.</summary>
@@ -1255,6 +1462,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             DoneChanged = false;
             Tiles = [];
             Phase = AssistantPhase.Done;
+            await WriteReportAsync(aborted: true, DoneText);
             return false;
         }
         finally

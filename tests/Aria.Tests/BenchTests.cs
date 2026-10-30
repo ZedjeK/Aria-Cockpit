@@ -96,4 +96,52 @@ public class BenchTests
 
         Assert.Equal(["--qualite", "ultra", "--def", "2160", "--duree", "185", "--sortie", @"C:\temp\banc.json"], args);
     }
+
+    /// <summary>Passe de 15 minutes en Ultra 4K, avec le temps passé hors du premier plan et l'éventuel plafond.</summary>
+    private static BenchResult Timed(double arrierePlanS, string? plafond = null) => BenchResult.Parse($$"""
+        {
+          "statut": "terminé",
+          "resultats": [
+            {
+              "qualite": "Ultra", "definition": "4K (2160p)", "images": 26985, "secondes": 889.6,
+              "fpsMoyen": 30.3, "fpsMedian": 30, "fps1PourcentBas": 29.2, "saccades": 1,
+              "verifications": 301, "erreursCalcul": 0, "pixelsDifferents": 0,
+              "plafond": {{(plafond is null ? "null" : $"\"{plafond}\"")}}, "arrierePlanS": {{arrierePlanS.ToString(System.Globalization.CultureInfo.InvariantCulture)}}
+            }
+          ],
+          "remarques": [],
+          "erreurs": []
+        }
+        """);
+
+    [Fact]
+    public void BackgroundSecondsAreRead()
+    {
+        Assert.Equal(889.6, Timed(42.5).Pass!.Secondes);
+        Assert.Equal(42.5, Timed(42.5).Pass!.ArrierePlanS);
+        // Journal d'avant le garde-fou : rien n'indique d'arrière-plan
+        Assert.Equal(0, BenchResult.Parse(Log("terminé")).Pass!.ArrierePlanS);
+    }
+
+    [Fact]
+    public void ABenchLeftInTheBackgroundIsNotAMeasure()
+    {
+        // Une notification de quelques secondes passe ; au-delà de 2 % des 15 minutes (≈ 18 s), la mesure est faussée
+        Assert.False(Timed(4).RanInBackground);
+        Assert.False(Timed(17).RanInBackground);
+        Assert.True(Timed(19).RanInBackground);
+        Assert.True(Timed(889.6).RanInBackground);
+    }
+
+    [Fact]
+    public void CappedFpsAtLowLoadMeanTheCardWasNotMeasured()
+    {
+        const string cap = "FPS plafonnés à environ 30 : 30 (limite d'images ou économie d'énergie).";
+
+        // Tour, 30/10 : 30 FPS en 4K Ultra, 74 % de charge en moyenne
+        Assert.True(Timed(0, cap).CappedBelowFullLoad(74.3));
+        // Petite carte qui fait vraiment 30 FPS en 4K : pleine charge, la mesure vaut
+        Assert.False(Timed(0, cap).CappedBelowFullLoad(98));
+        Assert.False(Timed(0).CappedBelowFullLoad(74.3));
+    }
 }

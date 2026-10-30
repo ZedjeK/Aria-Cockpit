@@ -59,9 +59,11 @@ public sealed record GpuInfo(string Nom, string VendorId, string DeviceId, long 
 /// <param name="PixelsDifferents">Le plus grand nombre de pixels différents constaté.</param>
 /// <param name="Plafond">Explication si les FPS semblent bridés par une limite, sinon absent.</param>
 /// <param name="ReferencesAjustees">Références remplacées après contre-vérification (pilote qui réoptimise ses shaders).</param>
+/// <param name="ArrierePlanS">Secondes mesurées pendant lesquelles la fenêtre n'avait pas le premier plan (le pilote la bride alors).</param>
 public sealed record PassResult(string Qualite, string Definition, int Largeur, int Hauteur, int Images, double Secondes,
     double FpsMoyen, double FpsMedian, double TempsMoyenMs, double Fps1PourcentBas, double TempsP99Ms, double TempsMaxMs, int Saccades,
-    int Verifications, int ErreursCalcul, long PixelsDifferents, string? Empreinte, string? Plafond, int ReferencesAjustees = 0)
+    int Verifications, int ErreursCalcul, long PixelsDifferents, string? Empreinte, string? Plafond, int ReferencesAjustees = 0,
+    double ArrierePlanS = 0)
 {
     public static PassResult From(QualityPreset quality, int definition, int width, int height, FrameSummary s,
         ImageVerification? check = null, string? cap = null) =>

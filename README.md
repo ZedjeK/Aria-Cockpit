@@ -181,6 +181,10 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
   compte pas comme origine ; elle reste dans la sauvegarde « Avant réglage GPU », que la page Restauration peut remettre.
 - **Réglage d'Équilibre** : remet le résultat d'Équilibre dans les curseurs (Appliquer le pose ensuite). À la fin
   d'Économie ou de Performance, « Revenir à Équilibre » le pose directement, même après un redémarrage entre les deux.
+- **Mes profils** : enregistre le réglage des curseurs sous un nom (« Jeu », « Silence »…), ou un résultat de l'assistant
+  avec « Enregistrer comme profil » (nom proposé « Équilibre du 30/10 », avec ses FPS au banc et sa validation). « Charger »
+  le remet dans les curseurs sans rien appliquer ; la case « Garder au démarrage » reste celle des curseurs. Seuls les
+  profils de la carte en place sont affichés, et un profil enregistré sous un autre pilote est signalé : à revalider.
 - **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale, avec les
   incidents regroupés par nature (pour un seul problème, le pilote écrit souvent 5 à 7 lignes dans la même seconde). Un
   accès mémoire invalide (l'« illegal memory access » d'une IA locale sous CUDA) vient le plus souvent d'un cœur qui
@@ -193,6 +197,15 @@ overclock est actif, il se superposerait aux paliers : l'assistant s'arrête, ex
 NVIDIA App, puis de vérifier à nouveau (ou de continuer quand même, à tes risques). NVIDIA ne publie aucune interface
 pour le couper : c'est toi qui le fais. Une limite de puissance posée par un autre outil est aussi signalée : Aria pose
 ses propres valeurs pendant les mesures, mais l'outil la reposera au démarrage tant qu'il n'est pas remis par défaut.
+Aria regarde aussi qui occupe la mémoire vidéo : un programme qui en garde plus de 1 Go (un LLM chargé, un jeu resté
+ouvert) arrête l'assistant de la même façon, avec son nom et sa taille. Il réduirait le test mémoire, fausserait les
+mesures s'il travaille, et un réglage en cours d'essai pourrait le faire planter. Ferme-le, puis vérifie à nouveau.
+
+**Mesure faussée = mesure refaite.** Hors du premier plan, le pilote bride le banc (souvent à 30 FPS) : la carte
+tourne au ralenti, et tout ce qui en découle (plafond d'Équilibre, paliers, validation) serait faux. Le banc reprend
+le premier plan pendant sa chauffe, garde l'écran allumé, et note dans son journal le temps passé en arrière-plan. Au-delà
+de quelques secondes (2 % de la mesure), ou si ses FPS restent collés à une limite en 4K alors que la carte n'est pas
+chargée à 90 %, l'assistant ne juge rien et propose de recommencer la même mesure.
 
 Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton jeu**, au choix avant de commencer :
 
@@ -234,6 +247,13 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 | **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
 | **Performance** | La fréquence la plus haute qui reste stable | Part de la courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz. Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe |
 
+- **Les watts dans chaque mode** : la limite de puissance n'est qu'un plafond de consommation, elle ne rend pas la carte
+  instable. Performance la met donc au maximum dès le départ (à 320 W, Équilibre reste souvent bridé par ses watts), cherche
+  le décalage par paliers, et juge ensuite les watts en plus dans son avis. Économie baisse le plafond de fréquence : moins
+  de fréquence, c'est moins de tension, donc moins de watts et de chaleur, que la perte affichée à chaque palier compte
+  (FPS, W, °C). La limite de puissance n'y baisse que sur les cartes sans plafond (Maxwell, Pascal). Le plafond garde une
+  fréquence régulière ; une limite de watts garantirait une consommation maximale, mais ferait varier la fréquence dans
+  les scènes lourdes.
 - **Avis d'Aria à la fin de Performance** : le gain est comparé au réglage d'Équilibre (FPS, watts, température,
   FPS par watt). Moins de 3 % de FPS en plus, ou plus de 3 W par FPS gagné : « ne vaut pas le coup », et « Revenir à
   Équilibre » passe en tête ; au moins 8 % pour 3 W par FPS au plus : « vaut le coup » ; entre les deux : « gain réel mais
@@ -256,6 +276,12 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   autres) : un réglage peut tenir 3 minutes et lâcher au bout d'un quart d'heure. En cas de problème, il recule encore d'un cran (la mémoire, si c'est elle qui a
   relu faux).
 - **À la fin, c'est toi qui choisis** : garder au démarrage, garder jusqu'au redémarrage, ou tout annuler.
+- **Rapport de chaque passage** : à la fin de chaque mode, terminé ou abandonné, Aria écrit `reglage-gpu_<date>.txt`
+  dans le dossier Rapports (type « Réglage GPU » dans la page Rapports, bouton « Voir le rapport » en fin d'assistant).
+  On y trouve la conclusion d'Aria (gain en FPS et en watts, où et pourquoi chaque recherche s'est arrêtée, validation,
+  comparaison avec l'Équilibre précédent, conseil), le tableau départ / résultat, le déroulé palier par palier avec la
+  raison de chaque verdict (calculs faux, mémoire pas plus rapide, plantage, mesure faussée…), les contrôles du résultat
+  et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
 mesures se font en jeu ; le garde-fou signale un éventuel plantage au repos après coup. Les artefacts visuels ne sont
@@ -286,13 +312,16 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
 - **Mesures** : FPS moyens et médians, 1 % les plus bas, temps par image, saccades (images plus de 2,5 fois plus longues
   que la normale). Les premières secondes de chaque passe ne comptent pas (montée en fréquence).
 - **Contexte** : alimentation (secteur ou batterie), fréquence de l'écran ; une mesure collée à une limite (V-Sync,
-  limite d'images du pilote, 60 ou 30 FPS) est signalée « plafonnée » : la carte n'y est pas mesurée à fond.
+  limite d'images du pilote, 60 ou 30 FPS) est signalée « plafonnée » : la carte n'y est pas mesurée à fond. Le temps
+  passé hors du premier plan (`arrierePlanS`) est noté aussi : le pilote bride alors la fenêtre.
 - **Journal** : `bench-<date>.json` (et `bench-dernier.json`) à côté de l'exe : carte, pilote, contexte, résultats,
   erreurs. C'est lui qu'Aria Cockpit lit.
 - **Contrôles de stabilité** (`--calcul`, `--vram`, repris du « Test VRAM discriminant » de la session Aria Pilote),
   dans une petite fenêtre au lieu du rendu 3D. Le calcul vérifié fait faire à un million de fils la même longue chaîne
   de multiplications-additions, et compare chaque résultat à celui de la première exécution. Le test mémoire écrit 70 %
-  de la mémoire vidéo libre (valeur calculée d'après l'adresse et la passe), la relit et compte les écarts sur la carte
+  de la mémoire vidéo libre, sans dépasser ce qui reste vraiment libre sur la carte moins 1 Go (les autres programmes
+  comptent : un test qui déborde passe en mémoire système et ne mesure plus que le PCIe). Chaque mot reçoit une valeur
+  calculée d'après l'adresse et la passe ; le test relit tout et compte les écarts sur la carte
   elle-même, une passe sur deux dans un ordre mélangé, comme l'inférence d'un LLM. Avec `--vram`, le calcul tourne seul
   le premier tiers du temps, puis la mémoire seule, pour une bande passante propre. Le journal gagne une section
   `stabilite` : statut (`reussi`, `attention`, `echec`), raisons, exécutions et écarts, passes, mots faux, bande passante.
@@ -353,6 +382,7 @@ chemins.
 - Sauvegardes des valeurs d'origine : `C:\ProgramData\AriaCockpit\Sauvegardes`
 - Rapports : `C:\ProgramData\AriaCockpit\Rapports`
 - Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
+- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json`
 - Journal des erreurs : `C:\ProgramData\AriaCockpit\erreurs.log`
 
 Les versions précédentes rangeaient leurs données dans `C:\ProgramData\Aria` (0.13 et 0.14) ou

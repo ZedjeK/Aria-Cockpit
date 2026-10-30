@@ -187,6 +187,33 @@ internal sealed class GpuDevice : IDisposable
         return (info.Budget, info.CurrentUsage);
     }
 
+    /// <summary>
+    /// Mémoire dédiée encore libre sur la carte, tous programmes confondus (compteur Windows « GPU Adapter Memory ») :
+    /// le budget de DirectX ne voit que ce processus. Null si le compteur est illisible.
+    /// </summary>
+    public ulong? FreeOnCard()
+    {
+        try
+        {
+            var desc = _adapter.Description1;
+            long luid = desc.Luid;
+            var prefix = $"luid_0x{(uint)(luid >> 32):x8}_0x{(uint)luid:x8}";
+            var data = new System.Diagnostics.PerformanceCounterCategory("GPU Adapter Memory").ReadCategory()["Dedicated Usage"];
+            if (data is null) return null;
+            var used = data.Values.Cast<System.Diagnostics.InstanceData>()
+                .Where(i => i.InstanceName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(i => (ulong)Math.Max(0, i.RawValue)).ToList();
+            if (used.Count == 0) return null;
+            var total = (ulong)desc.DedicatedVideoMemory;
+            var sum = used.Aggregate(0UL, (a, b) => a + b);
+            return total > sum ? total - sum : 0;
+        }
+        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Attend que la carte ait fini tout le travail envoyé.</summary>
     public void WaitIdle() => WaitForFence(Signal(), "la fin du travail en cours");
 

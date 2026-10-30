@@ -18,6 +18,8 @@ internal static class StabilityRun
 {
     /// <summary>Part de la mémoire vidéo libre testée (le reste pour Windows et les autres programmes).</summary>
     public const double MemoryShare = 0.7;
+    /// <summary>Mémoire laissée libre sur la carte pendant le test : le calcul vérifié et les autres programmes.</summary>
+    public const ulong CardMargin = 1UL << 30;
     /// <summary>Durée de l'auto-contrôle : le temps de retrouver les erreurs injectées exprès.</summary>
     public static readonly TimeSpan SelfCheckDuration = TimeSpan.FromSeconds(20);
 
@@ -31,7 +33,16 @@ internal static class StabilityRun
         using var kit = new ComputeKit(gpu);
         var (budget, usage) = gpu.LocalMemory();
         var free = budget > usage ? budget - usage : 0;
-        var blocks = (int)Math.Clamp((long)(free * MemoryShare / MemoryTest.BlockBytes), 2, 64);
+        var bytes = free * MemoryShare;
+        // Le budget de DirectX ignore les autres programmes (un LLM chargé…) : un test qui déborde passe en mémoire système,
+        // au débit du PCIe, et ne teste plus la carte. On s'en tient donc aussi à ce qui reste vraiment libre dessus
+        var wanted = bytes;
+        if (memoryTested && gpu.FreeOnCard() is { } onCard && onCard < bytes + CardMargin)
+            bytes = onCard > CardMargin ? onCard - CardMargin : 0;
+        var blocks = (int)Math.Clamp((long)(bytes / MemoryTest.BlockBytes), 2, 64);
+        if (bytes < wanted * 0.8)
+            log.Remarques.Add($"Mémoire vidéo occupée par d'autres programmes : test réduit à {blocks * 0.25:0.##} Gio. "
+                              + "Fermez-les (LLM, jeu) pour tester toute la carte.");
         var memory = memoryTested ? new MemoryTest(kit, blocks) { InjectFault = options.SelfCheck } : null;
         var burn = new BurnTest(kit) { InjectFault = options.SelfCheck };
 
