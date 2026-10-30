@@ -103,6 +103,7 @@ public sealed partial class ReportsViewModel : ObservableObject
             ReportKind.Updates => new Badge("MISES À JOUR", BadgeKind.Info),      // cyan
             ReportKind.PcSheet => new Badge("FICHE PC", BadgeKind.Info),          // cyan
             ReportKind.Cleanup => new Badge("NETTOYAGE", BadgeKind.Good),         // turquoise
+            ReportKind.GpuTuning => new Badge("RÉGLAGE GPU", BadgeKind.Reboot),   // orange
             _ => new Badge("SIMULATION", BadgeKind.Comfort)                       // cyan
         },
         $"{info.At:dd/MM/yyyy à HH:mm}",

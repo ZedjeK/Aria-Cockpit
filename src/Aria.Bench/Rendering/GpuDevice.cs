@@ -37,6 +37,8 @@ internal sealed class GpuDevice : IDisposable
     public GpuInfo Info { get; }
     public int Width { get; }
     public int Height { get; }
+    /// <summary>DXR 1.1 et shader model 6.5 : le préréglage Ultra RT peut tourner (GeForce RTX, Radeon RX 6000 et plus récentes).</summary>
+    public bool SupportsRayTracing { get; }
     public int FrameIndex => (int)SwapChain.CurrentBackBufferIndex;
     public ID3D12Resource BackBuffer => _backBuffers[FrameIndex];
     public CpuDescriptorHandle BackBufferRtv => _rtvHeap.GetCPUDescriptorHandleForHeapStart() + FrameIndex * (int)_rtvSize;
@@ -72,6 +74,8 @@ internal sealed class GpuDevice : IDisposable
         if (debug) _infoQueue = Device.QueryInterfaceOrNull<ID3D12InfoQueue>();
 
         Info = Describe(_adapter, desc, all);
+        SupportsRayTracing = Device.Options5.RaytracingTier >= RaytracingTier.Tier1_1
+                             && Device.CheckHighestShaderModel(ShaderModel.Model6_5) >= ShaderModel.Model6_5;
 
         Queue = Device.CreateCommandQueue(CommandListType.Direct);
         Queue.Name = "Aria-Bench file directe";
@@ -165,6 +169,53 @@ internal sealed class GpuDevice : IDisposable
         list.Close();
         Queue.ExecuteCommandList(list);
         WaitIdle();
+    }
+
+    /// <summary>
+    /// Un second device sur la même carte, sans chaîne d'affichage : les contrôles de stabilité y tournent à part du rendu,
+    /// comme dans l'outil d'origine (Test VRAM discriminant).
+    /// </summary>
+    public ID3D12Device CreateSeparateDevice()
+    {
+        if (D3D12.D3D12CreateDevice(_adapter, FeatureLevel.Level_12_0, out ID3D12Device? device).Failure || device is null)
+            throw new BenchException("Impossible de créer un second accès Direct3D 12 à la carte pour le contrôle de stabilité.");
+        device.Name = "Aria-Bench contrôle de stabilité";
+        return device;
+    }
+
+    /// <summary>Mémoire vidéo dédiée : budget accordé par Windows et part déjà utilisée (octets).</summary>
+    public (ulong Budget, ulong Usage) LocalMemory()
+    {
+        using var adapter = _adapter.QueryInterface<IDXGIAdapter3>();
+        var info = adapter.QueryVideoMemoryInfo(0, MemorySegmentGroup.Local);
+        return (info.Budget, info.CurrentUsage);
+    }
+
+    /// <summary>
+    /// Mémoire dédiée encore libre sur la carte, tous programmes confondus (compteur Windows « GPU Adapter Memory ») :
+    /// le budget de DirectX ne voit que ce processus. Null si le compteur est illisible.
+    /// </summary>
+    public ulong? FreeOnCard()
+    {
+        try
+        {
+            var desc = _adapter.Description1;
+            long luid = desc.Luid;
+            var prefix = $"luid_0x{(uint)(luid >> 32):x8}_0x{(uint)luid:x8}";
+            var data = new System.Diagnostics.PerformanceCounterCategory("GPU Adapter Memory").ReadCategory()["Dedicated Usage"];
+            if (data is null) return null;
+            var used = data.Values.Cast<System.Diagnostics.InstanceData>()
+                .Where(i => i.InstanceName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(i => (ulong)Math.Max(0, i.RawValue)).ToList();
+            if (used.Count == 0) return null;
+            var total = (ulong)desc.DedicatedVideoMemory;
+            var sum = used.Aggregate(0UL, (a, b) => a + b);
+            return total > sum ? total - sum : 0;
+        }
+        catch (Exception e) when (e is InvalidOperationException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
     }
 
     /// <summary>Attend que la carte ait fini tout le travail envoyé.</summary>

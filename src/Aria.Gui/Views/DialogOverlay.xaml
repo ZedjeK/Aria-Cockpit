@@ -98,11 +98,15 @@
                           Foreground="{StaticResource NeonOrangeBrush}"
                           Text="→"
                           Visibility="{Binding HasFrom, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- Largeur bornée : un texte long revient à la ligne au lieu de pousser le nom hors de la fenêtre -->
                         <TextBlock
+                          MaxWidth="400"
                           FontFamily="{StaticResource MonoFont}"
                           FontWeight="SemiBold"
                           Foreground="{StaticResource NeonCyanBrush}"
                           Text="{Binding To}"
+                          TextAlignment="Right"
+                          TextWrapping="Wrap"
                           Visibility="{Binding HasTo, Converter={StaticResource BoolToVisibility}}" />
                       </StackPanel>
                     </Grid>

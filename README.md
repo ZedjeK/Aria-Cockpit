@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.19 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.20 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -22,8 +22,8 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria ou dans ton jeu ; un garde-fou signale les plantages du pilote |
-| **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul, de mémoire vidéo et de ray tracing ; un garde-fou signale les plantages du pilote |
+| **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra RT (ray tracing) : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
@@ -181,7 +181,14 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
   compte pas comme origine ; elle reste dans la sauvegarde « Avant réglage GPU », que la page Restauration peut remettre.
 - **Réglage d'Équilibre** : remet le résultat d'Équilibre dans les curseurs (Appliquer le pose ensuite). À la fin
   d'Économie ou de Performance, « Revenir à Équilibre » le pose directement, même après un redémarrage entre les deux.
-- **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale.
+- **Mes profils** : enregistre le réglage des curseurs sous un nom (« Jeu », « Silence »…), ou un résultat de l'assistant
+  avec « Enregistrer comme profil » (nom proposé « Équilibre du 30/10 », avec ses FPS au banc et sa validation). « Charger »
+  le remet dans les curseurs sans rien appliquer ; la case « Garder au démarrage » reste celle des curseurs. Seuls les
+  profils de la carte en place sont affichés, et un profil enregistré sous un autre pilote est signalé : à revalider.
+- **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale, avec les
+  incidents regroupés par nature (pour un seul problème, le pilote écrit souvent 5 à 7 lignes dans la même seconde). Un
+  accès mémoire invalide (l'« illegal memory access » d'une IA locale sous CUDA) vient le plus souvent d'un cœur qui
+  calcule faux, pas de la mémoire : le conseil est de revenir d'origine, puis de refaire l'assistant avec le banc d'essai.
 
 ### L'assistant guidé : Équilibre, puis Économie ou Performance
 
@@ -190,25 +197,77 @@ overclock est actif, il se superposerait aux paliers : l'assistant s'arrête, ex
 NVIDIA App, puis de vérifier à nouveau (ou de continuer quand même, à tes risques). NVIDIA ne publie aucune interface
 pour le couper : c'est toi qui le fais. Une limite de puissance posée par un autre outil est aussi signalée : Aria pose
 ses propres valeurs pendant les mesures, mais l'outil la reposera au démarrage tant qu'il n'est pas remis par défaut.
+Aria regarde aussi qui occupe la mémoire vidéo : un programme qui en garde plus de 1 Go (un LLM chargé, un jeu resté
+ouvert) arrête l'assistant de la même façon, avec son nom et sa taille. Il réduirait le test mémoire, fausserait les
+mesures s'il travaille, et un réglage en cours d'essai pourrait le faire planter. Ferme-le, puis vérifie à nouveau.
 
-Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton jeu**, au choix avant de commencer :
+**Mesure faussée = mesure refaite.** Hors du premier plan, le pilote bride le banc (souvent à 30 FPS) : la carte
+tourne au ralenti, et tout ce qui en découle (plafond d'Équilibre, paliers, validation) serait faux. Le banc reprend
+le premier plan pendant sa chauffe, garde l'écran allumé, et note dans son journal le temps passé en arrière-plan. Au-delà
+de quelques secondes (2 % de la mesure), ou si ses FPS restent collés à une limite en 4K alors que la carte n'est pas
+chargée à 90 %, l'assistant ne juge rien et propose de recommencer la même mesure.
 
-| | Banc d'essai Aria | Ton jeu |
-|---|---|---|
-| Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul | La mesure démarre quand Aria voit ton jeu en action |
-| Verdict (Équilibre, Performance, validation) | **Automatique** : erreur de calcul ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne | Le tien : artefacts ou plantage ? |
-| Mesures comparées | Fréquence, watts, température et **FPS** | Fréquence, watts, température |
+Chaque mesure se fait **sur le banc d'essai Aria**, et seulement sur lui : même scène, même définition et mêmes
+contrôles d'un palier à l'autre et d'un mode à l'autre, donc des FPS qui se comparent et des verdicts qui ne dépendent
+pas de tes yeux. (Jusqu'à la 0.19, l'assistant pouvait aussi mesurer dans ton jeu ; un Équilibre mesuré ainsi doit être
+refait au banc pour débloquer Économie et Performance. Sans `Aria-Bench.exe` à côté d'Aria Cockpit, l'assistant reste
+grisé.) Pour vérifier un réglage dans ton vrai jeu, « Analyser les performances » (Mon PC) reste là.
+
+| | Banc d'essai Aria |
+|---|---|
+| Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul |
+| Verdict (Équilibre, Performance, validation) | **Automatique** : image ou calcul faux, donnée relue fausse, ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne |
+| Contrôles de stabilité | Avant le rendu de chaque palier : 1 min de calcul vérifié à pleine puissance, puis 2 min de banc ; un palier mémoire est jugé par 2 min de test mémoire, sans banc |
+| Mesures comparées | Fréquence, watts, température et **FPS** |
 
 Économie garde ta décision à chaque palier (la fluidité acceptable, c'est toi qui la juges), avec la perte de FPS mesurée par le banc.
+
+**Pourquoi des contrôles en plus du rendu 3D.** Un jeu ne sollicite ni le cœur ni la mémoire comme une IA locale ou un
+rendu de calcul. Sur la tour de l'auteur, le réglage d'Équilibre validé au banc 3D a donné 17 130 résultats faux en une
+minute de calcul à pleine puissance, et des « illegal memory access » au chargement d'un LLM ; aux valeurs d'origine,
+aucun écart. Les contrôles d'Aria-Bench (voir plus bas) s'ajoutent donc au rendu :
+
+- **Auto-contrôle** (20 s, au départ) : des erreurs de calcul et de mémoire sont injectées exprès, le test doit toutes
+  les retrouver. Sinon, ses verdicts ne valent rien sur ce PC : l'assistant se fie au seul rendu 3D, et le dit.
+- **Calcul vérifié** (1 min) en tête de chaque palier qui touche au cœur : paliers d'Équilibre et d'Économie, réglage de
+  base et paliers de Performance. C'est le juge le plus sévère : un palier instable est rejeté en une minute, et le banc 3D
+  (2 min, 3 pour le réglage de base) tourne ensuite sur une carte déjà chaude. La mesure de départ aux valeurs d'usine n'en
+  a pas : c'est la référence.
+- **Mémoire vidéo** (2 min, sans banc 3D) pour chaque palier mémoire : 40 s de calcul seul, puis 80 s de mémoire seule.
+  Une référence d'une minute au réglage retenu précède le premier palier, pour que +250 soit déjà comparé. Le palier
+  échoue au premier mot relu faux, ou s'il ne va pas plus vite que le précédent (au moins 0,5 % de bande passante en
+  plus) : au-delà d'un certain point, la GDDR6X corrige ses erreurs en renvoyant les données, et ralentit au lieu de planter.
+- **Validation** : aux 15 minutes de banc s'ajoutent, sur une carte RTX, 130 s d'Ultra RT (un tour de caméra, à la
+  définition de l'écran, images vérifiées), puis 2 min de calcul vérifié, et 2 min de mémoire si elle est poussée. Le
+  premier qui lâche arrête la suite ; une image fausse en ray tracing fait reculer le décalage de 15 MHz.
+- **Pourquoi le ray tracing en contrôle, et pas en mesure.** Sur la RTX 4080 SUPER de l'auteur, l'Ultra en 4K bute sur la
+  limite de puissance (318 W, fréquence entre 2610 et 2685 MHz), alors que l'Ultra RT en 1440p reste à 260 W, collé au
+  plafond de 2685 MHz : les cœurs RT limitent avant les watts. Le RT éprouve donc mieux la fréquence (la carte reste au
+  point où le décalage est le plus exposé) mais jugerait mal les watts d'Économie et le gain de Performance. Les mesures
+  restent en Ultra.
+- Les tuiles de résultat montrent ce qui a été vérifié : « Calcul vérifié » (exécutions, écarts) et « Mémoire vidéo »
+  (bande passante, passes, erreurs).
+
+Échap ou « Arrêter la mesure » pendant un contrôle : le palier n'est pas jugé, l'assistant propose de le refaire.
 Si le banc d'essai bute sur une limite d'images (V-Sync, limite du pilote), l'assistant refait la mesure à la définition
 supérieure pour charger la carte à fond. Sur un portable, branche-le sur secteur : sur batterie, la carte est bridée.
 
 | Mode | Ce qu'il cherche | Comment |
 |---|---|---|
 | **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ aux valeurs d'usine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
-| **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
+| **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides. Ensuite, en option : la limite de puissance baisse à son tour (voir « Les watts dans chaque mode ») |
 | **Performance** | La fréquence la plus haute qui reste stable | Part de la courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz. Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe |
 
+- **Les watts dans chaque mode** : la limite de puissance n'est qu'un plafond de consommation, elle ne rend pas la carte
+  instable. Performance la met donc au maximum dès le départ (à 320 W, Équilibre reste souvent bridé par ses watts), cherche
+  le décalage par paliers, et juge ensuite les watts en plus dans son avis. Économie baisse le plafond de fréquence : moins
+  de fréquence, c'est moins de tension, donc moins de watts et de chaleur, que la perte affichée à chaque palier compte
+  (FPS, W, °C). Le plafond garde une fréquence régulière ; une limite de watts garantit en plus une consommation maximale,
+  donc un maximum de chaleur et de bruit, même dans les scènes les plus lourdes, où la fréquence varie alors davantage.
+  C'est pourquoi, après le plafond, Économie propose **« Baisser les watts »** (facultatif) : la limite de puissance
+  descend par paliers, en partant de la consommation mesurée au plafond retenu (au-dessus, elle ne changerait rien), puis
+  d'environ 10 %, 5 % et 5 W, sans passer sous 60 % de la valeur d'usine. Chaque palier se mesure comme les autres, et tu
+  juges la perte. Sur les cartes sans plafond (Maxwell, Pascal), c'est directement la limite de puissance qui baisse.
 - **Avis d'Aria à la fin de Performance** : le gain est comparé au réglage d'Équilibre (FPS, watts, température,
   FPS par watt). Moins de 3 % de FPS en plus, ou plus de 3 W par FPS gagné : « ne vaut pas le coup », et « Revenir à
   Équilibre » passe en tête ; au moins 8 % pour 3 W par FPS au plus : « vaut le coup » ; entre les deux : « gain réel mais
@@ -218,18 +277,32 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   changes de carte graphique ; après une mise à jour du pilote, refaire Équilibre est conseillé.
 - **Recherche du grossier vers le fin** : grands pas tant que ça tient, puis pas moyens à partir du dernier palier
   stable, puis un dernier affinage (exemple : +100 ✓, +200 ✓, +300 ✗, +230 ✓, +260 ✗, +245 ✓).
-- **Recul de sécurité** : quand un palier a planté juste au-dessus, le résultat recule d'un cran (15 MHz). Dans
-  l'exemple, +230 est gardé plutôt que +245.
-- **Ton verdict à chaque palier** : artefacts ou plantage (pour Équilibre et Performance), perte jugée acceptable ou non
-  (pour Économie). Un plantage du pilote ou du jeu détecté par Windows fait passer à un palier plus prudent.
-- **Mémoire** en option à la fin d'Équilibre et de Performance : paliers de + 250 MHz jusqu'à + 1 000.
-- **Validation de 15 minutes** (conseillée) sur le réglage retenu, avant de le garder : un réglage peut tenir 3 minutes
-  et lâcher au bout d'un quart d'heure. En cas de problème, il recule encore d'un cran.
+- **Marge de sécurité** : le résultat garde toujours un cran sous le dernier palier stable, même quand tout a tenu
+  jusqu'à la borne : 15 MHz pour le décalage GPU (Équilibre, Performance), 250 MHz pour la mémoire. Dans l'exemple,
+  +230 est gardé plutôt que +245.
+- **Verdict à chaque palier** : automatique pour Équilibre et Performance (images, calculs, mémoire, plantage) ; pour
+  Économie, la perte jugée acceptable ou non, c'est toi (un calcul faux ou un plantage y reste automatique). Un plantage
+  du pilote détecté par Windows fait passer à un palier plus prudent.
+- **Équilibre fait toujours le parcours complet** : paliers du cœur, puis paliers mémoire, puis validation de 15 minutes,
+  sans question entre les étapes (environ 45 minutes sur une RTX 4080 SUPER). C'est lui qui sert de base aux deux autres modes.
+- **Mémoire** : paliers de + 250 MHz jusqu'à + 1 000, chacun avec son test de la mémoire vidéo. Toujours testée par
+  Équilibre, en option à la fin de Performance.
+- **Validation de 15 minutes** sur le réglage retenu, avant de le garder (enchaînée par Équilibre, conseillée pour les
+  autres) : un réglage peut tenir 3 minutes et lâcher au bout d'un quart d'heure. En cas de problème, il recule encore d'un cran (la mémoire, si c'est elle qui a
+  relu faux).
 - **À la fin, c'est toi qui choisis** : garder au démarrage, garder jusqu'au redémarrage, ou tout annuler.
+- **Rapport de chaque passage** : à la fin de chaque mode, terminé ou abandonné, Aria écrit `reglage-gpu_<date>.txt`
+  dans le dossier Rapports (type « Réglage GPU » dans la page Rapports, bouton « Voir le rapport » en fin d'assistant).
+  On y trouve la conclusion d'Aria (gain en FPS et en watts, où et pourquoi chaque recherche s'est arrêtée, validation,
+  comparaison avec l'Équilibre précédent, conseil), le tableau départ / résultat, le déroulé palier par palier avec la
+  raison de chaque verdict (calculs faux, mémoire pas plus rapide, plantage, mesure faussée…), les contrôles du résultat
+  et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
-mesures se font en jeu ; le garde-fou signale un éventuel plantage au repos après coup. Les artefacts visuels ne sont
-pas détectables automatiquement : tes yeux restent le juge.
+mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Les cœurs de ray
+tracing ne sont éprouvés qu'à la validation (pas à chaque palier), et les cœurs Tensor (DLSS) pas encore : un jeu qui
+s'en sert peut révéler un réglage que le banc n'a pas vu. Les contrôles de calcul et de mémoire réduisent le risque sous une IA locale ou un rendu, sans le supprimer :
+essaie ton usage réel avant de garder un réglage au démarrage.
 
 ## Banc d'essai Aria
 
@@ -245,6 +318,15 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
 | Moyen | 512² | 12 100 | 2048 px, adoucies | 32 | 8 échantillons | 3 niveaux |
 | Élevé | 768² | 28 900 | 4096 px, adoucies | 64 | 12 échantillons | 4 niveaux |
 | Ultra | 1024² | 57 600 | 4096 px, très adoucies | 96 | 16 échantillons | 5 niveaux |
+| Ultra RT | 1024² | 57 600 | tracées (1 rayon) | 96 | 4 rayons tracés | 5 niveaux |
+
+- **Ultra RT** : la scène d'Ultra, éclairée par ray tracing DXR 1.1 en ligne (RayQuery, Shader Model 6.5) : ombre du
+  soleil, occlusion ambiante et reflets tracés à chaque pixel, à travers une structure d'accélération construite
+  une fois au démarrage (une instance par tour ou rocher). Les directions des rayons sont fixes pour chaque pixel : l'image
+  de contrôle reste identique au pixel près, et se vérifie comme les autres. Il faut une carte DXR 1.1 (NVIDIA RTX,
+  AMD Radeon RX 6000 et plus récentes, Intel Arc) ; sinon le banc le refuse avec un message clair. Il ne fait pas partie
+  de `--qualite tout` : il se demande avec `--qualite ultra-rt`. Sur une RTX 4080 SUPER en 1440p, il triple environ le
+  temps d'image d'Ultra (mesuré sur les mêmes 20 secondes de scène).
 
 - **Vérification des images** : une image de contrôle (toujours le même instant de la scène) est calculée après la
   chauffe, puis recalculée toutes les 3 secondes et comparée au pixel près. Sur une carte stable, le résultat est
@@ -255,15 +337,30 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
 - **Mesures** : FPS moyens et médians, 1 % les plus bas, temps par image, saccades (images plus de 2,5 fois plus longues
   que la normale). Les premières secondes de chaque passe ne comptent pas (montée en fréquence).
 - **Contexte** : alimentation (secteur ou batterie), fréquence de l'écran ; une mesure collée à une limite (V-Sync,
-  limite d'images du pilote, 60 ou 30 FPS) est signalée « plafonnée » : la carte n'y est pas mesurée à fond.
+  limite d'images du pilote, 60 ou 30 FPS) est signalée « plafonnée » : la carte n'y est pas mesurée à fond. Le temps
+  passé hors du premier plan (`arrierePlanS`) est noté aussi : le pilote bride alors la fenêtre.
 - **Journal** : `bench-<date>.json` (et `bench-dernier.json`) à côté de l'exe : carte, pilote, contexte, résultats,
   erreurs. C'est lui qu'Aria Cockpit lit.
+- **Contrôles de stabilité** (`--calcul`, `--vram`, repris du « Test VRAM discriminant » de la session Aria Pilote),
+  dans une petite fenêtre au lieu du rendu 3D. Le calcul vérifié fait faire à un million de fils la même longue chaîne
+  de multiplications-additions, et compare chaque résultat à celui de la première exécution. Le test mémoire écrit 70 %
+  de la mémoire vidéo libre, sans dépasser ce qui reste vraiment libre sur la carte moins 1 Go (les autres programmes
+  comptent : un test qui déborde passe en mémoire système et ne mesure plus que le PCIe). Chaque mot reçoit une valeur
+  calculée d'après l'adresse et la passe ; le test relit tout et compte les écarts sur la carte
+  elle-même, une passe sur deux dans un ordre mélangé, comme l'inférence d'un LLM. Avec `--vram`, le calcul tourne seul
+  le premier tiers du temps, puis la mémoire seule, pour une bande passante propre. Le journal gagne une section
+  `stabilite` : statut (`reussi`, `attention`, `echec`), raisons, exécutions et écarts, passes, mots faux, bande passante.
 
 Lancement à la main (Échap arrête) :
 
     Aria-Bench.exe                                  Élevé, 1080p puis 1440p puis 4K, 20 s chacune
     Aria-Bench.exe --qualite tout --def 1440        Les quatre préréglages en 1440p
+    Aria-Bench.exe --qualite ultra,ultra-rt --def 1440   Ultra puis Ultra RT, pour mesurer le coût du ray tracing
     Aria-Bench.exe --qualite ultra --def 4k --duree 60 --fenetre --debug --images --sortie resultat.json
+    Aria-Bench.exe --calcul --duree 60              Calcul vérifié à pleine puissance
+    Aria-Bench.exe --vram --duree 90                Calcul seul (un tiers du temps), puis mémoire vidéo seule
+    Aria-Bench.exe --vram --precedent palier.json   Idem, et la bande passante doit dépasser celle de palier.json
+    Aria-Bench.exe --auto-controle                  Erreurs injectées exprès : le test doit toutes les retrouver
 
 `--debug` active la couche de diagnostic de Direct3D (fonctionnalité facultative « Outils graphiques » de Windows) :
 les performances mesurées ne sont alors pas représentatives.
@@ -311,6 +408,7 @@ chemins.
 - Sauvegardes des valeurs d'origine : `C:\ProgramData\AriaCockpit\Sauvegardes`
 - Rapports : `C:\ProgramData\AriaCockpit\Rapports`
 - Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
+- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json`
 - Journal des erreurs : `C:\ProgramData\AriaCockpit\erreurs.log`
 
 Les versions précédentes rangeaient leurs données dans `C:\ProgramData\Aria` (0.13 et 0.14) ou
@@ -360,11 +458,16 @@ Version console en simulation, depuis la racine du projet :
   mises à jour, nettoyage, sauvegarde, rapports), sans interface
 - `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe`
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
-- `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; shaders dans `Shaders/*.hlsl`, précompilés dans
-  `Shaders/Compiled` par `outils/compiler-shaders.py` (aucun compilateur n'est livré avec l'exe)
-- `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core (analyse de performance, recherche des paliers, origine
-  d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc, avis de Performance) ; rien n'y touche
-  à la carte ni au système
+- `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; contrôles de stabilité dans `Stability/`.
+  Shaders dans `Shaders/*.hlsl`, précompilés dans `Shaders/Compiled` par `outils/compiler-shaders.py` (rendu) et
+  `outils/compiler-shaders-calcul.py` (contrôles, avec le compilateur fourni avec Windows) : aucun compilateur n'est
+  livré avec l'exe. Pour le rendu, ray tracing compris (Shader Model 6.5), le plus simple est le `dxc.exe` du paquet
+  NuGet officiel `Microsoft.Direct3D.DXC`, avec sa `dxil.dll` à côté pour signer le code (sans signature, le pilote
+  refuse les shaders) : `python outils/compiler-shaders.py <chemin>/dxc.exe`. `RayTracingScene.cs` construit les
+  structures d'accélération du préréglage Ultra RT
+- `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core et des verdicts d'Aria-Bench (analyse de performance,
+  recherche des paliers, origine d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc,
+  contrôles de stabilité, incidents du pilote, avis de Performance) ; rien n'y touche à la carte ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px

@@ -8,12 +8,12 @@ public class TuningSearchTests
     private static readonly GpuTuningState Factory = new(320_000, 0, 0, 0, false);
 
     /// <summary>Joue la recherche : chaque palier proposé reçoit le verdict de <paramref name="stable"/>.</summary>
-    private static List<int> Run(TuningSearch search, Func<int, bool> stable)
+    private static List<int> Run(TuningSearch search, Func<int, bool> stable, bool memory = false)
     {
         var tested = new List<int>();
         while (!search.Finished)
         {
-            var offset = search.Current.CoreOffsetMHz;
+            var offset = memory ? search.Current.MemoryOffsetMHz : search.Current.CoreOffsetMHz;
             tested.Add(offset);
             search.Report(stable(offset));
         }
@@ -36,16 +36,18 @@ public class TuningSearchTests
     }
 
     [Fact]
-    public void BalancedStopsAtAriasOffsetLimitWithoutBackingOff()
+    public void BalancedKeepsFifteenMegahertzOfMarginEvenAtAriasOffsetLimit()
     {
-        // Cas de la tour : trois paliers stables, la recherche bute sur +300 sans instabilité
+        // Cas de la tour : trois paliers stables, la recherche bute sur +300 sans instabilité. Un undervolt validé au banc
+        // a pourtant donné des calculs faux sous une IA locale : le résultat garde toujours 15 MHz de marge
         var search = TuningSearch.Balanced(Factory, Limits, 2550);
 
         var tested = Run(search, _ => true);
 
         Assert.Equal([100, 200, TuningPlan.CoreLimit], tested);
         Assert.False(search.HitLimit);
-        Assert.Equal(TuningPlan.CoreLimit, search.Safe.CoreOffsetMHz);
+        Assert.Equal(TuningPlan.CoreLimit, search.LastStable.CoreOffsetMHz);
+        Assert.Equal(TuningPlan.CoreLimit - TuningPlan.ClockBin, search.Safe.CoreOffsetMHz);
     }
 
     [Fact]
@@ -79,6 +81,30 @@ public class TuningSearchTests
         Assert.Equal(0u, search.LastStable.MaxClockMHz);
         Assert.Equal(370_000u, search.LastStable.PowerLimitMilliwatts);
         Assert.Equal(120, search.Safe.CoreOffsetMHz);
+    }
+
+    [Fact]
+    public void MemoryKeepsOneStepOfMarginEvenWhenEverythingHeld()
+    {
+        // Cas de la tour : +1000 tenu au banc, mais « illegal memory access » au chargement d'un LLM
+        var search = TuningSearch.Memory(new GpuTuningState(320_000, 2685, 215, 0, false), Limits);
+
+        var tested = Run(search, _ => true, memory: true);
+
+        Assert.Equal([250, 500, 750, 1000], tested);
+        Assert.False(search.HitLimit);
+        Assert.Equal(750, search.Safe.MemoryOffsetMHz);
+    }
+
+    [Fact]
+    public void MemoryStepsBackFromTheLastHeldStepAfterAFailure()
+    {
+        var search = TuningSearch.Memory(new GpuTuningState(320_000, 2685, 215, 0, false), Limits);
+
+        var tested = Run(search, offset => offset < 750, memory: true);
+
+        Assert.Equal([250, 500, 750], tested);
+        Assert.Equal(250, search.Safe.MemoryOffsetMHz);
     }
 
     [Fact]

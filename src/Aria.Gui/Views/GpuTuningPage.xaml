@@ -71,10 +71,12 @@
           </Grid.ColumnDefinitions>
           <ui:SymbolIcon VerticalAlignment="Top" FontSize="22" Foreground="{StaticResource NeonRedBrush}" Symbol="ErrorCircle24" />
           <StackPanel Grid.Column="1" Margin="12,0,16,0">
-            <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="PLANTAGES DU PILOTE DÉTECTÉS" />
+            <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="INCIDENTS DU PILOTE DÉTECTÉS" />
             <TextBlock Margin="0,4,0,0" Text="{Binding CrashText}" TextWrapping="Wrap" />
           </StackPanel>
-          <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
+          <StackPanel Grid.Column="2" VerticalAlignment="Center">
+            <Button HorizontalAlignment="Stretch" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
+          </StackPanel>
         </Grid>
       </Border>
 
@@ -162,24 +164,15 @@
             <TextBlock
               Margin="0,8,0,14"
               Foreground="{StaticResource NeonMutedBrush}"
-              Text="Commencez par Équilibre : il mesure la carte au réglage d'origine et trouve l'undervolt qui garde les mêmes FPS avec moins de watts. Son résultat débloque Économie et Performance, qui partent de lui. Chaque palier dure 3 minutes, sur le banc d'essai Aria (automatique) ou dans votre jeu ; rien n'est gardé sans votre accord."
+              Text="Commencez par Équilibre : il mesure la carte au réglage d'origine et trouve l'undervolt qui garde les mêmes FPS avec moins de watts. Son résultat débloque Économie et Performance, qui partent de lui. Tout se mesure sur le banc d'essai Aria : même scène, même définition, calculs et images vérifiés à chaque palier ; rien n'est gardé sans votre accord."
               TextWrapping="Wrap" />
-            <!-- Source des mesures -->
-            <StackPanel Margin="0,0,0,14" Orientation="Horizontal" Visibility="{Binding BenchAvailable, Converter={StaticResource BoolToVisibility}}">
-              <TextBlock VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Style="{StaticResource HudCode}" Text="MESURER AVEC" />
-              <RadioButton
-                Margin="16,0,0,0"
-                Content="Le banc d'essai Aria (verdict automatique)"
-                GroupName="AssistantSource"
-                IsChecked="{Binding UseBench}"
-                ToolTip="Scène 3D en qualité Ultra, à la définition de l'écran ; chaque image de contrôle est vérifiée : une erreur de calcul trahit un réglage instable" />
-              <RadioButton
-                Margin="16,0,0,0"
-                Content="Mon jeu (votre verdict à chaque palier)"
-                GroupName="AssistantSource"
-                IsChecked="{Binding UseGame}"
-                ToolTip="La mesure démarre quand Aria voit votre jeu en action ; vous jugez les artefacts" />
-            </StackPanel>
+            <!-- Sans Aria-Bench, l'assistant ne peut pas mesurer -->
+            <TextBlock
+              Margin="0,0,0,14"
+              Foreground="{StaticResource NeonOrangeBrush}"
+              Text="Aria-Bench.exe est introuvable à côté d'Aria Cockpit : l'assistant en a besoin pour mesurer. Remettez les deux exes ensemble (archive de la release), puis relancez Aria."
+              TextWrapping="Wrap"
+              Visibility="{Binding BenchMissing, Converter={StaticResource BoolToVisibility}}" />
             <UniformGrid Columns="3">
               <Border Margin="0,0,10,0" Padding="16,12" Background="#14FF8A1F" BorderBrush="#99FF8A1F" BorderThickness="1,0,0,0">
                 <StackPanel>
@@ -251,7 +244,7 @@
             <WrapPanel Margin="0,12,0,0">
               <Button Margin="0,0,10,8" Command="{Binding OpenNvidiaAppCommand}" Content="OUVRIR NVIDIA APP" Style="{StaticResource HudButton}" Visibility="{Binding CanOpenNvidiaApp, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding RecheckNvidiaAppCommand}" Content="VÉRIFIER À NOUVEAU" Style="{StaticResource HudButtonGhost}" />
-              <Button Margin="0,0,10,8" Command="{Binding ContinueDespiteNvidiaAppCommand}" Content="CONTINUER QUAND MÊME" Style="{StaticResource HudButtonGhost}" ToolTip="Les mesures risquent d'être faussées par l'overclock de NVIDIA App" />
+              <Button Margin="0,0,10,8" Command="{Binding ContinueDespiteNvidiaAppCommand}" Content="CONTINUER QUAND MÊME" Style="{StaticResource HudButtonGhost}" ToolTip="Les mesures risquent d'être faussées" />
               <Button Margin="0,0,10,8" Command="{Binding DismissPreflightCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" />
             </WrapPanel>
           </StackPanel>
@@ -260,13 +253,6 @@
           <StackPanel Margin="0,10,0,0" Visibility="{Binding IsMeasuring, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="{Binding Instruction}" TextWrapping="Wrap" />
             <StackPanel Margin="0,12,0,6" Orientation="Horizontal">
-              <Ellipse
-                Width="7"
-                Height="7"
-                Margin="0,0,10,0"
-                fx:Fx.Pulse="True"
-                Fill="{StaticResource NeonOrangeBrush}"
-                Visibility="{Binding IsWaiting, Converter={StaticResource BoolToVisibility}}" />
               <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource HudCode}" Text="{Binding ProgressText}" />
               <TextBlock Margin="16,0,0,0" Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource HudCode}" Text="{Binding GameText}" />
             </StackPanel>
@@ -284,8 +270,7 @@
                 Command="{Binding StopMeasureCommand}"
                 Content="ARRÊTER LA MESURE"
                 Style="{StaticResource HudButtonGhost}"
-                ToolTip="Juger ce palier sur ce qui a déjà été enregistré"
-                Visibility="{Binding IsWaiting, Converter={StaticResource InverseBoolToVisibility}}" />
+                ToolTip="Juger ce palier sur ce qui a déjà été enregistré" />
               <Button Command="{Binding CancelAllCommand}" Content="ABANDONNER" Style="{StaticResource HudButtonGhost}" ToolTip="Retour au réglage de départ" />
             </StackPanel>
           </StackPanel>
@@ -294,12 +279,12 @@
           <ItemsControl Margin="0,14,0,0" Focusable="False" ItemsSource="{Binding Tiles}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <UniformGrid Rows="1" />
+                <UniformGrid Columns="{Binding TileColumns}" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Border Margin="0,0,14,0" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
+                <Border Margin="0,0,14,10" Padding="14,2,0,2" BorderBrush="#405C8BFF" BorderThickness="1,0,0,0">
                   <StackPanel>
                     <TextBlock Foreground="{StaticResource NeonBlueLightBrush}" Style="{StaticResource TechLabel}" Text="{Binding Label}" />
                     <TextBlock Margin="0,4,0,0" FontFamily="{StaticResource TechFont}" FontWeight="SemiBold">
@@ -362,6 +347,15 @@
             </StackPanel>
           </StackPanel>
 
+          <!-- Économie : limite de puissance facultative après le plafond -->
+          <StackPanel Margin="0,10,0,0" Visibility="{Binding IsPowerPrompt, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding Instruction}" TextWrapping="Wrap" />
+            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+              <Button Command="{Binding LowerPowerCommand}" Content="BAISSER LES WATTS" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="10,0,0,0" Command="{Binding SkipPowerCommand}" Content="TERMINER" Style="{StaticResource HudButton}" />
+            </StackPanel>
+          </StackPanel>
+
           <!-- Résultat -->
           <StackPanel Margin="0,14,0,0" Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}">
             <TextBlock FontFamily="{StaticResource TechFont}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding DoneText}" TextWrapping="Wrap" />
@@ -380,10 +374,12 @@
             </Border>
             <WrapPanel Margin="0,12,0,0">
               <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButton}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedFirst, Converter={StaticResource BoolToVisibility}}" />
-              <Button Margin="0,0,10,8" Command="{Binding ValidateCommand}" Content="VALIDER 15 MIN (CONSEILLÉ)" Style="{StaticResource HudButton}" ToolTip="15 minutes de jeu sur le réglage retenu : la vraie épreuve de stabilité" Visibility="{Binding CanValidate, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding ValidateCommand}" Content="VALIDER 15 MIN (CONSEILLÉ)" Style="{StaticResource HudButton}" ToolTip="15 minutes de banc sur le réglage retenu, 2 minutes de ray tracing sur une carte RTX, puis calcul et mémoire vérifiés : la vraie épreuve de stabilité" Visibility="{Binding CanValidate, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepAtStartupCommand}" Content="GARDER AU DÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="GARDER JUSQU'AU REDÉMARRAGE" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding ReturnToBalancedCommand}" Content="REVENIR À ÉQUILIBRE" Style="{StaticResource HudButtonGhost}" ToolTip="Pose le réglage d'Équilibre jusqu'au redémarrage ; « Garder au démarrage » dans le réglage manuel pour le garder" Visibility="{Binding ReturnToBalancedSecond, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding OpenReportCommand}" Content="VOIR LE RAPPORT" Style="{StaticResource HudButtonGhost}" ToolTip="Conclusion détaillée, déroulé palier par palier ; aussi dans la page Rapports" Visibility="{Binding HasReport, Converter={StaticResource BoolToVisibility}}" />
+              <Button Margin="0,0,10,8" Command="{Binding SaveAsProfileCommand}" Content="ENREGISTRER COMME PROFIL" Style="{StaticResource HudButtonGhost}" ToolTip="Le garde dans « Mes profils », à recharger plus tard dans les curseurs" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding CancelAllCommand}" Content="TOUT ANNULER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource BoolToVisibility}}" />
               <Button Margin="0,0,10,8" Command="{Binding KeepUntilRebootCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" Visibility="{Binding DoneChanged, Converter={StaticResource InverseBoolToVisibility}}" />
             </WrapPanel>
@@ -558,6 +554,68 @@
             </StackPanel>
           </ContentControl>
 
+          <!-- Profils enregistrés pour cette carte -->
+          <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanelMirror}" Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+              <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="MES PROFILS" />
+              <TextBlock
+                Margin="0,4,0,0"
+                FontSize="12.5"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="Aucun profil pour cette carte. Enregistrez le réglage des curseurs, ou un résultat de l'assistant."
+                TextWrapping="Wrap"
+                Visibility="{Binding HasProfiles, Converter={StaticResource InverseBoolToVisibility}}" />
+              <ItemsControl Focusable="False" ItemsSource="{Binding Profiles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="0,8" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1">
+                      <StackPanel>
+                        <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Profile.Name}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0" Text="{Binding Tuning}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Details}" TextWrapping="Wrap" />
+                        <TextBlock
+                          Margin="0,2,0,0"
+                          FontSize="12.5"
+                          Foreground="{StaticResource NeonOrangeBrush}"
+                          Text="Pilote changé depuis : à revalider avant de le garder."
+                          TextWrapping="Wrap"
+                          Visibility="{Binding DriverChanged, Converter={StaticResource BoolToVisibility}}" />
+                        <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                          <Button
+                            Padding="16,0"
+                            Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="CHARGER"
+                            Style="{StaticResource HudButtonGhost}"
+                            ToolTip="Met ce profil dans les curseurs ; Appliquer le pose ensuite" />
+                          <Button
+                            Margin="8,0,0,0"
+                            Padding="16,0"
+                            Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="SUPPRIMER"
+                            Style="{StaticResource HudButtonGhost}" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="NOM DU NOUVEAU PROFIL" />
+              <TextBox
+                Margin="0,4,0,0"
+                MaxLength="60"
+                Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" />
+              <Button
+                Margin="0,8,0,0"
+                HorizontalAlignment="Left"
+                Command="{Binding SaveProfileCommand}"
+                Content="ENREGISTRER"
+                Style="{StaticResource HudButtonGhost}"
+                ToolTip="Enregistre le réglage des curseurs (celui en place si vous n'y avez pas touché)" />
+            </StackPanel>
+          </ContentControl>
+
           <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanelMirror}">
             <StackPanel>
               <TextBlock Foreground="{StaticResource NeonOrangeBrush}" Style="{StaticResource TechLabel}" Text="RECETTES" />
@@ -565,16 +623,16 @@
                 <Run FontWeight="SemiBold" Text="Équilibre : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="plafond à la fréquence haute habituelle en jeu (lisez-la en direct), puis décalage GPU de +100 à +200 MHz par paliers." />
               </TextBlock>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
-                <Run FontWeight="SemiBold" Text="Économie : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="le réglage d'Équilibre avec un plafond 5 à 10 % plus bas, ou simplement la limite de puissance à 80-90 %." />
+                <Run FontWeight="SemiBold" Text="Économie : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="le réglage d'Équilibre avec un plafond 5 à 10 % plus bas, ou simplement la limite de puissance à 80-90 %. Moins de fréquence, c'est moins de tension : watts et chaleur baissent avec. Le plafond garde une fréquence régulière ; la limite de watts garantit une consommation maximale, mais la fréquence varie dans les scènes lourdes." />
               </TextBlock>
               <TextBlock Margin="0,6,0,0" TextWrapping="Wrap">
-                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU croissant depuis la courbe d'usine (+60, puis +30, puis +15 MHz) jusqu'au plus haut palier stable." />
+                <Run FontWeight="SemiBold" Text="Performance : " /><Run Foreground="{StaticResource NeonMutedBrush}" Text="limite de puissance au maximum, sans plafond, décalage GPU croissant depuis la courbe d'usine (+60, puis +30, puis +15 MHz) jusqu'au plus haut palier stable. La limite au maximum n'est qu'un plafond (elle ne rend pas instable) : ce sont les watts en plus pour chaque FPS gagné qui disent si ça vaut le coup." />
               </TextBlock>
               <TextBlock
                 Margin="0,10,0,0"
                 FontSize="12.5"
                 Foreground="{StaticResource NeonMutedBrush}"
-                Text="Après chaque palier : Mon PC → Analyser les performances, en jeu. Plantage ou artefacts : revenez au palier précédent."
+                Text="Réglage manuel : après chaque palier, Mon PC → Analyser les performances, en jeu ; plantage ou artefacts, revenez au palier précédent. L'assistant, lui, mesure tout au banc d'essai."
                 TextWrapping="Wrap" />
             </StackPanel>
           </ContentControl>

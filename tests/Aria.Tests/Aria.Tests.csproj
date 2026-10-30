@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Aria.Core\Aria.Core.csproj" />
+    <!-- Verdict des contrôles de stabilité (calcul vérifié, mémoire vidéo) : fonctions pures d'Aria-Bench -->
+    <ProjectReference Include="..\..\src\Aria.Bench\Aria.Bench.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -50,13 +50,22 @@ namespace Aria.Bench
         public static bool Execute(BenchOptions options, BenchLog log)
         {
             Win32Window.EnablePerMonitorDpi();
-            using var window = new Win32Window("Aria Bench", fullscreen: !options.Windowed);
+            Win32Window.KeepAwake();
+            // Les contrôles de stabilité n'affichent rien : une fenêtre suffit (Échap les arrête)
+            var stability = options.Stability != StabilityMode.None;
+            using var window = new Win32Window(stability ? "Aria Bench · contrôle de stabilité" : "Aria Bench", fullscreen: !options.Windowed && !stability);
             using var gpu = new GpuDevice(window.Handle, window.ClientWidth, window.ClientHeight, options.Debug, log.Remarques);
             log.Carte = gpu.Info;
             log.Contexte = SystemInfo.Read();
             if (log.Contexte.OnBattery) log.Remarques.Add("PC sur batterie : la carte est souvent bridée (60 FPS, puissance réduite). Branchez-le pour une vraie mesure.");
             if (log.Contexte.EconomieEnergie) log.Remarques.Add("Économiseur d'énergie de Windows actif : les performances peuvent être réduites.");
             log.Remarques.Add($"Écran : {window.ClientWidth} × {window.ClientHeight}{(window.Fullscreen ? ", plein écran" : ", fenêtre")}.");
+
+            if (stability)
+            {
+                try { return Stability.StabilityRun.Run(gpu, window, options, log); }
+                finally { log.MessagesDirect3D.AddRange(gpu.DrainDebugMessages()); }
+            }
 
             try
             {
@@ -76,10 +85,13 @@ namespace Aria.Bench
                     var last = clock.Elapsed;
                     // Référence prise à la fin de la chauffe : carte et pilote stabilisés
                     var nextCheck = options.Warmup;
+                    var background = 0.0;
+                    var nextGrab = TimeSpan.Zero;
 
                     PassResult Result() =>
                         PassResult.From(quality, definition, width, height, stats.Summarize(), check,
-                            FrameCap.Detect(stats.Summarize().MedianFps, log.Contexte.FrequenceEcranHz, log.Contexte.OnBattery));
+                            FrameCap.Detect(stats.Summarize().MedianFps, log.Contexte.FrequenceEcranHz, log.Contexte.OnBattery))
+                            with { ArrierePlanS = Math.Round(background, 1) };
 
                     while (true)
                     {
@@ -105,7 +117,18 @@ namespace Aria.Bench
 
                         var now = clock.Elapsed;
                         // Les premières secondes (montée en fréquence, caches) ne comptent pas
-                        if (elapsed >= options.Warmup) stats.Add((now - last).TotalMilliseconds);
+                        if (elapsed >= options.Warmup)
+                        {
+                            stats.Add((now - last).TotalMilliseconds);
+                            // Hors du premier plan, le pilote bride la fenêtre : ces secondes faussent la mesure
+                            if (!window.IsForeground) background += (now - last).TotalSeconds;
+                        }
+                        else if (now >= nextGrab && !window.IsForeground)
+                        {
+                            // Pendant la chauffe seulement : ensuite, l'utilisateur garde la main sur ses fenêtres
+                            window.TakeForeground();
+                            nextGrab = now + TimeSpan.FromSeconds(1);
+                        }
                         last = now;
                     }
 
@@ -129,6 +152,9 @@ namespace Aria.Bench
                         log.Remarques.Add($"Erreurs de calcul en {result.Qualite} {result.Definition} : {result.ErreursCalcul} vérification(s) sur {result.Verifications} "
                                           + $"(jusqu'à {result.PixelsDifferents:N0} pixels différents). La carte n'est pas stable avec ce réglage.");
                     if (result.Plafond is not null && !log.Remarques.Contains(result.Plafond)) log.Remarques.Add(result.Plafond);
+                    if (result.ArrierePlanS > 0)
+                        log.Remarques.Add($"Fenêtre du banc en arrière-plan pendant {result.ArrierePlanS:0.#} s de mesure : le pilote bride alors les FPS "
+                                          + "(souvent à 30). Laissez le banc au premier plan pendant toute la mesure.");
                     done += passLength.TotalSeconds;
                 }
                 return true;

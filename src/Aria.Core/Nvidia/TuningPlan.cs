@@ -7,9 +7,20 @@ public enum TuningGoal
 {
     /// <summary>Undervolt : plafond à la fréquence haute habituelle en jeu + décalage GPU croissant. Mêmes FPS, moins de watts.</summary>
     Balanced,
-    /// <summary>À partir d'Équilibre : plafond plus bas, palier par palier, jusqu'à la perte jugée acceptable.</summary>
+    /// <summary>
+    /// À partir d'Équilibre : plafond plus bas, palier par palier, jusqu'à la perte jugée acceptable. Moins de fréquence,
+    /// c'est moins de tension : les watts et la chaleur baissent avec, et la perte affichée les compte. Sans plafond
+    /// possible (Maxwell, Pascal), c'est la limite de puissance qui baisse. Le plafond garde une fréquence régulière ; une
+    /// limite de watts garantit en plus une consommation maximale (phase facultative après le plafond, voir
+    /// <see cref="TuningSearch.EconomyPower"/>), mais fait varier la fréquence dans les scènes lourdes.
+    /// </summary>
     Economy,
-    /// <summary>À partir d'Équilibre : limite de puissance au maximum, sans plafond, décalage GPU croissant.</summary>
+    /// <summary>
+    /// À partir d'Équilibre : limite de puissance au maximum dès le départ, sans plafond, décalage GPU croissant. La limite
+    /// n'est qu'un plafond de consommation : la monter ne rend pas la carte instable, elle la laisse tenir sa fréquence
+    /// (Équilibre reste souvent bridé par ses watts). C'est le décalage qui se cherche par paliers ; les watts en plus
+    /// servent ensuite de juge, dans l'avis d'Aria (gain de FPS contre watts et degrés en plus).
+    /// </summary>
     Performance,
     /// <summary>Phase facultative : décalage mémoire croissant, à partir du réglage GPU retenu.</summary>
     Memory
@@ -35,13 +46,16 @@ public sealed class TuningSearch
     /// <param name="steps">Pas de chaque étape (du plus grand au plus petit).</param>
     /// <param name="max">Distance maximale autorisée depuis le départ.</param>
     /// <param name="backoff">Recul de sécurité appliqué au résultat quand un palier a planté juste au-dessus.</param>
-    private TuningSearch(Func<int, GpuTuningState> at, int[] steps, int max, int backoff = 0)
+    /// <param name="first">Distance du premier palier, si elle diffère du premier pas (0 : le premier pas). Les paliers
+    /// suivants repartent de lui ; s'il est refusé, la recherche affine entre le départ et lui.</param>
+    private TuningSearch(Func<int, GpuTuningState> at, int[] steps, int max, int backoff = 0, int first = 0)
     {
         _at = at;
         _steps = steps;
         _max = Math.Max(0, max);
         _backoff = backoff;
         Advance();
+        if (first > 0 && !Finished) _candidate = Math.Min(first, _max);
     }
 
     public TuningGoal Goal { get; private init; }
@@ -59,7 +73,13 @@ public sealed class TuningSearch
     /// Résultat à garder : le dernier palier stable, reculé d'un cran s'il touchait un palier instable
     /// (un réglage qui a tenu 3 minutes au bord de la limite peut lâcher au bout d'une heure).
     /// </summary>
-    public GpuTuningState Safe => _backoff > 0 && _fail != int.MaxValue ? _at(Math.Max(0, _stable - _backoff)) : LastStable;
+    public GpuTuningState Safe => _backoff > 0 && (_fail != int.MaxValue || AlwaysBackOff) ? _at(Math.Max(0, _stable - _backoff)) : LastStable;
+
+    /// <summary>
+    /// Recul d'un cran même sans palier instable (marge pour l'été, la poussière, le vieillissement, et ce que les
+    /// contrôles n'ont pas vu en quelques minutes) : 15 MHz pour le décalage GPU d'Équilibre et de Performance, 250 MHz pour la mémoire.
+    /// </summary>
+    public bool AlwaysBackOff { get; private init; }
 
     /// <summary>Un palier a été jugé instable pendant la recherche.</summary>
     public bool HitLimit => _fail != int.MaxValue;
@@ -116,7 +136,7 @@ public sealed class TuningSearch
     public static TuningSearch Balanced(GpuTuningState start, GpuTuningLimits limits, uint cap) =>
         new(d => start with { MaxClockMHz = cap, CoreOffsetMHz = start.CoreOffsetMHz + d },
             [100, 30, 15], Math.Min(TuningPlan.CoreLimit, limits.MaxCoreOffsetMHz) - start.CoreOffsetMHz, TuningPlan.ClockBin)
-        { Goal = TuningGoal.Balanced };
+        { Goal = TuningGoal.Balanced, AlwaysBackOff = true };
 
     /// <summary>
     /// Équilibre sans plafond (cartes Maxwell et Pascal) : limite de puissance calée sur la consommation mesurée au départ,
@@ -127,7 +147,7 @@ public sealed class TuningSearch
         var capped = start with { MaxClockMHz = 0, PowerLimitMilliwatts = powerMilliwatts };
         return new TuningSearch(d => capped with { CoreOffsetMHz = start.CoreOffsetMHz + d },
             [100, 30, 15], Math.Min(TuningPlan.CoreLimit, limits.MaxCoreOffsetMHz) - start.CoreOffsetMHz, TuningPlan.ClockBin)
-        { Goal = TuningGoal.Balanced };
+        { Goal = TuningGoal.Balanced, AlwaysBackOff = true };
     }
 
     /// <summary>
@@ -137,21 +157,34 @@ public sealed class TuningSearch
     public static TuningSearch Economy(GpuTuningState balanced, GpuTuningLimits limits)
     {
         // Sans plafond (Maxwell, Pascal) : c'est la limite de puissance qui baisse (≈ 10 %, 5 %, puis 5 W, jusqu'à 60 %)
-        if (balanced.MaxClockMHz == 0 || !limits.SupportsClockLock)
-        {
-            var big = Round5W(limits.DefaultPowerMilliwatts * 0.10);
-            var medium = Round5W(limits.DefaultPowerMilliwatts * 0.05);
-            var powerFloor = Math.Max((int)limits.MinPowerMilliwatts, Round5W(limits.DefaultPowerMilliwatts * TuningPlan.PowerFloor));
-            var max = limits.SupportsPowerLimit ? (int)balanced.PowerLimitMilliwatts - powerFloor : 0;
-            return new TuningSearch(d => balanced with { PowerLimitMilliwatts = (uint)(balanced.PowerLimitMilliwatts - (uint)d) },
-                [big, medium, 5000], max) { Goal = TuningGoal.Economy };
-        }
+        if (balanced.MaxClockMHz == 0 || !limits.SupportsClockLock) return EconomyPower(balanced, limits);
         var cap = balanced.MaxClockMHz != 0 ? balanced.MaxClockMHz : limits.MaxClockMHz;
         var floor = Math.Max((int)limits.MinClockMHz + TuningPlan.ClockBin, Bin(cap * TuningPlan.EconomyFloor, up: true));
         return new TuningSearch(d => balanced with { MaxClockMHz = (uint)(cap - d) },
             [Math.Max(TuningPlan.ClockBin, Bin(cap * 0.05)), Math.Max(TuningPlan.ClockBin, Bin(cap * 0.025)), TuningPlan.ClockBin],
             (int)cap - floor) { Goal = TuningGoal.Economy };
     }
+
+    /// <summary>
+    /// Économie par les watts : la limite de puissance baisse d'environ 10 %, puis 5 %, puis 5 W (de la valeur d'usine),
+    /// sans passer sous 60 %. Sur une carte sans plafond, c'est tout Économie. Avec plafond, c'est la phase facultative qui
+    /// suit celle du plafond : le premier palier se cale alors sur la consommation mesurée au plafond retenu
+    /// (<paramref name="measuredMilliwatts"/>), car une limite au-dessus ne changerait rien. Le plafond garde une fréquence
+    /// régulière ; la limite garantit en plus une consommation maximale, même dans les scènes les plus lourdes.
+    /// </summary>
+    public static TuningSearch EconomyPower(GpuTuningState start, GpuTuningLimits limits, double? measuredMilliwatts = null)
+    {
+        var big = Round5W(limits.DefaultPowerMilliwatts * 0.10);
+        var medium = Round5W(limits.DefaultPowerMilliwatts * 0.05);
+        var max = limits.SupportsPowerLimit ? (int)start.PowerLimitMilliwatts - PowerFloorMilliwatts(limits) : 0;
+        var first = measuredMilliwatts is { } measured ? (int)start.PowerLimitMilliwatts - Round5W(measured) : 0;
+        return new TuningSearch(d => start with { PowerLimitMilliwatts = (uint)(start.PowerLimitMilliwatts - (uint)d) },
+            [big, medium, 5000], max, first: first) { Goal = TuningGoal.Economy };
+    }
+
+    /// <summary>Limite de puissance la plus basse qu'Économie propose : 60 % de la valeur d'usine (ou le minimum de la carte).</summary>
+    public static int PowerFloorMilliwatts(GpuTuningLimits limits) =>
+        Math.Max((int)limits.MinPowerMilliwatts, Round5W(limits.DefaultPowerMilliwatts * TuningPlan.PowerFloor));
 
     /// <summary>
     /// Performance : réglage de départ = courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte
@@ -163,17 +196,21 @@ public sealed class TuningSearch
         var start = PerformanceStart(balanced, limits);
         return new TuningSearch(d => start with { CoreOffsetMHz = start.CoreOffsetMHz + d },
             [60, 30, 15], Math.Min(TuningPlan.CoreLimit, limits.MaxCoreOffsetMHz) - start.CoreOffsetMHz, TuningPlan.ClockBin)
-        { Goal = TuningGoal.Performance };
+        { Goal = TuningGoal.Performance, AlwaysBackOff = true };
     }
 
     /// <summary>Point de départ de Performance : courbe d'usine (décalage mémoire d'Équilibre gardé), sans plafond, puissance au maximum.</summary>
     public static GpuTuningState PerformanceStart(GpuTuningState balanced, GpuTuningLimits limits) =>
         balanced with { MaxClockMHz = 0, CoreOffsetMHz = 0, PowerLimitMilliwatts = limits.SupportsPowerLimit ? limits.MaxPowerMilliwatts : balanced.PowerLimitMilliwatts };
 
-    /// <summary>Décalage mémoire par paliers fixes de 250 MHz jusqu'à +1000 : au premier problème, on s'arrête.</summary>
+    /// <summary>
+    /// Décalage mémoire par paliers fixes de 250 MHz jusqu'à +1000 : au premier problème, on s'arrête, et le résultat
+    /// garde toujours un cran de marge (+1000 tenu → +750 retenu).
+    /// </summary>
     public static TuningSearch Memory(GpuTuningState stable, GpuTuningLimits limits) =>
         new(d => stable with { MemoryOffsetMHz = stable.MemoryOffsetMHz + d },
-            [TuningPlan.MemoryStep], Math.Min(TuningPlan.MemoryLimit, limits.MaxMemoryOffsetMHz) - stable.MemoryOffsetMHz) { Goal = TuningGoal.Memory };
+            [TuningPlan.MemoryStep], Math.Min(TuningPlan.MemoryLimit, limits.MaxMemoryOffsetMHz) - stable.MemoryOffsetMHz, TuningPlan.MemoryStep)
+        { Goal = TuningGoal.Memory, AlwaysBackOff = true };
 
     private static int Round5W(double milliwatts) => Math.Max(5000, (int)Math.Round(milliwatts / 5000.0) * 5000);
 
