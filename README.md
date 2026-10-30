@@ -22,7 +22,7 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria ou dans ton jeu ; un garde-fou signale les plantages du pilote |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria ; un garde-fou signale les plantages du pilote |
 | **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
@@ -207,14 +207,18 @@ le premier plan pendant sa chauffe, garde l'écran allumé, et note dans son jou
 de quelques secondes (2 % de la mesure), ou si ses FPS restent collés à une limite en 4K alors que la carte n'est pas
 chargée à 90 %, l'assistant ne juge rien et propose de recommencer la même mesure.
 
-Chaque mesure se fait **sur le banc d'essai Aria** (par défaut) ou **dans ton jeu**, au choix avant de commencer :
+Chaque mesure se fait **sur le banc d'essai Aria**, et seulement sur lui : même scène, même définition et mêmes
+contrôles d'un palier à l'autre et d'un mode à l'autre, donc des FPS qui se comparent et des verdicts qui ne dépendent
+pas de tes yeux. (Jusqu'à la 0.19, l'assistant pouvait aussi mesurer dans ton jeu ; un Équilibre mesuré ainsi doit être
+refait au banc pour débloquer Économie et Performance. Sans `Aria-Bench.exe` à côté d'Aria Cockpit, l'assistant reste
+grisé.) Pour vérifier un réglage dans ton vrai jeu, « Analyser les performances » (Mon PC) reste là.
 
-| | Banc d'essai Aria | Ton jeu |
-|---|---|---|
-| Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul | La mesure démarre quand Aria voit ton jeu en action |
-| Verdict (Équilibre, Performance, validation) | **Automatique** : image ou calcul faux, donnée relue fausse, ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne | Le tien : artefacts ou plantage ? |
-| Contrôles de stabilité | Avant le rendu de chaque palier : 1 min de calcul vérifié à pleine puissance, puis 2 min de banc ; un palier mémoire est jugé par 2 min de test mémoire, sans banc | Aucun |
-| Mesures comparées | Fréquence, watts, température et **FPS** | Fréquence, watts, température |
+| | Banc d'essai Aria |
+|---|---|
+| Déroulé | Le banc s'ouvre en plein écran (Ultra, à la définition de ton écran) pendant le palier, puis se ferme seul |
+| Verdict (Équilibre, Performance, validation) | **Automatique** : image ou calcul faux, donnée relue fausse, ou plantage du pilote → pas plus fin ; sinon le palier tient et le suivant s'enchaîne |
+| Contrôles de stabilité | Avant le rendu de chaque palier : 1 min de calcul vérifié à pleine puissance, puis 2 min de banc ; un palier mémoire est jugé par 2 min de test mémoire, sans banc |
+| Mesures comparées | Fréquence, watts, température et **FPS** |
 
 Économie garde ta décision à chaque palier (la fluidité acceptable, c'est toi qui la juges), avec la perte de FPS mesurée par le banc.
 
@@ -244,16 +248,19 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 | Mode | Ce qu'il cherche | Comment |
 |---|---|---|
 | **Équilibre** (en premier) | Les mêmes FPS avec moins de watts | Mesure de départ aux valeurs d'usine, plafond à la fréquence haute que la carte atteint régulièrement en jeu (90e centile), puis décalage GPU croissant : + 100, + 30, puis + 15 MHz |
-| **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides |
+| **Économie** | Encore moins de watts et de bruit | Part du réglage d'Équilibre et baisse le plafond : environ 5 %, puis 2,5 %, puis 15 MHz, 15 % au plus. À chaque palier, la perte mesurée s'affiche (« Fréquence -5 %, -48 W, -6 °C ») et tu décides. Ensuite, en option : la limite de puissance baisse à son tour (voir « Les watts dans chaque mode ») |
 | **Performance** | La fréquence la plus haute qui reste stable | Part de la courbe d'usine (décalage GPU nul), sans plafond, limite de puissance au maximum de la carte ; mesure ce réglage de base, puis décalage croissant : + 60, + 30, puis + 15 MHz. Le décalage d'Équilibre ne sert pas de départ : le plafond ne l'a éprouvé qu'en bas de la courbe |
 
 - **Les watts dans chaque mode** : la limite de puissance n'est qu'un plafond de consommation, elle ne rend pas la carte
   instable. Performance la met donc au maximum dès le départ (à 320 W, Équilibre reste souvent bridé par ses watts), cherche
   le décalage par paliers, et juge ensuite les watts en plus dans son avis. Économie baisse le plafond de fréquence : moins
   de fréquence, c'est moins de tension, donc moins de watts et de chaleur, que la perte affichée à chaque palier compte
-  (FPS, W, °C). La limite de puissance n'y baisse que sur les cartes sans plafond (Maxwell, Pascal). Le plafond garde une
-  fréquence régulière ; une limite de watts garantirait une consommation maximale, mais ferait varier la fréquence dans
-  les scènes lourdes.
+  (FPS, W, °C). Le plafond garde une fréquence régulière ; une limite de watts garantit en plus une consommation maximale,
+  donc un maximum de chaleur et de bruit, même dans les scènes les plus lourdes, où la fréquence varie alors davantage.
+  C'est pourquoi, après le plafond, Économie propose **« Baisser les watts »** (facultatif) : la limite de puissance
+  descend par paliers, en partant de la consommation mesurée au plafond retenu (au-dessus, elle ne changerait rien), puis
+  d'environ 10 %, 5 % et 5 W, sans passer sous 60 % de la valeur d'usine. Chaque palier se mesure comme les autres, et tu
+  juges la perte. Sur les cartes sans plafond (Maxwell, Pascal), c'est directement la limite de puissance qui baisse.
 - **Avis d'Aria à la fin de Performance** : le gain est comparé au réglage d'Équilibre (FPS, watts, température,
   FPS par watt). Moins de 3 % de FPS en plus, ou plus de 3 W par FPS gagné : « ne vaut pas le coup », et « Revenir à
   Équilibre » passe en tête ; au moins 8 % pour 3 W par FPS au plus : « vaut le coup » ; entre les deux : « gain réel mais
@@ -266,8 +273,9 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
 - **Marge de sécurité** : le résultat garde toujours un cran sous le dernier palier stable, même quand tout a tenu
   jusqu'à la borne : 15 MHz pour le décalage GPU (Équilibre, Performance), 250 MHz pour la mémoire. Dans l'exemple,
   +230 est gardé plutôt que +245.
-- **Ton verdict à chaque palier** : artefacts ou plantage (pour Équilibre et Performance), perte jugée acceptable ou non
-  (pour Économie). Un plantage du pilote ou du jeu détecté par Windows fait passer à un palier plus prudent.
+- **Verdict à chaque palier** : automatique pour Équilibre et Performance (images, calculs, mémoire, plantage) ; pour
+  Économie, la perte jugée acceptable ou non, c'est toi (un calcul faux ou un plantage y reste automatique). Un plantage
+  du pilote détecté par Windows fait passer à un palier plus prudent.
 - **Équilibre fait toujours le parcours complet** : paliers du cœur, puis paliers mémoire, puis validation de 15 minutes,
   sans question entre les étapes (environ 45 minutes sur une RTX 4080 SUPER). C'est lui qui sert de base aux deux autres modes.
 - **Mémoire** : paliers de + 250 MHz jusqu'à + 1 000, chacun avec son test de la mémoire vidéo. Toujours testée par
@@ -284,9 +292,10 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
-mesures se font en jeu ; le garde-fou signale un éventuel plantage au repos après coup. Les artefacts visuels ne sont
-pas détectables automatiquement : tes yeux restent le juge. Les contrôles de calcul et de mémoire réduisent le risque
-sous une IA locale ou un rendu, sans le supprimer : essaie ton usage réel avant de garder un réglage au démarrage.
+mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Le banc ne sollicite pas
+encore les cœurs de ray tracing ni les cœurs Tensor (DLSS) : un jeu qui s'en sert peut révéler un réglage que le banc
+n'a pas vu. Les contrôles de calcul et de mémoire réduisent le risque sous une IA locale ou un rendu, sans le supprimer :
+essaie ton usage réel avant de garder un réglage au démarrage.
 
 ## Banc d'essai Aria
 

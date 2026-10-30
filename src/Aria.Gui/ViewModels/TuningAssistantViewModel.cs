@@ -11,7 +11,7 @@ using Aria.Gui.Services;
 
 namespace Aria.Gui.ViewModels;
 
-public enum AssistantPhase { Idle, Preflight, Measuring, Review, MemoryPrompt, Done }
+public enum AssistantPhase { Idle, Preflight, Measuring, Review, MemoryPrompt, PowerPrompt, Done }
 
 /// <summary>
 /// Assistant guidé de l'onglet Réglage GPU. Contrôle avant mesure (overclock de NVIDIA App), puis Équilibre en premier :
@@ -45,13 +45,14 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private double? _lastStableFps;
     private TuningSearch? _search;
     private bool _memoryPhase, _aborted, _validating;
+    /// <summary>Économie, phase facultative après le plafond : la limite de puissance baisse à son tour.</summary>
+    private bool _powerPhase;
     private TimeSpan _duration = MeasureDuration;
     private CancellationTokenSource? _stop;
 
     /// <summary>Qualité du banc d'essai pour l'assistant : la plus lourde, pour charger la carte à fond.</summary>
     public const string BenchQuality = "ultra";
     /// <summary>Mesures faites avec le banc d'essai (fixé au début du mode).</summary>
-    private bool _benchMode;
     private int _benchDefinition = 1080;
     /// <summary>FPS moyens du banc à la mesure de départ, pour comparer chaque palier.</summary>
     private double? _baselineFps;
@@ -105,20 +106,15 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     public bool HasReport => ReportPath is not null;
     private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
 
-    /// <summary>Aria-Bench.exe est livré à côté d'Aria Cockpit.</summary>
+    /// <summary>
+    /// Aria-Bench.exe est livré à côté d'Aria Cockpit. L'assistant ne mesure qu'avec lui (scène, définition et verdicts
+    /// reproductibles) : sans lui, les trois modes restent grisés.
+    /// </summary>
     public bool BenchAvailable { get; } = BenchRunner.IsAvailable;
-
-    /// <summary>Source des mesures : le banc d'essai (par défaut s'il est là) ou le jeu de l'utilisateur.</summary>
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(UseGame))] private bool useBench = BenchRunner.IsAvailable;
-
-    public bool UseGame
-    {
-        get => !UseBench;
-        set => UseBench = !value;
-    }
+    public bool BenchMissing => !BenchAvailable;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsPreflight), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsDone))]
+    [NotifyPropertyChangedFor(nameof(IsIdle), nameof(IsActive), nameof(IsPreflight), nameof(IsMeasuring), nameof(IsReview), nameof(IsMemoryPrompt), nameof(IsPowerPrompt), nameof(IsDone))]
     [NotifyCanExecuteChangedFor(nameof(StartBalancedCommand), nameof(StartEconomyCommand), nameof(StartPerformanceCommand))]
     private AssistantPhase phase;
 
@@ -134,7 +130,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] private string instruction = "";
     [ObservableProperty] private double progress;
     [ObservableProperty] private string progressText = "";
-    [ObservableProperty] private bool isWaiting;
     [ObservableProperty] private string gameText = "";
     [ObservableProperty] private string headline = "";
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(TileColumns))] private IReadOnlyList<StatTile> tiles = [];
@@ -170,13 +165,17 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     public bool IsMeasuring => Phase == AssistantPhase.Measuring;
     public bool IsReview => Phase == AssistantPhase.Review;
     public bool IsMemoryPrompt => Phase == AssistantPhase.MemoryPrompt;
+    public bool IsPowerPrompt => Phase == AssistantPhase.PowerPrompt;
     public bool IsDone => Phase == AssistantPhase.Done;
-    public bool IsUnlocked => Record is not null;
-    public bool IsLocked => Record is null;
+    /// <summary>Un Équilibre mesuré au banc d'essai existe : un résultat mesuré en jeu (avant la 0.20) ne se compare pas.</summary>
+    public bool IsUnlocked => Record is { BenchFps: not null };
+    public bool IsLocked => !IsUnlocked;
 
     /// <summary>Résumé du dernier Équilibre, affiché sous les trois modes.</summary>
     public string RecordText => Record is not { } r || r.ResultState is not { } result
         ? "Lancez d'abord Équilibre : sa mesure et son réglage servent de base à Économie et Performance."
+        : r.BenchFps is null
+        ? $"L'Équilibre du {r.At:dd/MM} a été mesuré en jeu : refaites-le, au banc d'essai, pour débloquer Économie et Performance (leurs FPS doivent se comparer à la même scène)."
         : $"Équilibre du {r.At:dd/MM à HH:mm}{(r.Game is { } g ? $" sur {g}" : "")} : {result.Describe()}." +
           (r.FoundOffset ? "" : " Aucun décalage stable trouvé : plafond seul.") +
           (DriverChanged ? " Le pilote NVIDIA a changé depuis : refaire Équilibre est conseillé." : "");
@@ -275,8 +274,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         Phase = AssistantPhase.Idle;
     }
 
-    private bool CanStartDerived() => IsUnlocked && IsIdle && !MeasurementGate.AnalysisRunning;
-    private bool CanStartBalanced() => IsIdle && !MeasurementGate.AnalysisRunning;
+    private bool CanStartDerived() => IsUnlocked && CanStartBalanced();
+    private bool CanStartBalanced() => BenchAvailable && IsIdle && !MeasurementGate.AnalysisRunning;
 
     /// <summary>Une analyse de Mon PC est en cours : l'assistant attend qu'elle se termine.</summary>
     public bool BlockedByAnalysis => MeasurementGate.AnalysisRunning;
@@ -298,39 +297,34 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private async Task Begin(TuningGoal goal)
     {
         if (tuner() is not { } t) return;
-        if (goal != TuningGoal.Balanced && Record?.ResultState is null) return;
+        if (!BenchAvailable || (goal != TuningGoal.Balanced && (Record?.ResultState is null || !IsUnlocked))) return;
 
         var noLock = !t.Limits.SupportsClockLock;
-        var bench = UseBench && BenchAvailable;
         // Économie et Performance reprennent la définition où Équilibre a mesuré (relevée s'il butait sur une limite d'images) :
         // pas de mesure plafonnée à refaire, et les FPS se comparent à ceux du départ
         var benchDefinition = goal != TuningGoal.Balanced && Record?.BenchDefinition is { } measured
             ? measured
             : BenchRunner.DefinitionFor(BenchRunner.PrimaryScreenHeight());
-        var (name, what, verdict) = goal switch
+        var (name, what) = goal switch
         {
             TuningGoal.Balanced when noLock => ("Équilibre",
-                $"mesurer votre jeu aux valeurs d'usine, caler la limite de puissance sur la consommation mesurée, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15), tester la mémoire et valider le réglage retenu pendant 15 minutes. " +
-                $"Votre carte ({GpuCatalog.Describe(t.Limits.Architecture)}) ne permet pas de plafond de fréquence : Équilibre lui donne plus de fréquence pour les mêmes watts, et Économie pourra ensuite échanger ce gain contre des watts",
-                "artefacts ou plantage → pas plus fin"),
+                $"mesurer la carte aux valeurs d'usine, caler la limite de puissance sur la consommation mesurée, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15), tester la mémoire et valider le réglage retenu pendant 15 minutes. " +
+                $"Votre carte ({GpuCatalog.Describe(t.Limits.Architecture)}) ne permet pas de plafond de fréquence : Équilibre lui donne plus de fréquence pour les mêmes watts, et Économie pourra ensuite échanger ce gain contre des watts"),
             TuningGoal.Balanced => ("Équilibre",
-                "mesurer votre jeu aux valeurs d'usine, plafonner la carte à sa fréquence haute habituelle, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15), " +
+                "mesurer la carte aux valeurs d'usine, plafonner la carte à sa fréquence haute habituelle, puis augmenter le décalage GPU (+100, +30 après le premier problème, puis +15), " +
                 "tester la mémoire et valider le réglage retenu pendant 15 minutes. " +
-                "Résultat : les mêmes FPS avec moins de watts, gardé pour débloquer Économie et Performance",
-                "artefacts ou plantage → pas plus fin"),
+                "Résultat : les mêmes FPS avec moins de watts, gardé pour débloquer Économie et Performance"),
             TuningGoal.Economy when noLock => ("Économie",
-                "partir du réglage d'Équilibre et baisser la limite de puissance palier par palier (environ 10 %, puis 5 %, puis 5 W), jusqu'à 60 % de la valeur d'usine. À chaque palier, vous voyez la perte mesurée",
-                "perte trop grande → pas plus fin"),
+                "partir du réglage d'Équilibre et baisser la limite de puissance palier par palier (environ 10 %, puis 5 %, puis 5 W), jusqu'à 60 % de la valeur d'usine. À chaque palier, vous voyez la perte mesurée"),
             TuningGoal.Economy => ("Économie",
                 $"partir du réglage d'Équilibre et baisser le plafond palier par palier (environ 5 %, puis 2,5 %, puis 15 MHz), 15 % au plus. " +
-                "Moins de fréquence, c'est moins de tension : les watts et la chaleur baissent avec, la limite de puissance restant celle d'Équilibre. " +
-                "À chaque palier, vous voyez la perte mesurée (FPS, watts, degrés)",
-                "perte trop grande → pas plus fin"),
+                "Moins de fréquence, c'est moins de tension : les watts et la chaleur baissent avec. " +
+                "À chaque palier, vous voyez la perte mesurée (FPS, watts, degrés). Ensuite, en option, la limite de puissance pourra baisser à son tour, " +
+                "pour garantir une consommation maximale même dans les scènes les plus lourdes"),
             _ => ("Performance",
                 $"partir de la courbe d'usine, retirer le plafond et monter la limite de puissance au maximum ({t.Limits.MaxPowerMilliwatts / 1000} W), puis augmenter le décalage GPU (+60, +30, puis +15) jusqu'au plus haut palier stable. " +
                 "La limite de puissance passe au maximum d'emblée : ce n'est qu'un plafond de consommation, elle ne rend pas la carte instable, elle la laisse tenir sa fréquence. " +
-                "À la fin, l'avis d'Aria met le gain de FPS en regard des watts et des degrés en plus",
-                "artefacts ou plantage → pas plus fin")
+                "À la fin, l'avis d'Aria met le gain de FPS en regard des watts et des degrés en plus")
         };
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
                 Title: $"Assistant · {name}",
@@ -341,21 +335,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     new(goal == TuningGoal.Balanced ? "1. Mesure de départ" : "1. Point de départ",
                         To: goal switch
                         {
-                            TuningGoal.Balanced => bench ? "valeurs d'usine, 3 min de banc d'essai" : "valeurs d'usine, 3 min de jeu",
-                            TuningGoal.Performance => bench ? "réglage de base, 1 min de calcul vérifié puis 3 min de banc" : "réglage de base, 3 min de jeu",
+                            TuningGoal.Balanced => "valeurs d'usine, 3 min de banc d'essai",
+                            TuningGoal.Performance => "réglage de base, 1 min de calcul vérifié puis 3 min de banc",
                             _ => "résultat d'Équilibre"
                         }),
-                    new("2. Un palier à la fois", To: bench ? "1 min de calcul vérifié, puis 2 min de banc, enchaînés automatiquement"
-                        : Record?.Game is { } g && goal != TuningGoal.Balanced ? $"3 min chacun, sur {g} de préférence" : "3 min de jeu chacun, même jeu, même scène"),
-                    bench && goal != TuningGoal.Economy
+                    new("2. Un palier à la fois", To: "1 min de calcul vérifié, puis 2 min de banc, enchaînés automatiquement"),
+                    goal != TuningGoal.Economy
                         ? new("3. Verdict automatique", To: "image ou calcul faux, ou plantage → pas plus fin")
-                        : new("3. Votre verdict", To: verdict),
+                        : new("3. Votre verdict", To: "perte trop grande → pas plus fin (calcul faux ou plantage : automatique)"),
                     // Équilibre sert de base aux autres modes : mémoire et validation font partie du parcours
                     .. (goal == TuningGoal.Balanced
                         ? new DialogRow[]
                         {
-                            new("4. Mémoire vidéo", To: bench ? "référence, puis +250 à +1000 MHz, 2 min de test mémoire chacun" : "+250 à +1000 MHz, par paliers"),
-                            new("5. Validation", To: bench ? "15 min de banc, puis calcul et mémoire vérifiés" : "15 min de jeu sur le réglage retenu"),
+                            new("4. Mémoire vidéo", To: "référence, puis +250 à +1000 MHz, 2 min de test mémoire chacun"),
+                            new("5. Validation", To: "15 min de banc, puis calcul et mémoire vérifiés"),
                             new("6. À la fin", To: "vous choisissez de garder ou d'annuler")
                         }
                         : [new("4. À la fin", To: "vous choisissez de garder ou d'annuler")])
@@ -364,24 +357,21 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     ?
                     new[]
                     {
-                        "Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Chaque palier s'efface au redémarrage.",
+                        "Un palier trop poussé peut faire planter le banc ou le pilote (écran noir quelques secondes). Chaque palier s'efface au redémarrage.",
                         $"La carte pourra consommer jusqu'à {t.Limits.MaxPowerMilliwatts / 1000} W au lieu de {t.Limits.DefaultPowerMilliwatts / 1000} W : vérifiez que votre alimentation a la puissance recommandée et que le câble d'alimentation de la carte (12V-2x6 / 12VHPWR) est enfoncé à fond."
                     }
-                    : ["Un palier trop poussé peut faire planter le jeu ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."]),
+                    : ["Un palier trop poussé peut faire planter le banc ou le pilote (écran noir quelques secondes). Le matériel ne risque rien, et chaque palier s'efface au redémarrage."]),
                     .. (BenchRunner.OnBattery()
                         ? new[] { "Le PC est sur batterie : la carte y est bridée et les mesures seraient faussées. Branchez-le sur secteur avant de commencer." }
                         : [])],
-                Note: bench
-                    ? $"Le banc d'essai Aria s'ouvre en plein écran à chaque mesure (Ultra, {BenchLabel(benchDefinition)}) et se ferme seul ; chaque palier commence par un contrôle de calcul dans une petite fenêtre. " +
+                Note: $"Le banc d'essai Aria s'ouvre en plein écran à chaque mesure (Ultra, {BenchLabel(benchDefinition)}) et se ferme seul ; chaque palier commence par un contrôle de calcul dans une petite fenêtre. " +
                       "Un auto-contrôle de 20 secondes vérifie d'abord que ces contrôles voient bien les erreurs. " +
                       "Laissez le PC travailler, sur secteur pour un portable, sans IA locale ni jeu ouverts. Échap arrête la mesure en cours." +
-                      (goal == TuningGoal.Balanced ? " Équilibre complet dure environ 45 minutes." : "")
-                    : "Chaque mesure démarre dès qu'Aria voit le jeu en action, et un son retentit à la fin : revenez alors dans Aria (Alt+Tab).",
+                      (goal == TuningGoal.Balanced ? " Équilibre complet dure environ 45 minutes." : ""),
                 IsRisky: true)))
             return;
 
         _goal = goal;
-        _benchMode = bench;
         _benchDefinition = benchDefinition;
         _steps.Clear();
         _notes.Clear();
@@ -392,6 +382,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         ReportPath = null;
         _previousStep = "";
         _memoryPhase = false;
+        _powerPhase = false;
         _aborted = false;
         _validating = false;
         Validated = false;
@@ -421,7 +412,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _baseline = Record.Baseline;
         _baselineGame = Record.Game;
         // FPS de départ comparables seulement si Équilibre a mesuré avec le banc, à la même définition
-        _baselineFps = _benchMode && Record.BenchDefinition == _benchDefinition ? Record.BenchFps : null;
+        _baselineFps = Record.BenchDefinition == _benchDefinition ? Record.BenchFps : null;
         _lastStableReport = null;
         _lastStableFps = null;
         if (goal == TuningGoal.Economy)
@@ -454,80 +445,17 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                $"Aria pose ses propres valeurs pendant les mesures. Remettez cet outil par défaut, sinon il reposera {_before.PowerLimitWatts:0} W au prochain démarrage.";
     }
 
+    /// <summary>Une mesure au banc d'essai : titre de l'étape, puis contrôles et rendu (voir <see cref="MeasureWithBenchAsync"/>).</summary>
     private async Task MeasureAsync()
     {
         if (await GpuTelemetry.OpenSharedAsync() is not { } gpu) return;
         var step = _validating ? null : _search?.Current;
-        _duration = _validating ? ValidationDuration : _benchMode && _search is not null ? BenchStepDuration : MeasureDuration;
+        _duration = _validating ? ValidationDuration : _search is not null ? BenchStepDuration : MeasureDuration;
         Title = _validating ? "VALIDATION · 15 MINUTES"
             : _search is not null
-            ? $"{(_memoryPhase ? "MÉMOIRE · " : "")}PALIER {_search.Tested + 1} · {_search.StageName}"
+            ? $"{(_powerPhase ? "WATTS · " : _memoryPhase ? "MÉMOIRE · " : "")}PALIER {_search.Tested + 1} · {_search.StageName}"
             : _step == Step.Baseline ? "MESURE DE DÉPART" : "PERFORMANCE · RÉGLAGE DE BASE";
-        if (_benchMode)
-        {
-            await MeasureWithBenchAsync(gpu, step);
-            return;
-        }
-        var watch = _goal == TuningGoal.Economy && !_memoryPhase
-            ? "Jugez la fluidité : la perte mesurée s'affichera à la fin."
-            : "Surveillez bandes, scintillements ou couleurs bizarres.";
-        var sameGame = _baselineGame is { } g ? $" ({g} de préférence)" : "";
-        // Rappels du départ (limite d'un autre outil, NVIDIA App) : affichés une fois, en tête de la première mesure
-        var notes = _previousStep.Length > 0 ? _previousStep + "\n" : "";
-        _previousStep = "";
-        Instruction = notes + (_validating
-            ? $"Réglage retenu en place ({_lastStable.Describe()}). Jouez normalement pendant 15 minutes, idéalement une scène exigeante : c'est la vraie épreuve de stabilité."
-            : step is not null
-            ? $"Palier en place : {step.Describe()}. Retournez dans le jeu{sameGame}, même scène : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}"
-            : _step == Step.Baseline
-                ? $"Valeurs d'usine en place ({_start.Describe()}). Lancez votre jeu : la mesure de 3 minutes démarre dès qu'Aria le voit en action. Restez ensuite dans la même scène pour les paliers suivants."
-                : $"Réglage de base en place ({_start.Describe()}). Retournez dans le jeu{sameGame} : la mesure de 3 minutes démarre dès qu'Aria le voit en action. {watch}");
-        Phase = AssistantPhase.Measuring;
-        Progress = 0;
-        IsWaiting = true;
-        GameText = "";
-        ProgressText = "EN ATTENTE D'UN JEU · LANCEZ-LE OU REPRENEZ LA PARTIE";
-
-        // 1. Attendre que le jeu tourne (pas de chrono pendant le chargement ou dans le menu)
-        string game;
-        using (var wait = new CancellationTokenSource())
-        {
-            _stop = wait;
-            try
-            {
-                game = await PerformanceSession.WaitForGameAsync(gpu, wait.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            finally
-            {
-                _stop = null;
-            }
-        }
-        if (_aborted) return;
-        IsWaiting = false;
-        GameText = $"JEU DÉTECTÉ : {game.ToUpperInvariant()}";
-        UpdateProgress(TimeSpan.Zero);
-
-        // 2. Mesurer
-        _stop = new CancellationTokenSource();
-        PerformanceReport report;
-        try
-        {
-            report = await PerformanceSession.RunAsync(gpu, _duration, new Progress<TimeSpan>(UpdateProgress), _stop.Token);
-        }
-        finally
-        {
-            _stop.Dispose();
-            _stop = null;
-        }
-        if (_aborted) return;
-        SystemSounds.Asterisk.Play();
-        _current = report;
-        _bench = null;
-        Review(report, game, null);
+        await MeasureWithBenchAsync(gpu, step);
     }
 
     /// <summary>
@@ -565,7 +493,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                       $"{setting}. Le banc d'essai Aria tourne en plein écran pendant {minutes}, puis se ferme seul : laissez le PC travailler. Échap l'arrête.";
         Phase = AssistantPhase.Measuring;
         Progress = 0;
-        IsWaiting = false;
         GameText = $"BANC D'ESSAI · ULTRA · {BenchLabel(_benchDefinition).ToUpperInvariant()}";
         ProgressText = "DÉMARRAGE DU BANC D'ESSAI";
 
@@ -756,7 +683,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         Phase = AssistantPhase.Measuring;
         Progress = 0;
-        IsWaiting = false;
         GameText = "CONTRÔLE DE STABILITÉ";
         _stop = new CancellationTokenSource();
         try
@@ -791,7 +717,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private async Task<bool> PrepareChecksAsync()
     {
         _checks = false;
-        if (!_benchMode) return true;
         Title = "AUTO-CONTRÔLE";
         Instruction = "Avant les mesures, Aria vérifie ses contrôles de stabilité : des erreurs de calcul et de mémoire sont injectées exprès, " +
                       "le test doit toutes les retrouver (20 secondes, dans une petite fenêtre).";
@@ -841,57 +766,48 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         ProgressText = $"MESURE EN COURS · {(left < TimeSpan.Zero ? TimeSpan.Zero : left):m\\:ss} RESTANTES";
     }
 
-    private void Review(PerformanceReport report, string game, BenchResult? bench)
+    private void Review(PerformanceReport report, string game, BenchResult bench)
     {
         // Instable : plantage noté par Windows, ou (banc d'essai) erreur de calcul / pilote qui lâche pendant le rendu
-        var unstable = report.Unstable || bench?.Unstable == true;
+        var unstable = report.Unstable || bench.Unstable;
         var incidents = report.Findings.Where(f => report.Unstable && f.Severity == Severity.Critical)
             .Select(f => new FindingItem(f.Title, f.Detail, f.Advice, [], f.Severity)).ToList();
-        if (bench?.StabilityFailed == true && bench.Stabilite is { } failed)
+        if (bench.StabilityFailed && bench.Stabilite is { } failed)
             incidents.Insert(0, new FindingItem(StabilityTitle(failed), string.Join(" ", failed.Raisons ?? []),
                 "Le rendu 3D tenait, mais pas le contrôle de stabilité, plus proche d'une IA locale : l'assistant passe à un palier plus prudent.",
                 [], Severity.Critical));
         // Images de contrôle du banc 3D seulement : sans rendu, la dernière ligne de résultat est celle du contrôle
-        if (!_renderless && bench?.Pass is { ErreursCalcul: > 0 } bad)
+        if (!_renderless && bench.Pass is { ErreursCalcul: > 0 } bad)
             incidents.Insert(0, new FindingItem("Erreurs de calcul",
                 $"{bad.ErreursCalcul} image(s) de contrôle sur {bad.Verifications} différaient de la référence (jusqu'à {bad.PixelsDifferents:N0} pixels).",
                 "La carte calcule faux avec ce réglage, même sans planter : l'assistant passe à un palier plus prudent.", [], Severity.Critical));
-        if (bench?.DriverFailure == true)
+        if (bench.DriverFailure)
             incidents.Insert(0, new FindingItem("Le pilote a lâché pendant le banc d'essai", bench.Erreurs.FirstOrDefault() ?? "",
                 "Réglage instable : l'assistant passe à un palier plus prudent.", [], Severity.Critical));
         Incidents = incidents;
         HasIncidents = Incidents.Count > 0;
         var isReference = _search is null && _step == Step.Baseline && !_validating;
         // Sans banc 3D, pas de FPS, et des watts de contrôle qui ne se comparent pas à ceux du rendu de départ
-        var fps = _renderless ? null : bench?.Pass?.FpsMoyen;
-        Tiles = BuildTiles(report, isReference || _renderless ? null : _baseline, fps, isReference ? null : _baselineFps, bench?.Stabilite);
-        var automatic = bench is not null && (bench.Pass is not null || _renderless);
+        var fps = _renderless ? null : bench.Pass?.FpsMoyen;
+        Tiles = BuildTiles(report, isReference || _renderless ? null : _baseline, fps, isReference ? null : _baselineFps, bench.Stabilite);
         if (_checksCut is { } cut && !unstable)
         {
             ShowInconclusive(cut);
             return;
         }
-
-        if (_validating && automatic)
+        // Banc sans passe ni verdict (interrompu, impossible à lancer) : rien à juger, la mesure se refait
+        if (bench.Pass is null && !_renderless && !unstable)
         {
-            // Banc d'essai : verdict automatique (Stable termine, Unstable recule d'un cran)
+            ShowInconclusive(bench.Erreurs.FirstOrDefault() ?? "Le banc d'essai n'a pas donné de résultat : palier non jugé");
+            return;
+        }
+
+        if (_validating)
+        {
+            // Verdict automatique : Stable termine, Unstable recule d'un cran
             if (unstable) _ = Unstable();
             else if (report.Conclusive) _ = Stable();
             else ShowInconclusive();
-            return;
-        }
-        if (_validating)
-        {
-            Headline = report.Unstable ? "Plantage détecté pendant la validation"
-                : !report.Conclusive ? "Validation non concluante : la carte n'a pas assez travaillé"
-                : "Validation terminée";
-            QuestionText = "Pendant ces 15 minutes, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
-            YesText = "NON, TOUT ÉTAIT NORMAL";
-            NoText = "OUI, J'AI VU UN PROBLÈME";
-            ShowQuestion = report.Conclusive && !report.Unstable;
-            ShowRetry = !report.Conclusive || report.Unstable;
-            ShowGoBack = report.Unstable;
-            Phase = AssistantPhase.Review;
             return;
         }
 
@@ -903,7 +819,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 _baseline = report.Stats;
                 _baselineFps = fps;
                 Log(TuningPhase.Start, Stage(), _start, StepVerdict.Reference, Facts());
-                _baselineGame = bench is not null ? game : report.Incidents?.Game ?? game;
+                _baselineGame = game;
                 _lastStableReport = report;
                 _lastStableFps = fps;
                 // Plafond si la carte le permet (Turing et plus récentes), sinon limite de puissance, sinon décalage seul
@@ -916,29 +832,16 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                 else
                 {
                     _ = FinishAsync(t.Limits.SupportsClockLock
-                        ? "Fréquence de la carte en jeu introuvable dans la mesure de départ : impossible de placer le plafond."
+                        ? "Fréquence de la carte introuvable dans la mesure de départ : impossible de placer le plafond."
                         : "Cette carte ne permet ni plafond, ni limite de puissance, ni décalage réglables : Équilibre n'a rien à proposer.");
                     return;
                 }
             }
-            else if (automatic)
-            {
-                // Réglage de base de Performance : images vérifiées par le banc, pas besoin de demander
-                _previousStep = $"Réglage de base stable{CheckedNote(bench!)}{FpsNote(fps)}.";
-                _ = Stable();
-                return;
-            }
             else
             {
-                // Réglage de base de Performance : pas de plantage, mais on demande s'il y a eu des artefacts
-                Headline = "Réglage de base mesuré";
-                QuestionText = "Pendant cette mesure, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
-                YesText = "NON, TOUT ÉTAIT NORMAL";
-                NoText = "OUI, J'AI VU UN PROBLÈME";
-                ShowQuestion = true;
-                ShowRetry = false;
-                ShowGoBack = false;
-                Phase = AssistantPhase.Review;
+                // Réglage de base de Performance : images et calculs vérifiés par le banc, verdict automatique
+                _previousStep = $"Réglage de base stable{CheckedNote(bench)}{FpsNote(fps)}.";
+                _ = Stable();
                 return;
             }
             if (_search.Finished)
@@ -952,17 +855,17 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         }
 
         var economy = _search?.Goal == TuningGoal.Economy;
-        if (automatic && _search is not null && !economy)
+        if (_search is not null && !economy)
         {
             // Banc d'essai : erreur de calcul ou plantage → pas plus fin ; sinon le palier tient
             var tested = _search.Current.Describe();
             if (unstable)
             {
-                _previousStep = $"Palier précédent ({tested}) : instable ({UnstableReason(bench!)}), pas plus fin.";
+                _previousStep = $"Palier précédent ({tested}) : instable ({UnstableReason(bench)}), pas plus fin.";
                 _ = Unstable();
                 return;
             }
-            if (_memoryPhase && bench!.NotFaster)
+            if (_memoryPhase && bench.NotFaster)
             {
                 // Plus de fréquence sans plus de bande passante : la GDDR6X corrige des erreurs au lieu d'accélérer
                 var speed = bench.Stabilite?.BandePassanteLectureMedianeGoS is { } read ? $", {read:0} Go/s" : "";
@@ -972,18 +875,18 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             }
             if (report.Conclusive || _renderless)
             {
-                _previousStep = $"Palier précédent ({tested}) : stable{CheckedNote(bench!)}{FpsNote(fps)}.";
+                _previousStep = $"Palier précédent ({tested}) : stable{CheckedNote(bench)}{FpsNote(fps)}.";
                 _ = Stable();
                 return;
             }
         }
-        if (automatic && _search is null && _step == Step.PerformanceBase && unstable)
+        if (_search is null && _step == Step.PerformanceBase && unstable)
         {
             // Réglage de base de Performance instable : Performance s'arrête et revient au réglage d'Équilibre
             _ = Unstable();
             return;
         }
-        if (automatic && _search is null && _step == Step.Baseline && bench!.CalculationErrors)
+        if (_search is null && _step == Step.Baseline && bench.CalculationErrors)
         {
             // Erreurs de calcul dès les valeurs d'usine : inutile de chercher un undervolt
             SystemSounds.Asterisk.Play();
@@ -995,19 +898,18 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             Phase = AssistantPhase.Review;
             return;
         }
-        if (bench is not null) SystemSounds.Asterisk.Play();
-        QuestionText = economy
-            ? $"{Loss(report)} Le jeu vous paraît-il toujours assez fluide pour continuer à baisser ?"
-            : "Pendant ce palier, avez-vous vu des bandes, des scintillements, des couleurs bizarres, ou le jeu a-t-il planté ?";
-        YesText = economy ? "OUI, CONTINUER" : "NON, TOUT ÉTAIT NORMAL";
-        NoText = economy ? "NON, C'EST TROP" : "OUI, J'AI VU UN PROBLÈME";
+        // Reste : la perte d'un palier d'Économie (votre verdict), un palier instable ou une mesure non concluante
+        SystemSounds.Asterisk.Play();
+        QuestionText = economy ? $"{Loss(report)} Cette perte vous paraît-elle acceptable pour continuer à baisser ?" : "";
+        YesText = "OUI, CONTINUER";
+        NoText = "NON, C'EST TROP";
         Headline = unstable
-            ? bench?.StabilityFailed == true && bench.Stabilite is { } s ? $"{StabilityTitle(s)} pendant ce palier"
-                : bench?.CalculationErrors == true ? "Erreurs de calcul pendant ce palier" : "Plantage détecté pendant ce palier"
+            ? bench.StabilityFailed && bench.Stabilite is { } s ? $"{StabilityTitle(s)} pendant ce palier"
+                : bench.CalculationErrors ? "Erreurs de calcul pendant ce palier" : "Plantage détecté pendant ce palier"
             : !report.Conclusive ? "Mesure non concluante : la carte n'a pas assez travaillé"
             : _search is null && _step == Step.PerformanceBase ? "Réglage de base instable"
             : report.Headline;
-        ShowQuestion = _search is not null && report.Conclusive && !unstable;
+        ShowQuestion = economy && report.Conclusive && !unstable;
         ShowRetry = !report.Conclusive || unstable;
         ShowGoBack = _search is not null && (unstable || !report.Conclusive);
         Phase = AssistantPhase.Review;
@@ -1070,8 +972,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             {
                 // 15 minutes sur le réglage retenu : mesure plus fiable que celle du dernier palier (pris avant le recul de sécurité)
                 _lastStableReport = validation;
-                _lastStableFps = _benchMode ? _bench?.Pass?.FpsMoyen : null;
-                _lastStableStability = _benchMode ? _bench?.Stabilite : null;
+                _lastStableFps = _bench?.Pass?.FpsMoyen;
+                _lastStableStability = _bench?.Stabilite;
             }
             SaveBalancedRecord();
             await FinishAsync($"Validé : 15 minutes sans plantage ni artefact. Réglage retenu : {_lastStable.Describe()}.");
@@ -1245,8 +1147,43 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             Phase = AssistantPhase.MemoryPrompt;
             return Task.CompletedTask;
         }
+        // Économie avec plafond : baisser aussi la limite de puissance est proposé ensuite (facultatif)
+        if (_goal == TuningGoal.Economy && !_powerPhase && tuner() is { } c && c.Limits.SupportsPowerLimit && c.Limits.SupportsClockLock
+            && _lastStable.MaxClockMHz != 0)
+        {
+            var measured = (_lastStableReport?.Stats ?? Record?.ResultStats)?.AvgPower;
+            var floor = TuningSearch.PowerFloorMilliwatts(c.Limits) / 1000;
+            if (_lastStable.PowerLimitWatts > floor)
+            {
+                Title = "LIMITE DE PUISSANCE (FACULTATIF)";
+                Instruction = $"Plafond retenu : {_lastStable.Describe()}." +
+                              (measured is { } w ? $" À ce réglage, la carte consomme {w:0} W en moyenne." : "") +
+                              $" Baisser aussi la limite de puissance, par paliers ({(measured is { } m ? $"à partir d'environ {m:0} W" : $"sous {_lastStable.PowerLimitWatts:0} W")}, " +
+                              $"puis environ 10 %, 5 % et 5 W), sans descendre sous {floor} W ? " +
+                              "Le plafond garde une fréquence régulière ; une limite de watts garantit en plus une consommation maximale, donc un maximum " +
+                              "de chaleur et de bruit, même dans les scènes les plus lourdes, où la fréquence variera alors davantage. " +
+                              "Chaque palier se mesure comme les précédents, et c'est vous qui jugez la perte.";
+                Phase = AssistantPhase.PowerPrompt;
+                return Task.CompletedTask;
+            }
+        }
         return EndAsync();
     }
+
+    /// <summary>Économie : la limite de puissance baisse à son tour, à partir de la consommation mesurée au plafond retenu.</summary>
+    [RelayCommand]
+    private async Task LowerPower()
+    {
+        if (tuner() is not { } t) return;
+        _powerPhase = true;
+        var measured = (_lastStableReport?.Stats ?? Record?.ResultStats)?.AvgPower;
+        _search = TuningSearch.EconomyPower(_lastStable, t.Limits, measured * 1000);
+        if (_search.Finished) await EndAsync();
+        else await NextStepAsync();
+    }
+
+    [RelayCommand]
+    private Task SkipPower() => FinishAsync(null);
 
     /// <summary>Fin des paliers : Équilibre enchaîne la validation de 15 minutes, les autres modes passent au choix final.</summary>
     private Task EndAsync() => _goal == TuningGoal.Balanced && !Validated ? Validate() : FinishAsync(null);
@@ -1264,7 +1201,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private string ProfileNote()
     {
         var parts = new List<string> { $"Assistant {GoalName}" };
-        if (_benchMode && _lastStableFps is { } fps) parts.Add($"{fps:0.0} FPS au banc ({_benchDefinition}p)");
+        if (_lastStableFps is { } fps) parts.Add($"{fps:0.0} FPS au banc ({_benchDefinition}p)");
         if (Validated) parts.Add("validé 15 min");
         return string.Join(" · ", parts);
     }
@@ -1275,8 +1212,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (_goal != TuningGoal.Balanced || _baseline is null || tuner() is not { } t) return;
         var record = new BalancedRecord(DateTime.Now, t.Identity.Name, t.Identity.Uuid, t.Identity.DriverVersion, _baselineGame,
             _start.ToRaw(), (_lastStable with { AtStartup = false }).ToRaw(), _lastStable.CoreOffsetMHz > _start.CoreOffsetMHz, _baseline,
-            _baselineFps, _benchMode && _baselineFps is not null ? _benchDefinition : null,
-            _lastStableReport?.Stats, _benchMode && _baselineFps is not null ? _lastStableFps : null, Validated);
+            _baselineFps, _baselineFps is not null ? _benchDefinition : null,
+            _lastStableReport?.Stats, _baselineFps is not null ? _lastStableFps : null, Validated);
         try
         {
             record.Save();
@@ -1313,7 +1250,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         VerdictDetails = verdict is null ? "" : string.Join("\n", verdict.Details);
         ReturnToBalancedFirst = CanReturnToBalanced && verdict?.RecommendsBalanced == true;
         _verdict = verdict;
-        if (_benchMode) SystemSounds.Asterisk.Play();
+        SystemSounds.Asterisk.Play();
         Phase = AssistantPhase.Done;
         await WriteReportAsync(aborted: false, DoneText);
     }
@@ -1324,11 +1261,11 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         _steps.Add(new TuningStep(DateTime.Now, phase, label, setting with { AtStartup = false }, verdict, detail));
 
     private TuningPhase StepPhase => _validating ? TuningPhase.Validation
-        : _search is not null ? (_memoryPhase ? TuningPhase.Memory : TuningPhase.Search) : TuningPhase.Start;
+        : _search is not null ? (_powerPhase ? TuningPhase.Power : _memoryPhase ? TuningPhase.Memory : TuningPhase.Search) : TuningPhase.Start;
 
     /// <summary>« Palier 3 », « Mémoire, palier 2 », « Validation 15 min » : appelé avant que la recherche passe au palier suivant.</summary>
     private string Stage() => _validating ? "Validation 15 min"
-        : _search is not null ? $"{(_memoryPhase ? "Mémoire, palier" : "Palier")} {_search.Tested + 1}"
+        : _search is not null ? $"{(_powerPhase ? "Watts, palier" : _memoryPhase ? "Mémoire, palier" : "Palier")} {_search.Tested + 1}"
         : _step == Step.Baseline ? "Mesure de départ" : "Réglage de base";
 
     /// <summary>Réglage en place pendant la mesure en cours.</summary>
@@ -1375,9 +1312,9 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     {
         if (!_runOpen || tuner() is not { } t) return;
         _runOpen = false;
-        var comparable = _benchMode && _baselineFps is not null;
+        var comparable = _baselineFps is not null;
         var run = new TuningRun(_goal, t.Identity.Name, t.Identity.DriverVersion, _startedAt, DateTime.Now,
-            _benchMode ? $"banc d'essai Aria (Ultra {BenchLabel(_benchDefinition)})" : _baselineGame ?? "votre jeu",
+            $"banc d'essai Aria (Ultra {BenchLabel(_benchDefinition)})",
             _before, _start, aborted ? _before : _lastStable, !aborted && !_lastStable.SameTuning(_before), aborted, outcome, Validated,
             _baseline, _baselineFps, _lastStableReport?.Stats, comparable ? _lastStableFps : null, _lastStableStability,
             _previousRecord, _verdict, [.. _steps], [.. _notes], []);

@@ -6,7 +6,7 @@ using Aria.Core.Performance;
 namespace Aria.Core.Reporting;
 
 /// <summary>Partie du parcours de l'assistant à laquelle appartient une étape.</summary>
-public enum TuningPhase { Start, Search, Memory, Validation, Check }
+public enum TuningPhase { Start, Search, Memory, Power, Validation, Check }
 
 /// <summary>Ce que l'assistant a conclu d'une étape.</summary>
 public enum StepVerdict { Reference, Stable, Unstable, NotFaster, Kept, Unjudged, Info }
@@ -181,6 +181,7 @@ public static class GpuTuningReport
         // 3. Où et pourquoi la recherche s'est arrêtée
         lines.AddRange(Limits(run, TuningPhase.Search));
         lines.AddRange(Limits(run, TuningPhase.Memory));
+        lines.AddRange(Limits(run, TuningPhase.Power));
 
         // 4. Validation
         var validation = run.Steps.LastOrDefault(s => s.Phase == TuningPhase.Validation);
@@ -223,10 +224,11 @@ public static class GpuTuningReport
     {
         var steps = run.Steps.Where(s => s.Phase == phase).ToList();
         if (steps.Count == 0) yield break;
+        var watts = phase == TuningPhase.Power || (run.Goal == TuningGoal.Economy && run.Start.MaxClockMHz == 0);
         Func<GpuTuningState, double> value = phase == TuningPhase.Memory ? s => s.MemoryOffsetMHz
-            : run.Goal != TuningGoal.Economy ? s => s.CoreOffsetMHz
-            : run.Start.MaxClockMHz != 0 ? s => -s.MaxClockMHz : s => -s.PowerLimitWatts;
-        var name = phase == TuningPhase.Memory ? "Mémoire" : run.Goal != TuningGoal.Economy ? "Décalage GPU" : run.Start.MaxClockMHz != 0 ? "Plafond" : "Limite de puissance";
+            : watts ? s => -s.PowerLimitWatts
+            : run.Goal != TuningGoal.Economy ? s => s.CoreOffsetMHz : s => -s.MaxClockMHz;
+        var name = phase == TuningPhase.Memory ? "Mémoire" : watts ? "Limite de puissance" : run.Goal != TuningGoal.Economy ? "Décalage GPU" : "Plafond";
         // Recherche sur un autre réglage que prévu (carte sans plafond : limite de puissance) : réglages complets
         Func<GpuTuningState, string> label = s => Varying(run, phase, s);
         if (steps.Count > 1 && steps.Select(s => value(s.Setting)).Distinct().Count() == 1)
@@ -239,7 +241,7 @@ public static class GpuTuningReport
         var passed = steps.Where(s => s.Verdict is StepVerdict.Stable or StepVerdict.Kept).MaxBy(s => value(s.Setting));
         var refused = steps.Where(s => s.Verdict is StepVerdict.Unstable or StepVerdict.NotFaster).MinBy(s => value(s.Setting));
         var parts = new List<string>();
-        if (passed is not null) parts.Add($"{label(passed.Setting)} est le plus haut palier passé");
+        if (passed is not null) parts.Add($"{label(passed.Setting)} est le {(watts || (run.Goal == TuningGoal.Economy && phase == TuningPhase.Search) ? "plus bas palier accepté" : "plus haut palier passé")}");
         if (refused is not null)
             parts.Add($"{label(refused.Setting)} {(refused.Verdict == StepVerdict.NotFaster ? "n'allait pas plus vite" : "a échoué")}" +
                       // La raison seule : les mesures qui la suivent (« ; 2700 MHz, … ») restent dans le déroulé
@@ -254,6 +256,7 @@ public static class GpuTuningReport
     /// <summary>Le réglage que la phase fait varier : « +145 MHz » (GPU ou mémoire), « 2550 MHz » (plafond), « 250 W ».</summary>
     private static string Varying(TuningRun run, TuningPhase phase, GpuTuningState s) =>
         phase == TuningPhase.Memory ? $"{Signed(s.MemoryOffsetMHz)} MHz"
+        : phase == TuningPhase.Power ? F($"{s.PowerLimitWatts:0} W")
         : run.Goal != TuningGoal.Economy ? $"{Signed(s.CoreOffsetMHz)} MHz"
         : run.Start.MaxClockMHz != 0 ? $"{s.MaxClockMHz} MHz" : F($"{s.PowerLimitWatts:0} W");
 
