@@ -37,6 +37,8 @@ internal sealed class GpuDevice : IDisposable
     public GpuInfo Info { get; }
     public int Width { get; }
     public int Height { get; }
+    /// <summary>DXR 1.1 et shader model 6.5 : le préréglage Ultra RT peut tourner (GeForce RTX, Radeon RX 6000 et plus récentes).</summary>
+    public bool SupportsRayTracing { get; }
     public int FrameIndex => (int)SwapChain.CurrentBackBufferIndex;
     public ID3D12Resource BackBuffer => _backBuffers[FrameIndex];
     public CpuDescriptorHandle BackBufferRtv => _rtvHeap.GetCPUDescriptorHandleForHeapStart() + FrameIndex * (int)_rtvSize;
@@ -72,6 +74,8 @@ internal sealed class GpuDevice : IDisposable
         if (debug) _infoQueue = Device.QueryInterfaceOrNull<ID3D12InfoQueue>();
 
         Info = Describe(_adapter, desc, all);
+        SupportsRayTracing = Device.Options5.RaytracingTier >= RaytracingTier.Tier1_1
+                             && Device.CheckHighestShaderModel(ShaderModel.Model6_5) >= ShaderModel.Model6_5;
 
         Queue = Device.CreateCommandQueue(CommandListType.Direct);
         Queue.Name = "Aria-Bench file directe";

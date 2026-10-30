@@ -3,7 +3,7 @@ using System.Reflection;
 namespace Aria.Bench.Rendering;
 
 /// <summary>
-/// Shaders précompilés en DXIL signé (modèle 6.0), intégrés à l'exe : Aria-Bench n'embarque aucun compilateur.
+/// Shaders précompilés en DXIL signé (modèle 6.0 ; 6.5 pour le ray tracing), intégrés à l'exe : Aria-Bench n'embarque aucun compilateur.
 /// Sources dans Shaders/*.hlsl ; après une modification, relancer outils/compiler-shaders.py (les tests le vérifient).
 /// </summary>
 public static class ShaderLibrary
@@ -18,7 +18,9 @@ public static class ShaderLibrary
         ("Scene", "vs_6_0", "VSObjects"), ("Scene", "ps_6_0", "PSObjects"),
         ("Post", "vs_6_0", "VSFull"), ("Post", "ps_6_0", "PSSsao"),
         ("Post", "ps_6_0", "PSBloomDown"), ("Post", "ps_6_0", "PSBloomUp"),
-        ("Post", "ps_6_0", "PSComposite")
+        ("Post", "ps_6_0", "PSComposite"),
+        // Ultra RT : construction des structures d'accélération, puis le terrain et les objets éclairés par ray tracing
+        ("Scene", "cs_6_0", "CSBuildRt"), ("Scene", "ps_6_5", "PSTerrainRT"), ("Scene", "ps_6_5", "PSObjectsRT")
     ];
 
     /// <summary>

@@ -2,9 +2,12 @@
 """Précompile les shaders d'Aria-Bench en DXIL signé (src/Aria.Bench/Shaders/Compiled/*.cso).
 
 Aria-Bench n'embarque pas de compilateur : il charge ce code compilé, intégré à l'exe. Après toute modification
-d'un .hlsl, relancer ce script (Linux ou WSL) avec la bibliothèque DXC du paquet NuGet Vortice.Dxc.Native :
-    python3 outils/compiler-shaders.py ~/.nuget/packages/vortice.dxc.native/1.0.5/runtimes/linux-x64/native/libdxcompiler.so
-Les tests vérifient que les fichiers compilés correspondent aux sources.
+d'un .hlsl, relancer ce script avec l'un des deux compilateurs DXC :
+  - Windows : dxc.exe du paquet NuGet officiel Microsoft.Direct3D.DXC (build/native/bin/x64, avec dxil.dll à côté
+    pour signer le code ; sans elle, le pilote refuse les shaders) :
+        python outils/compiler-shaders.py C:\cheminers\dxc.exe
+  - Linux ou WSL : la bibliothèque du paquet NuGet Vortice.Dxc.Native :
+        python3 outils/compiler-shaders.py ~/.nuget/packages/vortice.dxc.native/1.0.5/runtimes/linux-x64/native/libdxcompiler.so
 """
 import os, subprocess, sys
 
@@ -18,6 +21,8 @@ ENTREES = [
     ("Post", "VSFull", "vs_6_0"), ("Post", "PSSsao", "ps_6_0"),
     ("Post", "PSBloomDown", "ps_6_0"), ("Post", "PSBloomUp", "ps_6_0"),
     ("Post", "PSComposite", "ps_6_0"),
+    # Ultra RT (DXR 1.1 en ligne, modèle 6.5)
+    ("Scene", "CSBuildRt", "cs_6_0"), ("Scene", "PSTerrainRT", "ps_6_5"), ("Scene", "PSObjectsRT", "ps_6_5"),
 ]
 
 def main():
@@ -28,8 +33,11 @@ def main():
     for fichier, entree, profil in ENTREES:
         source = os.path.join(SHADERS, fichier + ".hlsl")
         cible = os.path.join(sortie, entree + ".cso")
-        r = subprocess.run([sys.executable, os.path.join(ICI, "dxc-linux.py"), bibliotheque, source, entree, profil, cible],
-                           capture_output=True, text=True)
+        if bibliotheque.lower().endswith(".exe"):
+            commande = [bibliotheque, "-nologo", "-T", profil, "-E", entree, "-Fo", cible, source]
+        else:
+            commande = [sys.executable, os.path.join(ICI, "dxc-linux.py"), bibliotheque, source, entree, profil, cible]
+        r = subprocess.run(commande, capture_output=True, text=True)
         if r.returncode != 0 or r.stderr.strip():
             echecs += 1
             print(f"ÉCHEC {fichier}.{entree} : {r.stderr.strip()}", file=sys.stderr)

@@ -27,7 +27,7 @@ public sealed record BenchOptions(
         new([QualityPreset.High], AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
 
     public const string Help =
-        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--calcul | --vram] [--auto-controle] [--precedent ancien.json] [--sortie fichier.json]";
+        "Aria-Bench [--qualite faible|moyen|eleve|ultra|ultra-rt|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--calcul | --vram] [--auto-controle] [--precedent ancien.json] [--sortie fichier.json]";
 
     /// <summary>Taille du rendu interne (16:9) pour une définition.</summary>
     public static (int Width, int Height) SizeOf(int definition) => definition switch
@@ -111,7 +111,7 @@ public sealed record BenchOptions(
         foreach (var part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
             var preset = QualityPreset.Find(part)
-                ?? throw new ArgumentException($"Qualité invalide : « {part} » (faible, moyen, eleve, ultra ou tout).");
+                ?? throw new ArgumentException($"Qualité invalide : « {part} » (faible, moyen, eleve, ultra, ultra-rt ou tout).");
             if (!list.Contains(preset)) list.Add(preset);
         }
         if (list.Count == 0) throw new ArgumentException("Aucune qualité indiquée après --qualite.");
