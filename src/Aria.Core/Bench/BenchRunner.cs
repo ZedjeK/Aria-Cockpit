@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Aria.Core.Inventory;
-using Aria.Core.Nvidia;
 
 namespace Aria.Core.Bench;
 
@@ -43,9 +42,6 @@ public sealed record BenchResult(string Statut, IReadOnlyList<BenchPass> Resulta
 
     /// <summary>Au moins une image de contrôle différait de la référence : la carte calcule faux.</summary>
     public bool CalculationErrors => Resultats.Any(r => r.ErreursCalcul > 0);
-
-    /// <summary>Les images fausses viennent du contrôle en ray tracing de la validation.</summary>
-    public bool RayTracingErrors => Resultats.Any(r => r.ErreursCalcul > 0 && r.Qualite == BenchRunner.RayTracedLabel);
 
     /// <summary>Le pilote a lâché pendant le rendu (carte retirée, ne répond plus…) ou le banc s'est arrêté sans journal.</summary>
     public bool DriverFailure => Failed && Erreurs.Any(e =>
@@ -150,17 +146,6 @@ public static class BenchRunner
 
     /// <summary>Définition suivante, pour charger davantage une carte que la limite d'images bride ; null après la 4K.</summary>
     public static int? NextDefinition(int definition) => definition switch { 1080 => 1440, 1440 => 2160, _ => null };
-
-    /// <summary>Préréglage du contrôle en ray tracing de la validation, et son nom dans le journal du banc.</summary>
-    public const string RayTracedQuality = "ultra-rt";
-    public const string RayTracedLabel = "Ultra RT";
-
-    /// <summary>
-    /// Carte RTX (cœurs RT, DXR 1.1) : la validation ajoute un contrôle en Ultra RT. Carte absente du catalogue : « RTX » dans
-    /// son nom suffit.
-    /// </summary>
-    public static bool SupportsRayTracing(string gpuName) =>
-        GpuCatalog.Find(gpuName)?.IsRtx ?? gpuName.Contains("RTX", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>PC portable sur batterie : la carte y est bridée (60 FPS, puissance réduite), la mesure serait faussée.</summary>
     public static bool OnBattery() =>

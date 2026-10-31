@@ -9,7 +9,7 @@ namespace Aria.Bench.Rendering;
 
 /// <summary>
 /// Le rendu d'une image, dans l'ordre d'un jeu :
-/// 1. ombres du soleil (carte de profondeur vue du soleil ; en Ultra RT, des rayons à l'étape 2) ;
+/// 1. ombres du soleil (carte de profondeur vue du soleil) ;
 /// 2. scène à la définition interne : ciel, terrain, tours et rochers, éclairés (soleil, néons, ciel) ;
 /// 3. occlusion ambiante (SSAO), halo lumineux (bloom) ;
 /// 4. image finale à la taille de l'écran : tonemapping, bandes noires 16:9, barre de progression.
@@ -35,15 +35,11 @@ internal sealed unsafe class Renderer : IDisposable
     private readonly ID3D12RootSignature _sceneRoot, _postRoot;
     private readonly ID3D12PipelineState _skyPso, _terrainPso, _objectsPso, _terrainShadowPso, _objectsShadowPso;
     private readonly ID3D12PipelineState _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso, _checkPso;
-    // Ultra RT (cartes DXR 1.1 seulement) : terrain et objets éclairés par ray tracing, construction de la scène
-    private readonly ID3D12PipelineState? _terrainRtPso, _objectsRtPso, _buildRtPso;
-    private readonly ID3D12RootSignature? _buildRtRoot;
-    private RayTracingScene? _rayTracing;
     private readonly ID3D12CommandAllocator _checkAllocator;
     private readonly ID3D12GraphicsCommandList _checkList;
     private readonly ID3D12Resource _cubeVertices, _cubeIndices;
     private readonly VertexBufferView _cubeVertexView;
-    private readonly uint _cubeIndexCount, _cubeVertexCount;
+    private readonly uint _cubeIndexCount;
     private readonly ID3D12Resource[] _frameBuffers = new ID3D12Resource[GpuDevice.BufferCount];
     private readonly byte*[] _frameData = new byte*[GpuDevice.BufferCount];
     private readonly DescriptorAllocator _rtv, _dsv, _srv;
@@ -73,7 +69,7 @@ internal sealed unsafe class Renderer : IDisposable
         public Vector3 SunColor; public float TerrainHeight;
         public Vector3 LightsCenter; public float FogDensity;
         public uint LightCount, Octaves, PcfRadius, TerrainRes;
-        public uint ObjectGrid; public float ShadowTexel; public uint AoRays, Reflections;
+        public uint ObjectGrid; public float ShadowTexel; public float Pad0, Pad1;
         public const int Size = 288;
     }
 
@@ -127,17 +123,6 @@ internal sealed unsafe class Renderer : IDisposable
         _objectsPso = Scene("Objets", "VSObjects", "PSObjects", objectLayout, false, DepthStencilDescription.Default);
         _terrainShadowPso = Scene("Terrain (ombre)", "VSTerrain", null, null, true, DepthStencilDescription.Default);
         _objectsShadowPso = Scene("Objets (ombre)", "VSObjects", null, objectLayout, true, DepthStencilDescription.Default);
-        if (gpu.SupportsRayTracing)
-        {
-            _terrainRtPso = Scene("Terrain (ray tracing)", "VSTerrain", "PSTerrainRT", null, false, DepthStencilDescription.Default);
-            _objectsRtPso = Scene("Objets (ray tracing)", "VSObjects", "PSObjectsRT", objectLayout, false, DepthStencilDescription.Default);
-            _buildRtRoot = device.CreateRootSignature(code["CSBuildRt"]);
-            _buildRtPso = Named(device.CreateComputePipelineState(new ComputePipelineStateDescription
-            {
-                RootSignature = _buildRtRoot,
-                ComputeShader = code["CSBuildRt"]
-            }), "Construction de la scène (ray tracing)");
-        }
 
         ID3D12PipelineState Post(string name, string ps, Format target, BlendDescription blend) =>
             Named(device.CreateGraphicsPipelineState(new GraphicsPipelineStateDescription
@@ -169,7 +154,6 @@ internal sealed unsafe class Renderer : IDisposable
         _cubeIndices = gpu.CreateBuffer(indices, ResourceStates.IndexBuffer, "Indices du cube");
         _cubeVertexView = new VertexBufferView(_cubeVertices.GPUVirtualAddress, (uint)(vertices.Length * Vertex.Size), Vertex.Size);
         _cubeIndexCount = (uint)indices.Length;
-        _cubeVertexCount = (uint)vertices.Length;
 
         // Un tampon de constantes par image en vol, écrit directement en mémoire partagée (laissé ouvert)
         for (var i = 0; i < GpuDevice.BufferCount; i++)
@@ -190,12 +174,9 @@ internal sealed unsafe class Renderer : IDisposable
         return pso;
     }
 
-    /// <summary>Prépare un préréglage à une définition : cibles de rendu, carte d'ombre, maillage du terrain (et scène du ray tracing).</summary>
+    /// <summary>Prépare un préréglage à une définition : cibles de rendu, carte d'ombre, maillage du terrain.</summary>
     public void Configure(QualityPreset preset, int width, int height)
     {
-        if (preset.RayTraced && !_gpu.SupportsRayTracing)
-            throw new BenchException($"{preset.Label} demande le ray tracing (DXR 1.1) : votre carte ou son pilote ne le prend pas en charge " +
-                                     "(il faut une GeForce RTX, une Radeon RX 6000 ou plus récente, et un pilote à jour).");
         _gpu.WaitIdle();
         DisposeTargets();
         Preset = preset;
@@ -240,14 +221,6 @@ internal sealed unsafe class Renderer : IDisposable
         _bloomDownTables = [.. Enumerable.Range(0, _bloom.Length).Select(i => i == 0 ? Table((_hdr, HdrFormat)) : Table((_bloom[i - 1], BloomFormat)))];
         _bloomUpTables = [.. _bloom.Select(b => Table((b, BloomFormat)))];
         _compositeTable = Table((_hdr, HdrFormat), (_ao, AoFormat), (_bloom.Length > 0 ? _bloom[0] : null, BloomFormat));
-
-        if (preset.RayTraced)
-        {
-            // La construction lit la grille et le terrain dans les constantes de la scène (la carte est au repos)
-            WriteFrameConstants(0, 0f);
-            _rayTracing = new RayTracingScene(_gpu, _buildRtRoot!, _buildRtPso!, _frameBuffers[0].GPUVirtualAddress, preset,
-                _terrainIndices!, _terrainIndexCount, _cubeVertices, _cubeVertexCount, _cubeIndices, _cubeIndexCount);
-        }
     }
 
     /// <summary>Quatre descripteurs consécutifs (t0 à t3) ; les places vides reçoivent une vue nulle.</summary>
@@ -350,25 +323,19 @@ internal sealed unsafe class Renderer : IDisposable
             throw new InvalidOperationException("Configure doit être appelé avant le rendu.");
         cl.SetDescriptorHeaps(_srv.Heap);
         cl.IASetPrimitiveTopology(PrimitiveTopology.TriangleList);
-        var rayTracing = Preset.RayTraced ? _rayTracing : null;
+
+        // 1. Ombres du soleil
+        _shadow.Transition(cl, ResourceStates.DepthWrite);
+        cl.OMSetRenderTargets(ReadOnlySpan<CpuDescriptorHandle>.Empty, _shadow.View);
+        cl.ClearDepthStencilView(_shadow.View, ClearFlags.Depth, 1.0f, 0);
+        cl.RSSetViewport(_shadow.FullViewport);
+        cl.RSSetScissorRect(_shadow.Width, _shadow.Height);
         cl.SetGraphicsRootSignature(_sceneRoot);
         cl.SetGraphicsRootConstantBufferView(0, constants);
-        // t1 : la TLAS en Ultra RT ; sinon une adresse valide que les shaders sans ray tracing ne lisent pas
-        cl.SetGraphicsRootShaderResourceView(3, rayTracing?.TlasAddress ?? constants);
-
-        // 1. Ombres du soleil (Ultra RT : tracées pixel par pixel à l'étape 2)
-        if (rayTracing is null)
-        {
-            _shadow.Transition(cl, ResourceStates.DepthWrite);
-            cl.OMSetRenderTargets(ReadOnlySpan<CpuDescriptorHandle>.Empty, _shadow.View);
-            cl.ClearDepthStencilView(_shadow.View, ClearFlags.Depth, 1.0f, 0);
-            cl.RSSetViewport(_shadow.FullViewport);
-            cl.RSSetScissorRect(_shadow.Width, _shadow.Height);
-            cl.SetGraphicsRoot32BitConstant(1, 1u, 0);
-            DrawTerrain(cl, _terrainShadowPso);
-            DrawObjects(cl, _objectsShadowPso);
-            _shadow.Transition(cl, ResourceStates.PixelShaderResource);
-        }
+        cl.SetGraphicsRoot32BitConstant(1, 1u, 0);
+        DrawTerrain(cl, _terrainShadowPso);
+        DrawObjects(cl, _objectsShadowPso);
+        _shadow.Transition(cl, ResourceStates.PixelShaderResource);
 
         // 2. Scène
         _hdr.Transition(cl, ResourceStates.RenderTarget);
@@ -381,8 +348,8 @@ internal sealed unsafe class Renderer : IDisposable
         cl.SetGraphicsRootDescriptorTable(2, _srv.Gpu(_shadowTable));
         cl.SetPipelineState(_skyPso);
         cl.DrawInstanced(3, 1, 0, 0);
-        DrawTerrain(cl, rayTracing is null ? _terrainPso : _terrainRtPso!);
-        DrawObjects(cl, rayTracing is null ? _objectsPso : _objectsRtPso!);
+        DrawTerrain(cl, _terrainPso);
+        DrawObjects(cl, _objectsPso);
         _hdr.Transition(cl, ResourceStates.PixelShaderResource);
         _normalDepth.Transition(cl, ResourceStates.PixelShaderResource);
 
@@ -493,9 +460,7 @@ internal sealed unsafe class Renderer : IDisposable
             PcfRadius = (uint)preset.PcfRadius,
             TerrainRes = (uint)preset.TerrainResolution,
             ObjectGrid = (uint)preset.ObjectGrid,
-            ShadowTexel = 1f / preset.ShadowMapSize,
-            AoRays = preset.RayTraced ? (uint)preset.AoRays : 0,
-            Reflections = preset.RayTraced ? 1u : 0u
+            ShadowTexel = 1f / preset.ShadowMapSize
         };
     }
 
@@ -531,8 +496,6 @@ internal sealed unsafe class Renderer : IDisposable
         _check?.Dispose();
         _readback?.Dispose();
         _readback = null;
-        _rayTracing?.Dispose();
-        _rayTracing = null;
         _hdr = _normalDepth = _depth = _shadow = _ao = _check = null;
         _bloom = [];
     }
@@ -551,10 +514,6 @@ internal sealed unsafe class Renderer : IDisposable
         _srv.Dispose();
         foreach (var pso in new[] { _skyPso, _terrainPso, _objectsPso, _terrainShadowPso, _objectsShadowPso, _ssaoPso, _bloomDownPso, _bloomUpPso, _compositePso, _checkPso })
             pso.Dispose();
-        _terrainRtPso?.Dispose();
-        _objectsRtPso?.Dispose();
-        _buildRtPso?.Dispose();
-        _buildRtRoot?.Dispose();
         _checkList.Dispose();
         _checkAllocator.Dispose();
         _sceneRoot.Dispose();
