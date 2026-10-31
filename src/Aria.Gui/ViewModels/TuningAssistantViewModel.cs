@@ -45,8 +45,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private double? _lastStableFps;
     private TuningSearch? _search;
     private bool _memoryPhase, _aborted, _validating;
-    /// <summary>Carte RTX : la validation ajoute un contrôle en Ultra RT (fixé au début du mode).</summary>
-    private bool _rayTracing;
     /// <summary>Économie, phase facultative après le plafond : la limite de puissance baisse à son tour.</summary>
     private bool _powerPhase;
     private TimeSpan _duration = MeasureDuration;
@@ -79,8 +77,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private static readonly BenchResult NoRender = new("terminé", [], [], []);
     /// <summary>Contrôles ajoutés aux 15 minutes de validation (calcul, et mémoire si elle est poussée).</summary>
     public static readonly TimeSpan ValidationCheckDuration = TimeSpan.FromMinutes(2);
-    /// <summary>Contrôle en ray tracing de la validation (carte RTX) : un tour complet de la caméra du banc (environ 126 s).</summary>
-    public static readonly TimeSpan RayTracingCheckDuration = TimeSpan.FromSeconds(130);
     private static string CheckOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-calcul.json");
     private static string MemoryOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-memoire.json");
     /// <summary>Journal du dernier palier mémoire stable : le suivant doit aller plus vite que lui.</summary>
@@ -109,7 +105,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasReport))] private string? reportPath;
     public bool HasReport => ReportPath is not null;
     private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
-    private static string RayTracingOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-ray-tracing.json");
 
     /// <summary>
     /// Aria-Bench.exe est livré à côté d'Aria Cockpit. L'assistant ne mesure qu'avec lui (scène, définition et verdicts
@@ -353,9 +348,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                         ? new DialogRow[]
                         {
                             new("4. Mémoire vidéo", To: "référence, puis +250 à +1000 MHz, 2 min de test mémoire chacun"),
-                            new("5. Validation", To: BenchRunner.SupportsRayTracing(t.Identity.Name)
-                                ? "15 min de banc, 2 min de ray tracing, puis calcul et mémoire vérifiés"
-                                : "15 min de banc, puis calcul et mémoire vérifiés"),
+                            new("5. Validation", To: "15 min de banc, puis calcul et mémoire vérifiés"),
                             new("6. À la fin", To: "vous choisissez de garder ou d'annuler")
                         }
                         : [new("4. À la fin", To: "vous choisissez de garder ou d'annuler")])
@@ -380,7 +373,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
 
         _goal = goal;
         _benchDefinition = benchDefinition;
-        _rayTracing = BenchRunner.SupportsRayTracing(t.Identity.Name);
         _steps.Clear();
         _notes.Clear();
         _startedAt = DateTime.Now;
@@ -568,20 +560,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         }
         else if (report is not null && !bench.Unstable)
         {
-            // Validation : 15 minutes de rendu d'abord, puis ray tracing (carte RTX), calcul et mémoire vérifiés sur une carte
-            // bien chaude. Le premier qui lâche arrête la suite
-            List<BenchResult> late = [];
-            if (_rayTracing)
-            {
-                var rt = await RayTracingCheckAsync(setting);
-                if (_aborted) return;
-                late.Add(rt);
-                if (!rt.Completed && !rt.Unstable)
-                    _checksCut = rt.Interrupted
-                        ? "Contrôle en ray tracing arrêté avant la fin : validation non jugée"
-                        : $"Contrôle en ray tracing impossible ({rt.Erreurs.FirstOrDefault() ?? rt.Statut}) : validation non jugée";
-            }
-            if (late.All(r => r.Completed && !r.Unstable)) late.AddRange(await RunChecksAsync(setting));
+            // Validation : 15 minutes de rendu d'abord, puis calcul et mémoire vérifiés sur une carte bien chaude
+            var late = await RunChecksAsync(setting);
             if (_aborted) return;
             bench = BenchResult.Merge(bench, [.. late]);
             _bench = bench;
@@ -699,34 +679,15 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     }
 
     /// <summary>Un contrôle d'Aria-Bench dans sa petite fenêtre, avec la barre de progression ; « Arrêter la mesure » le coupe.</summary>
-    private Task<BenchResult> CheckAsync(BenchCheck check, TimeSpan duration, string label, string? previous = null) =>
-        WatchAsync(stop => BenchRunner.RunCheckAsync(check, duration, check == BenchCheck.Memory ? MemoryOutput : CheckOutput, previous, stop),
-            duration, label, "CONTRÔLE DE STABILITÉ");
-
-    /// <summary>
-    /// Validation sur une carte RTX : un tour de caméra en Ultra RT, en plein écran, images de contrôle vérifiées. Les cœurs RT
-    /// gardent la carte collée à son plafond de fréquence, là où le décalage est le plus exposé ; ses FPS ne comptent pas, et
-    /// la définition reste celle de l'écran (en 4K, le ray tracing tomberait vers 20 FPS).
-    /// </summary>
-    private Task<BenchResult> RayTracingCheckAsync(string setting)
-    {
-        var definition = BenchRunner.DefinitionFor(BenchRunner.PrimaryScreenHeight());
-        Instruction = $"{setting}. Contrôle en ray tracing : le banc d'essai repart en plein écran ({RayTracingCheckDuration.TotalSeconds:0} s, " +
-                      $"Ultra RT {BenchLabel(definition)}), chaque image de contrôle vérifiée. Laissez le PC travailler. Échap l'arrête.";
-        return WatchAsync(stop => BenchRunner.RunAsync(BenchRunner.RayTracedQuality, definition, RayTracingCheckDuration, RayTracingOutput, stop),
-            RayTracingCheckDuration + BenchRunner.LeadTime, "RAY TRACING", $"CONTRÔLE · ULTRA RT · {BenchLabel(definition).ToUpperInvariant()}");
-    }
-
-    /// <summary>Un contrôle en cours, avec la barre de progression ; « Arrêter la mesure » le coupe.</summary>
-    private async Task<BenchResult> WatchAsync(Func<CancellationToken, Task<BenchResult>> start, TimeSpan duration, string label, string game)
+    private async Task<BenchResult> CheckAsync(BenchCheck check, TimeSpan duration, string label, string? previous = null)
     {
         Phase = AssistantPhase.Measuring;
         Progress = 0;
-        GameText = game;
+        GameText = "CONTRÔLE DE STABILITÉ";
         _stop = new CancellationTokenSource();
         try
         {
-            var running = start(_stop.Token);
+            var running = BenchRunner.RunCheckAsync(check, duration, check == BenchCheck.Memory ? MemoryOutput : CheckOutput, previous, _stop.Token);
             var watch = System.Diagnostics.Stopwatch.StartNew();
             while (!running.IsCompleted)
             {
@@ -784,7 +745,6 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>Ce qui a lâché dans un palier instable, pour le rappel affiché au palier suivant.</summary>
     private static string UnstableReason(BenchResult bench) =>
         bench.StabilityFailed && bench.Stabilite is { } s ? StabilityTitle(s).ToLowerInvariant()
-        : bench.RayTracingErrors ? "images fausses en ray tracing"
         : bench.Pass is { ErreursCalcul: > 0 } ? "erreurs de calcul" : "plantage";
 
     private static string StabilityTitle(BenchStability s) =>
