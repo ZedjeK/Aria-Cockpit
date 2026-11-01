@@ -12,7 +12,7 @@ public sealed record BackupEntry(string Id, string DisplayName, SettingCategory 
 public sealed record BackupFile(DateTime CreatedAt, string Computer, string Reason, List<BackupEntry> Entries);
 
 /// <summary>
-/// Sauvegardes JSON des valeurs d'origine, dans C:\ProgramData\AriaCockpit\Sauvegardes.
+/// Sauvegardes JSON des valeurs d'origine, dans %USERPROFILE%\.Aria-Cockpit\Sauvegardes.
 /// Une sauvegarde est créée avant chaque série de modifications.
 /// </summary>
 public static class BackupStore
@@ -23,18 +23,27 @@ public static class BackupStore
         Converters = { new JsonStringEnumConverter() }
     };
 
-    /// <summary>Dossier des données (C:\ProgramData\AriaCockpit), préparé au premier accès.</summary>
+    /// <summary>Nom du dossier des données, dans le profil de l'utilisateur.</summary>
+    public const string FolderName = ".Aria-Cockpit";
+
+    /// <summary>Dossier des données (%USERPROFILE%\.Aria-Cockpit), préparé au premier accès.</summary>
     public static string DataRoot { get; } = PrepareDataRoot();
 
     /// <summary>
-    /// Le logiciel s'est appelé PC-Tune (jusqu'à la 0.12, C:\ProgramData\PCTune), puis Aria (jusqu'à la 0.14,
-    /// C:\ProgramData\Aria). L'ancien dossier est renommé une seule fois, pour garder sauvegardes, rapports et réglage GPU.
-    /// S'il ne peut pas l'être (fichier ouvert ailleurs), on continue de l'utiliser : la page Restauration retrouve toujours les sauvegardes.
+    /// Depuis la 0.22, les données sont dans le profil de l'utilisateur (C:\Users\nom\.Aria-Cockpit), plus faciles à trouver.
+    /// Avant, elles étaient dans C:\ProgramData : AriaCockpit (0.15 à 0.21), Aria (0.13 et 0.14), PCTune (0.12 et avant).
+    /// L'ancien dossier est déplacé une seule fois, pour garder sauvegardes, rapports et réglage GPU. S'il ne peut pas l'être
+    /// (fichier ouvert ailleurs, profil sur un autre disque), on continue de l'utiliser : la page Restauration retrouve
+    /// toujours les sauvegardes. Le dossier neuf (ou déplacé) n'est modifiable que par les administrateurs.
     /// </summary>
     private static string PrepareDataRoot()
     {
         var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        return PrepareDataRoot(Path.Combine(common, "AriaCockpit"), Path.Combine(common, "Aria"), Path.Combine(common, "PCTune"));
+        var home = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), FolderName);
+        var existed = Directory.Exists(home);
+        var root = PrepareDataRoot(home, Path.Combine(common, "AriaCockpit"), Path.Combine(common, "Aria"), Path.Combine(common, "PCTune"));
+        if (!existed && root == home) DataFolderSecurity.Protect(home);
+        return root;
     }
 
     /// <summary>Dossier à utiliser : le nouveau, éventuellement obtenu en renommant le plus récent des anciens.</summary>

@@ -2,7 +2,7 @@ using Aria.Core.Reporting;
 
 namespace Aria.Core.Cleanup;
 
-/// <summary>Rapport texte d'un nettoyage, dans C:\ProgramData\AriaCockpit\Rapports.</summary>
+/// <summary>Rapport texte d'un nettoyage, dans %USERPROFILE%\.Aria-Cockpit\Rapports.</summary>
 public static class CleanupReport
 {
     public static string Save(IReadOnlyList<CleanupResult> results, DateTime at)

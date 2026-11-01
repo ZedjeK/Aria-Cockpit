@@ -101,7 +101,7 @@ public partial class App : Application
     }
 }
 
-/// <summary>Journal des erreurs, dans C:\ProgramData\AriaCockpit\erreurs.log.</summary>
+/// <summary>Journal des erreurs, dans %USERPROFILE%\.Aria-Cockpit\erreurs.log.</summary>
 internal static class ErrorLog
 {
     private static string FilePath => Path.Combine(BackupStore.DataRoot, "erreurs.log");

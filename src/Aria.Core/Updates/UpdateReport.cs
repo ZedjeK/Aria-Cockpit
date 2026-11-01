@@ -2,7 +2,7 @@ using Aria.Core.Reporting;
 
 namespace Aria.Core.Updates;
 
-/// <summary>Rapport texte d'une installation de mises à jour, dans C:\ProgramData\AriaCockpit\Rapports.</summary>
+/// <summary>Rapport texte d'une installation de mises à jour, dans %USERPROFILE%\.Aria-Cockpit\Rapports.</summary>
 public static class UpdateReport
 {
     public static string Save(InstallOutcome outcome, int notSelected, NvidiaDriverCheck? nvidia)
