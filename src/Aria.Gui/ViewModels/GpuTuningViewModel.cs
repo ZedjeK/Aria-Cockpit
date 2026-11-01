@@ -21,6 +21,9 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     public GpuTelemetryViewModel Telemetry { get; } = new();
 
+    /// <summary>Carte « Ventilateur » : courbe de ventilation, indépendante des curseurs.</summary>
+    public FanCurveViewModel Fans { get; } = new();
+
     /// <summary>Assistant guidé : pendant qu'il travaille, le réglage manuel est en pause.</summary>
     public TuningAssistantViewModel Assistant { get; }
 
@@ -122,6 +125,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         await RefreshAsync(resetSliders: Current is null || !HasChanges);
         await Assistant.LoadRecordAsync();
         await LoadProfilesAsync();
+        await Fans.LoadAsync();
     }
 
     public void OnHidden() => Telemetry.Stop();

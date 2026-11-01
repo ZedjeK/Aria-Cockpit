@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.21 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.22 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -22,7 +22,7 @@
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
 | **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
-| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul et de mémoire vidéo ; un garde-fou signale les plantages du pilote |
+| **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul et de mémoire vidéo ; courbe de ventilation ; un garde-fou signale les plantages du pilote |
 | **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
@@ -189,6 +189,30 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
   incidents regroupés par nature (pour un seul problème, le pilote écrit souvent 5 à 7 lignes dans la même seconde). Un
   accès mémoire invalide (l'« illegal memory access » d'une IA locale sous CUDA) vient le plus souvent d'un cœur qui
   calcule faux, pas de la mémoire : le conseil est de revenir d'origine, puis de refaire l'assistant avec le banc d'essai.
+
+### Ventilateur
+
+Une courbe de ventilation remplace celle du pilote : vitesse selon la température du GPU, par les fonctions officielles
+de NVML (cartes Maxwell, GTX 900, et plus récentes).
+
+- **Préréglages** Silencieux, Équilibré et Refroidissement max, ou une courbe **personnalisée** (2 à 6 points
+  température → vitesse ; modifier un point d'un préréglage le rend personnalisé). Rien n'est appliqué sans confirmation.
+- **Sous le premier point, le pilote garde la main** : les ventilateurs peuvent toujours s'arrêter au repos. Entre les
+  points, la vitesse suit la température : elle monte aussitôt, et ne redescend que 3 °C plus bas, de 2 % par seconde au
+  plus, pour éviter le va-et-vient. La vitesse ne descend jamais sous le minimum que la carte accepte (souvent 30 %).
+- **Mes courbes** : enregistre les points affichés sous un nom (« Nuit », « Jeu »…). « Charger » remet une courbe dans
+  « Personnalisée » sans rien appliquer ; une fois appliquée, elle garde son nom dans « En place ». Les courbes valent pour
+  toutes les cartes (`ventilateur-profils.json`).
+- **Sécurités** : plein régime à 85 °C et plus, quelle que soit la courbe ; si la température devient illisible, le
+  pilote reprend la main ; si le pilote refuse une vitesse, la courbe s'arrête et lui rend la main.
+- **Tant qu'Aria Cockpit est ouvert** : NVML passe les ventilateurs en manuel, c'est donc Aria qui suit la température,
+  une fois par seconde, quelle que soit la page affichée. « Rendre la main au pilote », choisir « Automatique » ou fermer
+  Aria remet le réglage de NVIDIA. Si Aria s'arrête brutalement, les ventilateurs gardent leur dernière vitesse jusqu'au
+  lancement suivant, qui rend la main au pilote et le signale (le pilote bride de lui-même une carte qui chauffe trop).
+- **Un seul pilote à la fois** : si les ventilateurs sont déjà en manuel (MSI Afterburner, logiciel du fabricant…),
+  la confirmation le signale ; fermez l'autre outil, sinon les deux se contredisent.
+- La courbe tourne aussi pendant les mesures de l'assistant : choisissez « Automatique » avant Équilibre pour des
+  mesures comparables aux précédentes.
 
 ### L'assistant guidé : Équilibre, puis Économie ou Performance
 
@@ -388,15 +412,22 @@ chemins.
 
 ## Sauvegardes et rapports
 
-- Sauvegardes des valeurs d'origine : `C:\ProgramData\AriaCockpit\Sauvegardes`
-- Rapports : `C:\ProgramData\AriaCockpit\Rapports`
-- Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
-- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json`
-- Journal des erreurs : `C:\ProgramData\AriaCockpit\erreurs.log`
+Tout est rangé dans un seul dossier, dans ton profil : `C:\Users\<toi>\.Aria-Cockpit` (`%USERPROFILE%\.Aria-Cockpit`).
 
-Les versions précédentes rangeaient leurs données dans `C:\ProgramData\Aria` (0.13 et 0.14) ou
-`C:\ProgramData\PCTune` (0.12 et avant) : ce dossier est renommé automatiquement au premier lancement, les
-sauvegardes restent donc restaurables.
+- Sauvegardes des valeurs d'origine : `Sauvegardes`
+- Rapports : `Rapports`
+- Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
+- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json` ; courbe de ventilation : `ventilateur.json`, courbes enregistrées : `ventilateur-profils.json`
+- Journal des erreurs : `erreurs.log`
+
+Tu peux tout ouvrir et lire, mais seuls les administrateurs peuvent y écrire : Aria Cockpit tourne en administrateur et
+fait confiance à ces fichiers (la Restauration réécrit le registre d'après les sauvegardes, la tâche de démarrage applique
+le réglage GPU), alors un programme lancé sans droits ne doit pas pouvoir les modifier.
+
+Jusqu'à la 0.21, les données étaient dans `C:\ProgramData\AriaCockpit` (avant encore `C:\ProgramData\Aria`, 0.13 et
+0.14, ou `C:\ProgramData\PCTune`, 0.12 et avant) : ce dossier est déplacé automatiquement au premier lancement, les
+sauvegardes restent donc restaurables. S'il ne peut pas l'être (fichier ouvert, profil sur un autre disque), Aria
+continue d'utiliser l'ancien.
 
 Une restauration suit le même parcours qu'une application (nouvelle sauvegarde, point de restauration, vérification,
 rapport) : elle peut donc elle-même être annulée.
@@ -447,7 +478,7 @@ Version console en simulation, depuis la racine du projet :
   livré avec l'exe
 - `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core et des verdicts d'Aria-Bench (analyse de performance,
   recherche des paliers, origine d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc,
-  contrôles de stabilité, incidents du pilote, avis de Performance) ; rien n'y touche à la carte ni au système
+  contrôles de stabilité, incidents du pilote, avis de Performance, courbe de ventilation) ; rien n'y touche à la carte ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px

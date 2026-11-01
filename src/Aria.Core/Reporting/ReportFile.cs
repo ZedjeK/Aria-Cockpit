@@ -4,7 +4,7 @@ using Aria.Core.Models;
 
 namespace Aria.Core.Reporting;
 
-/// <summary>Rapport texte complet, enregistré dans C:\ProgramData\AriaCockpit\Rapports.</summary>
+/// <summary>Rapport texte complet, enregistré dans %USERPROFILE%\.Aria-Cockpit\Rapports.</summary>
 public static class ReportFile
 {
     public static string Folder => Path.Combine(BackupStore.DataRoot, "Rapports");

@@ -49,7 +49,7 @@ public sealed record TuningRun(
     IReadOnlyList<DriverIncident> Incidents);
 
 /// <summary>
-/// Rapport texte d'un passage de l'assistant, dans C:\ProgramData\AriaCockpit\Rapports : conclusion d'Aria, départ et
+/// Rapport texte d'un passage de l'assistant, dans %USERPROFILE%\.Aria-Cockpit\Rapports : conclusion d'Aria, départ et
 /// résultat, déroulé palier par palier avec la raison de chaque verdict, contrôles et garde-fous.
 /// </summary>
 public static class GpuTuningReport
