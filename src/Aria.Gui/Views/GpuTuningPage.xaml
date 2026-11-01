@@ -574,6 +574,60 @@
                 </Border.Style>
                 <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
               </Border>
+
+              <!-- Courbes enregistrées -->
+              <TextBlock Margin="0,22,0,0" Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="MES COURBES" />
+              <TextBlock
+                Margin="0,4,0,0"
+                FontSize="12.5"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="Aucune courbe enregistrée. Choisissez une courbe, ajustez ses points, puis enregistrez-la sous un nom."
+                TextWrapping="Wrap"
+                Visibility="{Binding HasProfiles, Converter={StaticResource InverseBoolToVisibility}}" />
+              <ItemsControl Focusable="False" ItemsSource="{Binding Profiles}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Padding="0,8" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Name}" TextWrapping="Wrap" />
+                          <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Summary}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                          <Button
+                            Padding="16,0"
+                            Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="CHARGER"
+                            Style="{StaticResource HudButtonGhost}"
+                            ToolTip="Met cette courbe dans « Personnalisée » ; Appliquer la pose ensuite" />
+                          <Button
+                            Margin="8,0,0,0"
+                            Padding="16,0"
+                            Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="SUPPRIMER"
+                            Style="{StaticResource HudButtonGhost}" />
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="NOM DE LA NOUVELLE COURBE" />
+              <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                <TextBox Width="260" MaxLength="40" Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" />
+                <Button
+                  Margin="10,0,0,0"
+                  Command="{Binding SaveProfileCommand}"
+                  Content="ENREGISTRER"
+                  Style="{StaticResource HudButtonGhost}"
+                  ToolTip="Enregistre les points affichés, sans rien appliquer" />
+              </StackPanel>
             </StackPanel>
           </StackPanel>
         </ContentControl>

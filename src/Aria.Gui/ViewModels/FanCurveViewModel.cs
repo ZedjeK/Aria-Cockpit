@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -29,19 +30,27 @@ public sealed partial class FanCurveViewModel : ObservableObject
     private bool _loaded, _filling;
     private IReadOnlyList<FanCurvePoint> _custom = FanCurve.Balanced.Points;
 
+    /// <summary>Nom de la courbe enregistrée chargée dans « Personnalisée » (null dès qu'un point change).</summary>
+    private string? _customName;
+
     public IReadOnlyList<string> Choices { get; } = [AutoChoice, .. FanCurve.Presets.Select(p => p.Name), CustomChoice];
 
     public ObservableCollection<FanPointRow> Points { get; } = [];
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowsPoints))] private string selected = AutoChoice;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand))] private bool isAvailable;
+    /// <summary>Courbes enregistrées (« Mes courbes »).</summary>
+    public ObservableCollection<SavedFanProfile> Profiles { get; } = [];
+    [ObservableProperty] private bool hasProfiles;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SaveProfileCommand))] private string profileName = "";
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowsPoints))] [NotifyCanExecuteChangedFor(nameof(SaveProfileCommand))] private string selected = AutoChoice;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isAvailable;
     [ObservableProperty] private bool isUnavailable;
     [ObservableProperty] private string rangeText = "";
     [ObservableProperty] private string statusText = "Pilote NVIDIA (automatique)";
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(StopCommand))] private bool isRunning;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasMessage))] private string message = "";
     [ObservableProperty] private bool messageIsError;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand))] private bool isBusy;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isBusy;
 
     public bool ShowsPoints => Selected != AutoChoice;
     public bool HasMessage => Message.Length > 0;
@@ -66,13 +75,30 @@ public sealed partial class FanCurveViewModel : ObservableObject
             RangeText = $"{fans.FanCount} ventilateur{(fans.FanCount > 1 ? "s" : "")} · vitesse imposée de {fans.MinPercent} à {fans.MaxPercent} % " +
                         "(en dessous, seul le pilote peut les arrêter).";
 
-            // Courbe personnalisée enregistrée : reprise dans « Personnalisée »
+            // Dernière courbe personnalisée (ou chargée depuis « Mes courbes ») : reprise dans « Personnalisée »
             var saved = await Task.Run(FanCurveStore.Load);
-            if (saved is not null && FanCurve.Presets.All(p => p.Name != saved.Name)) _custom = saved.Points;
-            Selected = FanCurveService.Running?.Name ?? AutoChoice;
+            if (saved is not null && !IsPreset(saved.Name))
+            {
+                _custom = saved.Points;
+                _customName = saved.Name == CustomChoice ? null : saved.Name;
+            }
+            Selected = FanCurveService.Running is not { } running ? AutoChoice
+                : IsPreset(running.Name) ? running.Name
+                : CustomChoice;
             if (FanCurveService.RecoveryNote is { } note) Show(note, FanCurveService.RecoveryFailed);
+            await LoadProfilesAsync();
         }
         RefreshStatus();
+    }
+
+    private static bool IsPreset(string name) => FanCurve.Presets.Any(p => p.Name == name);
+
+    private async Task LoadProfilesAsync()
+    {
+        var list = await Task.Run(FanProfiles.All);
+        Profiles.Clear();
+        foreach (var profile in list) Profiles.Add(profile);
+        HasProfiles = Profiles.Count > 0;
     }
 
     partial void OnSelectedChanged(string value)
@@ -101,6 +127,7 @@ public sealed partial class FanCurveViewModel : ObservableObject
     {
         if (_filling) return;
         _custom = Points.Select(r => r.ToPoint()).ToList();
+        _customName = null;
         if (Selected == CustomChoice) return;
         _filling = true;
         Selected = CustomChoice;
@@ -119,7 +146,9 @@ public sealed partial class FanCurveViewModel : ObservableObject
             return;
         }
 
-        var curve = new FanCurve(Selected, Points.Select(r => r.ToPoint()).ToList());
+        // Une courbe chargée depuis « Mes courbes » garde son nom tant qu'on n'y touche pas
+        var name = Selected == CustomChoice ? _customName ?? CustomChoice : Selected;
+        var curve = new FanCurve(name, Points.Select(r => r.ToPoint()).ToList());
         if (curve.Check() is { } error)
         {
             Show(error, error: true);
@@ -162,17 +191,73 @@ public sealed partial class FanCurveViewModel : ObservableObject
         _filling = false;
     }
 
-    private async Task RunAsync(Action action, string done)
+    // ---- Mes courbes ----
+
+    private bool CanSaveProfile() => CanAct() && ShowsPoints && ProfileName.Trim().Length > 0;
+
+    /// <summary>Enregistre les points affichés sous un nom (sans rien appliquer).</summary>
+    [RelayCommand(CanExecute = nameof(CanSaveProfile))]
+    private async Task SaveProfile()
+    {
+        var name = ProfileName.Trim();
+        var points = Points.Select(r => r.ToPoint()).ToList();
+        if (new FanCurve(name, points).Check() is { } error)
+        {
+            Show(error, error: true);
+            return;
+        }
+        if (await Task.Run(() => FanProfiles.Find(name)) is not null && !await DialogService.Current.ConfirmAsync(new DialogRequest(
+                Title: "Remplacer la courbe",
+                ConfirmText: "Remplacer",
+                Message: $"Une courbe « {name} » est déjà enregistrée. La remplacer par celle-ci ?")))
+            return;
+
+        if (!await RunAsync(() => FanProfiles.Save(new SavedFanProfile(name, points, DateTime.Now)), $"Courbe « {name} » enregistrée.")) return;
+        ProfileName = "";
+        if (Selected == CustomChoice) _customName = name;
+        await LoadProfilesAsync();
+    }
+
+    /// <summary>Met la courbe dans « Personnalisée » ; Appliquer la pose ensuite.</summary>
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private void LoadProfile(SavedFanProfile profile)
+    {
+        _custom = profile.Points;
+        _filling = true;
+        Selected = CustomChoice;
+        _filling = false;
+        Fill(profile.Points);
+        _customName = profile.Name;
+        Show($"Courbe « {profile.Name} » chargée : Appliquer la met en place.", error: false);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private async Task DeleteProfile(SavedFanProfile profile)
+    {
+        if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
+                Title: "Supprimer la courbe",
+                ConfirmText: "Supprimer",
+                Message: $"Supprimer la courbe enregistrée « {profile.Name} » ? Celle en place n'est pas touchée.",
+                Icon: "Delete24")))
+            return;
+        await RunAsync(() => FanProfiles.Delete(profile), $"Courbe « {profile.Name} » supprimée.");
+        await LoadProfilesAsync();
+    }
+
+    /// <summary>Lance l'action hors du fil de l'interface ; vrai si elle a réussi.</summary>
+    private async Task<bool> RunAsync(Action action, string done)
     {
         IsBusy = true;
         try
         {
             await Task.Run(action);
             Show(done, error: false);
+            return true;
         }
-        catch (GpuTuningException e)
+        catch (Exception e) when (e is GpuTuningException or IOException or UnauthorizedAccessException)
         {
             Show(e.Message, error: true);
+            return false;
         }
         finally
         {
