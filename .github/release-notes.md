@@ -18,9 +18,11 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 ## Nouveautés de la {VERSION}
 
 - **Courbe de ventilation** : dans Réglage GPU, une nouvelle carte « Ventilateur » remplace la courbe du pilote NVIDIA par la tienne. Préréglages Silencieux, Équilibré et Refroidissement max, ou une courbe personnalisée (2 à 6 points température → vitesse), confirmée avant d'être appliquée
+- **Mes courbes** : enregistre une courbe sous un nom (« Nuit », « Jeu »…) et recharge-la plus tard, comme les profils GPU
 - **Sous le premier point, le pilote garde la main** : les ventilateurs peuvent toujours s'arrêter au repos. La vitesse monte aussitôt avec la température et redescend en douceur, sans va-et-vient
 - **Sécurités** : plein régime à 85 °C quelle que soit la courbe, et retour au pilote si la température devient illisible ou si le pilote refuse une vitesse
 - **Tant qu'Aria est ouvert** : la courbe tourne quelle que soit la page affichée. La fermeture d'Aria, ou « Rendre la main au pilote », remet le réglage de NVIDIA ; après un arrêt brutal, le lancement suivant le remet aussi et le signale
+- **Un dossier pour toutes les données** : sauvegardes, rapports, réglage GPU, profils et courbe de ventilation sont désormais dans ton profil, `C:\Users\<toi>\.Aria-Cockpit`, plus facile à trouver. L'ancien dossier (`C:\ProgramData\AriaCockpit`) est déplacé automatiquement au premier lancement. Tu peux tout y lire, mais seuls les administrateurs peuvent y écrire, pour qu'un programme lancé sans droits ne puisse pas modifier ce qu'Aria réapplique
 
 Rappel de la 0.21.0 : le préréglage Ultra RT et le contrôle en ray tracing de la validation ont été retirés (ils n'aidaient pas à trouver un meilleur réglage) ; le banc Ultra donne exactement la même image qu'avant.
 

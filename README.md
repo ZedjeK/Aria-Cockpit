@@ -200,6 +200,9 @@ de NVML (cartes Maxwell, GTX 900, et plus récentes).
 - **Sous le premier point, le pilote garde la main** : les ventilateurs peuvent toujours s'arrêter au repos. Entre les
   points, la vitesse suit la température : elle monte aussitôt, et ne redescend que 3 °C plus bas, de 2 % par seconde au
   plus, pour éviter le va-et-vient. La vitesse ne descend jamais sous le minimum que la carte accepte (souvent 30 %).
+- **Mes courbes** : enregistre les points affichés sous un nom (« Nuit », « Jeu »…). « Charger » remet une courbe dans
+  « Personnalisée » sans rien appliquer ; une fois appliquée, elle garde son nom dans « En place ». Les courbes valent pour
+  toutes les cartes (`ventilateur-profils.json`).
 - **Sécurités** : plein régime à 85 °C et plus, quelle que soit la courbe ; si la température devient illisible, le
   pilote reprend la main ; si le pilote refuse une vitesse, la courbe s'arrête et lui rend la main.
 - **Tant qu'Aria Cockpit est ouvert** : NVML passe les ventilateurs en manuel, c'est donc Aria qui suit la température,
@@ -409,15 +412,22 @@ chemins.
 
 ## Sauvegardes et rapports
 
-- Sauvegardes des valeurs d'origine : `C:\ProgramData\AriaCockpit\Sauvegardes`
-- Rapports : `C:\ProgramData\AriaCockpit\Rapports`
-- Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
-- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json` ; courbe de ventilation : `ventilateur.json`
-- Journal des erreurs : `C:\ProgramData\AriaCockpit\erreurs.log`
+Tout est rangé dans un seul dossier, dans ton profil : `C:\Users\<toi>\.Aria-Cockpit` (`%USERPROFILE%\.Aria-Cockpit`).
 
-Les versions précédentes rangeaient leurs données dans `C:\ProgramData\Aria` (0.13 et 0.14) ou
-`C:\ProgramData\PCTune` (0.12 et avant) : ce dossier est renommé automatiquement au premier lancement, les
-sauvegardes restent donc restaurables.
+- Sauvegardes des valeurs d'origine : `Sauvegardes`
+- Rapports : `Rapports`
+- Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
+- Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json` ; courbe de ventilation : `ventilateur.json`, courbes enregistrées : `ventilateur-profils.json`
+- Journal des erreurs : `erreurs.log`
+
+Tu peux tout ouvrir et lire, mais seuls les administrateurs peuvent y écrire : Aria Cockpit tourne en administrateur et
+fait confiance à ces fichiers (la Restauration réécrit le registre d'après les sauvegardes, la tâche de démarrage applique
+le réglage GPU), alors un programme lancé sans droits ne doit pas pouvoir les modifier.
+
+Jusqu'à la 0.21, les données étaient dans `C:\ProgramData\AriaCockpit` (avant encore `C:\ProgramData\Aria`, 0.13 et
+0.14, ou `C:\ProgramData\PCTune`, 0.12 et avant) : ce dossier est déplacé automatiquement au premier lancement, les
+sauvegardes restent donc restaurables. S'il ne peut pas l'être (fichier ouvert, profil sur un autre disque), Aria
+continue d'utiliser l'ancien.
 
 Une restauration suit le même parcours qu'une application (nouvelle sauvegarde, point de restauration, vérification,
 rapport) : elle peut donc elle-même être annulée.
