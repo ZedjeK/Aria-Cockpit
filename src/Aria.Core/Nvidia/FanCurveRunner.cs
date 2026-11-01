@@ -38,7 +38,8 @@ public sealed class FanCurveRunner(IFanDevice device, FanCurveController control
     {
         if (_stop is null) return;
         _stop.Cancel();
-        try { await _loop!; }
+        // Sans revenir sur le fil de l'interface : la fermeture d'Aria attend cet arrêt sans pouvoir l'interrompre
+        try { await _loop!.ConfigureAwait(false); }
         catch (OperationCanceledException) { }
         _stop.Dispose();
         _stop = null;
@@ -53,7 +54,7 @@ public sealed class FanCurveRunner(IFanDevice device, FanCurveController control
         do
         {
             if (!Tick()) return;
-        } while (await timer.WaitForNextTickAsync(token));
+        } while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false));
     }
 
     /// <summary>Un relevé : lecture, décision, envoi. Faux si une erreur a arrêté la courbe.</summary>

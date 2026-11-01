@@ -29,6 +29,8 @@ public partial class App : Application
         var state = new AppState();
         new MainWindow(state).Show();
         _ = state.AnalyzeAsync();
+        // Ventilateurs laissés en manuel par un arrêt brutal d'Aria : rendus au pilote
+        _ = Task.Run(Services.FanCurveService.RecoverAfterCrash);
     }
 
     private bool _showingError;
@@ -85,6 +87,15 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        // Courbe de ventilation en cours : le pilote reprend la main avant qu'Aria ne se ferme
+        try
+        {
+            Services.FanCurveService.Stop();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write(ex);
+        }
         FlushRepeats();
         base.OnExit(e);
     }

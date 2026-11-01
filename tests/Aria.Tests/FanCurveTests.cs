@@ -143,6 +143,28 @@ public class FanCurveTests
         Assert.Equal(1, fans.AutoCalls);
     }
 
+    [Fact]
+    public void SavedCurveSurvivesARoundTrip()
+    {
+        var saved = new FanCurveChoice("Perso", [new(45, 35), new(70, 70)], Active: true);
+
+        var loaded = FanCurveStore.FromJson(FanCurveStore.ToJson(saved));
+
+        Assert.NotNull(loaded);
+        Assert.Equal("Perso", loaded.Name);
+        Assert.Equal(saved.Points, loaded.Points);
+        Assert.True(loaded.Active);
+    }
+
+    [Theory]
+    [InlineData("pas du json")]
+    [InlineData("{\"Name\":\"Faux\",\"Points\":[{\"TemperatureC\":70,\"Percent\":50},{\"TemperatureC\":60,\"Percent\":60}],\"Active\":false}")]
+    [InlineData("{\"Name\":\"Vide\",\"Active\":true}")]
+    public void DamagedOrIncoherentCurveFileIsIgnored(string json)
+    {
+        Assert.Null(FanCurveStore.FromJson(json));
+    }
+
     private sealed class FakeFans : IFanDevice
     {
         public uint? Temperature { get; set; }

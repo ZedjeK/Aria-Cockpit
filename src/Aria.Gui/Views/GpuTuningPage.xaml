@@ -394,7 +394,8 @@
           <ColumnDefinition Width="360" />
         </Grid.ColumnDefinitions>
 
-        <!-- ===== Curseurs ===== -->
+        <!-- ===== Curseurs, puis ventilateur ===== -->
+        <StackPanel>
         <ContentControl Style="{StaticResource HudPanel}">
           <StackPanel>
             <TextBlock Margin="0,0,0,16" Style="{StaticResource HudCode}" Text="RÉGLAGE MANUEL" />
@@ -506,6 +507,77 @@
               Visibility="{Binding BalancedDriverChanged, Converter={StaticResource BoolToVisibility}}" />
           </StackPanel>
         </ContentControl>
+
+        <!-- ===== Ventilateur ===== -->
+        <ContentControl Margin="0,14,0,0" DataContext="{Binding Fans}" Style="{StaticResource HudPanel}">
+          <StackPanel>
+            <TextBlock Margin="0,0,0,16" Style="{StaticResource HudCode}" Text="VENTILATEUR" />
+            <TextBlock
+              Foreground="{StaticResource NeonMutedBrush}"
+              Text="Ventilateurs non pilotables : il faut une carte NVIDIA Maxwell (GTX 900) ou plus récente, avec ses propres ventilateurs."
+              TextWrapping="Wrap"
+              Visibility="{Binding IsUnavailable, Converter={StaticResource BoolToVisibility}}" />
+
+            <StackPanel Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVisibility}}">
+              <Grid>
+                <TextBlock Style="{StaticResource SliderLabel}" Text="EN PLACE" />
+                <TextBlock Style="{StaticResource SliderValue}" Text="{Binding StatusText}" />
+              </Grid>
+              <TextBlock Style="{StaticResource SliderHelp}" Text="{Binding RangeText}" />
+
+              <TextBlock Style="{StaticResource SliderLabel}" Text="COURBE" />
+              <ComboBox
+                Margin="0,6,0,0"
+                ItemsSource="{Binding Choices}"
+                SelectedItem="{Binding Selected}" />
+
+              <!-- Points de la courbe : température → vitesse -->
+              <ItemsControl Margin="0,12,0,0" Focusable="False" ItemsSource="{Binding Points}" Visibility="{Binding ShowsPoints, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="0,3" Orientation="Horizontal">
+                      <TextBox Width="70" HorizontalContentAlignment="Right" MaxLength="3" Text="{Binding TemperatureC, UpdateSourceTrigger=LostFocus}" />
+                      <TextBlock Margin="8,0,14,0" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="°C  →" />
+                      <TextBox Width="70" HorizontalContentAlignment="Right" MaxLength="3" Text="{Binding Percent, UpdateSourceTrigger=LostFocus}" />
+                      <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="%" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Style="{StaticResource SliderHelp}" Text="Sous le premier point, le pilote garde la main : les ventilateurs peuvent s'arrêter au repos. Entre les points, la vitesse suit la température ; elle monte aussitôt et redescend en douceur. À 85 °C et plus, plein régime quelle que soit la courbe. La courbe tourne tant qu'Aria est ouvert ; à sa fermeture, le pilote reprend la main." />
+
+              <StackPanel Orientation="Horizontal">
+                <Button Command="{Binding ApplyCommand}" Content="APPLIQUER" Style="{StaticResource HudButton}" />
+                <Button
+                  Margin="10,0,0,0"
+                  Command="{Binding StopCommand}"
+                  Content="RENDRE LA MAIN AU PILOTE"
+                  Style="{StaticResource HudButtonGhost}"
+                  Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibility}}" />
+              </StackPanel>
+              <Border
+                Margin="0,12,0,0"
+                Padding="12,8"
+                BorderThickness="2,0,0,0"
+                Visibility="{Binding HasMessage, Converter={StaticResource BoolToVisibility}}">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Background" Value="#147DF9FF" />
+                    <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding MessageIsError}" Value="True">
+                        <Setter Property="Background" Value="#1FFF3D5A" />
+                        <Setter Property="BorderBrush" Value="{StaticResource NeonRedBrush}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+              </Border>
+            </StackPanel>
+          </StackPanel>
+        </ContentControl>
+        </StackPanel>
 
         <!-- ===== Colonne de droite : en direct, état, recettes ===== -->
         <StackPanel Grid.Column="2">
