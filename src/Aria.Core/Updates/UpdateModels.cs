@@ -34,6 +34,18 @@ public sealed class UpdateItem
     public UpdateFlags Flags { get; init; }
     public bool SelectedByDefault { get; init; }
 
+    /// <summary>
+    /// Ce que l'éditeur en dit : description de Windows Update, ou notes de version du paquet winget (lues après la
+    /// recherche, d'où l'écriture possible). null si rien.
+    /// </summary>
+    public string? Details { get; set; }
+
+    /// <summary>Page d'information (article KB de Microsoft, notes de version de l'éditeur), toujours en http ou https.</summary>
+    public string? InfoUrl { get; set; }
+
+    /// <summary>Failles corrigées (identifiants CVE), pour Windows Update.</summary>
+    public IReadOnlyList<string> Cves { get; init; } = [];
+
     // Données d'installation, propres à chaque source
     internal string? PackageId { get; init; }
     internal string? PackageSource { get; init; }

@@ -48,6 +48,10 @@
                       <ColumnDefinition Width="Auto" />
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
                     <!-- Toute la zone de texte coche/décoche la ligne -->
                     <CheckBox
@@ -107,6 +111,21 @@
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <!-- Précisions (mises à jour) : hors de la case à cocher, pour que le lien ne coche ni ne décoche la ligne -->
+                    <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="34,6,6,0">
+                      <TextBlock
+                        FontSize="12.5"
+                        Foreground="{StaticResource NeonBlueLightBrush}"
+                        Text="{Binding Details}"
+                        TextWrapping="Wrap"
+                        Visibility="{Binding HasDetails, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}" />
+                      <TextBlock Margin="0,4,0,0" FontSize="12.5" Visibility="{Binding HasLink, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}">
+                        <Hyperlink Command="{Binding OpenLinkCommand}" Foreground="{StaticResource NeonCyanBrush}">
+                          <Run Text="{Binding LinkText}" />
+                        </Hyperlink>
+                      </TextBlock>
+                    </StackPanel>
                   </Grid>
                 </ContentControl>
               </DataTemplate>

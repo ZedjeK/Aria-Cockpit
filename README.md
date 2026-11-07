@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.23 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.24 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
@@ -409,7 +409,17 @@ les performances mesurées ne sont alors pas représentatives.
 
 - **Windows Update** : interface officielle de Windows. Cochées d'office : sécurité, correctifs, antivirus.
   Jamais cochés d'office : pilotes proposés par Windows Update, nouvelles versions de Windows, préversions.
+  Sous chaque mise à jour : la description de Microsoft, le nombre de failles de sécurité corrigées (CVE) et un lien
+  vers l'article KB ou la page d'information de Microsoft.
+- **Historique de Windows Update** : les 40 dernières opérations, y compris ce que Windows fait seul en arrière-plan
+  (Microsoft Store, plateforme de sécurité…), avec leur résultat, la mention « depuis Aria Cockpit » pour celles lancées
+  depuis Aria et un lien « En savoir plus ». Les définitions Defender, installées plusieurs fois par jour, sont
+  regroupées : seule la plus récente est affichée. Relu à chaque ouverture de la page et après chaque installation.
 - **Applications** : winget (gestionnaire officiel de Windows). Une ligne mal lue n'est jamais proposée.
+  Après la recherche, Aria lit en arrière-plan les notes de version de chaque application (`winget show`) : un lien
+  « Notes de version de l'éditeur », et un aperçu du texte quand le paquet le contient. Tous les paquets n'en
+  fournissent pas. Les libellés de winget sont reconnus en français et en anglais. Seules les adresses web (http, https)
+  sont ouvertes, dans le navigateur, sans les droits administrateur.
 - **Pilote NVIDIA** : comparaison avec le dernier pilote Game Ready, via le service de recherche du site
   NVIDIA (non officiel). Téléchargement par le navigateur, l'installation reste celle de NVIDIA.
 - **BIOS** : version installée et lien de recherche vers la page support ; jamais mis à jour par Aria Cockpit.
@@ -419,7 +429,9 @@ les performances mesurées ne sont alors pas représentatives.
 Un point de restauration Windows est créé avant chaque installation (Aria Cockpit ne désinstalle pas les mises à jour).
 Les applications à mettre à jour qui sont ouvertes sont listées avec un compte à rebours de 20 s, puis fermées
 normalement (fermeture forcée au bout de 10 s) ; on peut aussi les fermer tout de suite, les exclure ou annuler.
-Le téléchargement des applications s'affiche en direct (« Téléchargement · 45 % · 44 Mo / 98 Mo »).
+Le téléchargement des applications s'affiche en direct (« Téléchargement · 45 % · 44 Mo / 98 Mo »). Le rapport
+`mises-a-jour_<date>.txt` garde, pour chaque mise à jour, les failles corrigées et le lien vers l'article ou les notes
+de version.
 
 ## Nettoyage
 
