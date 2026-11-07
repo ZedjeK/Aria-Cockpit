@@ -44,6 +44,9 @@ public static class UpdateReport
                     : "";
                 w.WriteLine($"  {status,-30} {r.Item.Title}{versions}");
                 if (r.Error is not null) w.WriteLine($"  {"",-30} ↳ {r.Error}");
+                // Ce que la mise à jour apporte : failles corrigées, page de l'article ou des notes de version
+                if (UpdateDetails.CveSummary(r.Item.Cves.Count) is { } cves) w.WriteLine($"  {"",-30} ↳ {cves}");
+                if (r.Item.InfoUrl is { } url) w.WriteLine($"  {"",-30} ↳ {url}");
             }
         }
 

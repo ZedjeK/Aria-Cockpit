@@ -68,6 +68,20 @@ public sealed class WingetService
         return new ProviderResult(items, skipped, null);
     }
 
+    /// <summary>
+    /// Notes de version de la nouvelle version (lien, et texte quand le paquet le fournit), par « winget show ».
+    /// Bloquant (1 à quelques secondes) : à lancer hors du fil de l'interface. Rien en cas d'échec.
+    /// </summary>
+    public static PackageNotes Notes(UpdateItem item)
+    {
+        if (item.Source != UpdateSource.Application || item.PackageId is not { Length: > 0 } id || id.Contains('"'))
+            return PackageNotes.None;
+        var source = item.PackageSource is { Length: > 0 } s && !s.Contains('"') ? $" --source \"{s}\"" : "";
+        var run = WingetRunner.Run($"show --id \"{id}\" --exact{source} --accept-source-agreements --disable-interactivity",
+            TimeSpan.FromSeconds(45));
+        return run.NotFound || run.TimedOut || run.ExitCode != 0 ? PackageNotes.None : UpdateDetails.ParseWingetShow(run.Output);
+    }
+
     /// <param name="onProgress">Appelé pendant l'installation (téléchargement, puis installation).</param>
     public InstallResult Install(UpdateItem item, Action<WingetProgress>? onProgress = null)
     {

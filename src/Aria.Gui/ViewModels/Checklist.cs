@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace Aria.Gui.ViewModels;
 
@@ -28,6 +29,27 @@ public sealed partial class CheckItem(
     public string Reason { get; } = reason;
     public object Payload { get; } = payload;
     public IReadOnlyList<Badge> Badges { get; } = badges;
+
+    /// <summary>Précisions sous la ligne (description Windows Update, notes de version), arrivées éventuellement après coup.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDetails))]
+    private string details = "";
+
+    /// <summary>Page d'information ouverte par le lien sous la ligne (toujours en http ou https).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLink))]
+    private string linkUrl = "";
+
+    [ObservableProperty] private string linkText = "";
+
+    public bool HasDetails => !string.IsNullOrWhiteSpace(Details);
+    public bool HasLink => !string.IsNullOrWhiteSpace(LinkUrl);
+
+    [RelayCommand]
+    private void OpenLink()
+    {
+        if (Aria.Core.Updates.UpdateDetails.SafeUrl(LinkUrl) is { } url) Services.Shell.OpenUnelevated(url);
+    }
 }
 
 /// <summary>Un groupe de lignes, avec une case « tout cocher » à trois états.</summary>

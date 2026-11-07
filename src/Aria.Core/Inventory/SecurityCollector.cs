@@ -65,15 +65,6 @@ public static partial class SecurityCollector
     private const int Succeeded = 2;
     private const int SucceededWithErrors = 3;
 
-    /// <summary>Définitions Microsoft Defender (quotidiennes) et plateforme antivirus : ne sont pas des correctifs de Windows.</summary>
-    private static readonly HashSet<string> DefenderKbs = ["2267602", "4052623", "2311978", "915597"];
-
-    /// <summary>
-    /// Numéro d'article : « KB5127936 », ou « 2267602 Ko » sur un Windows en français (« KB » y est traduit).
-    /// Les applications du Microsoft Store et les pilotes n'en ont pas.
-    /// </summary>
-    [GeneratedRegex(@"\bKB\s?(?<kb>\d{6,8})\b|\b(?<kb>\d{6,8})\s?Ko\b", RegexOptions.IgnoreCase)]
-    private static partial Regex KbNumber();
 
     private static DateTime? ReadLastUpdate(List<string> warnings)
     {
@@ -120,7 +111,7 @@ public static partial class SecurityCollector
             .Where(e => e.Operation == Installation && e.ResultCode is Succeeded or SucceededWithErrors && e.Date > DateTime.MinValue)
             .Where(e => !e.Categories.Any(c => c.Equals(WindowsUpdateService.DefinitionUpdates, StringComparison.OrdinalIgnoreCase)
                                                || c.Equals(WindowsUpdateService.Drivers, StringComparison.OrdinalIgnoreCase)))
-            .Where(e => KbNumber().Match(e.Title) is { Success: true } kb && !DefenderKbs.Contains(kb.Groups["kb"].Value))
+            .Where(e => UpdateDetails.KbOf(e.Title) is { } kb && !UpdateDetails.DefenderKbs.Contains(kb))
             .Select(e => (DateTime?)e.Date)
             .Max();
 

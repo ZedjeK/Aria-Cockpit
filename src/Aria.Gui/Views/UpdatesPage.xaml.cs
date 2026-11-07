@@ -9,5 +9,10 @@ public partial class UpdatesPage : Page
     {
         DataContext = viewModel;
         InitializeComponent();
+        // Historique de Windows Update relu à chaque affichage de la page (lecture locale, rapide)
+        Loaded += (_, _) =>
+        {
+            if (viewModel.LoadHistoryCommand.CanExecute(null)) viewModel.LoadHistoryCommand.Execute(null);
+        };
     }
 }

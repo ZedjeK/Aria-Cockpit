@@ -222,6 +222,51 @@
               <ItemsControl ItemTemplate="{StaticResource SimpleRowTemplate}" ItemsSource="{Binding Skipped}" />
             </ui:CardExpander>
           </StackPanel>
+
+          <!-- Historique de Windows Update : ce que Windows a fait, seul ou depuis Aria (avant comme après la recherche) -->
+          <ui:CardExpander
+            Margin="0,18,0,0"
+            Header="{Binding HistoryHeader}"
+            Visibility="{Binding HasHistory, Converter={StaticResource BoolToVisibility}}">
+            <ItemsControl ItemsSource="{Binding History}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,5">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="130" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Date}" />
+                    <StackPanel Grid.Column="1" Margin="12,0,16,0">
+                      <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                      <WrapPanel Margin="0,2,0,0">
+                        <TextBlock
+                          Margin="0,0,10,0"
+                          FontSize="12"
+                          Foreground="{StaticResource NeonOrangeBrush}"
+                          Text="depuis Aria Cockpit"
+                          Visibility="{Binding ByAria, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock FontSize="12" Visibility="{Binding HasUrl, Converter={StaticResource BoolToVisibility}}">
+                          <Hyperlink
+                            Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                            CommandParameter="{Binding Url}"
+                            Foreground="{StaticResource NeonCyanBrush}">
+                            <Run Text="En savoir plus" />
+                          </Hyperlink>
+                        </TextBlock>
+                      </WrapPanel>
+                    </StackPanel>
+                    <TextBlock
+                      Grid.Column="2"
+                      FontFamily="{StaticResource MonoFont}"
+                      Foreground="{Binding Tone, Converter={StaticResource SeverityBrush}}"
+                      Text="{Binding Status}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ui:CardExpander>
         </StackPanel>
       </ScrollViewer>
 

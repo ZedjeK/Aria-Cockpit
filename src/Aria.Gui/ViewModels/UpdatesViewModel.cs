@@ -32,6 +32,13 @@ public sealed record OpenAppRow(string Name, string Processes);
 /// <summary>Choix de l'utilisateur face aux applications ouvertes.</summary>
 public enum OpenAppsChoice { Close, Skip, Cancel }
 
+/// <summary>Ligne de l'historique de Windows Update.</summary>
+/// <param name="ByAria">Installée depuis Aria Cockpit ; sinon par Windows lui-même, en arrière-plan.</param>
+public sealed record HistoryRow(string Date, string Title, string Status, Severity Tone, bool ByAria, string? Url)
+{
+    public bool HasUrl => Url is not null;
+}
+
 /// <summary>Ligne du résultat d'installation.</summary>
 public sealed record UpdateResultRow(string Name, string Detail, string Status, Severity Tone, string? Error)
 {
@@ -49,6 +56,12 @@ public sealed partial class UpdatesViewModel : ObservableObject
     private NvidiaDriverCheck? _nvidia;
     private string? _biosSearch;
     private CancellationTokenSource? _stop;
+
+    /// <summary>Lecture des notes de version des applications, interrompue par une nouvelle recherche ou une installation.</summary>
+    private CancellationTokenSource? _notesStop;
+
+    /// <summary>Nombre d'opérations de l'historique affichées.</summary>
+    private const int HistorySize = 40;
 
     private const int CountdownSeconds = 20;
     private TaskCompletionSource<OpenAppsChoice>? _openAppsChoice;
@@ -80,6 +93,11 @@ public sealed partial class UpdatesViewModel : ObservableObject
     [ObservableProperty] private string skippedHeader = "";
     [ObservableProperty] private string errors = "";
     [ObservableProperty] private bool hasErrors;
+
+    // ---- Historique de Windows Update ----
+    [ObservableProperty] private IReadOnlyList<HistoryRow> history = [];
+    [ObservableProperty] private bool hasHistory;
+    [ObservableProperty] private string historyHeader = "Historique de Windows Update";
 
     // ---- Sélection ----
     [ObservableProperty]
@@ -170,6 +188,11 @@ public sealed partial class UpdatesViewModel : ObservableObject
 
             await Task.WhenAll(wuTask, appTask, nvidiaTask);
             ShowSearch(wuTask.Result, appTask.Result, nvidiaTask.Result);
+
+            // Notes de version des applications : une par une, en arrière-plan, sans retarder la liste
+            _notesStop?.Cancel();
+            _notesStop = new CancellationTokenSource();
+            _ = LoadReleaseNotesAsync(appTask.Result.Items, _notesStop.Token);
         }
         catch (Exception e)
         {
@@ -253,7 +276,89 @@ public sealed partial class UpdatesViewModel : ObservableObject
             ? (item.CurrentVersion ?? "inconnue", item.NewVersion ?? "")
             : ("", item.SizeBytes is > 0 ? Size(item.SizeBytes.Value) : "");
 
-        return new CheckItem(item.Title, from, to, item.Reason, item.SelectedByDefault, item, badges);
+        var check = new CheckItem(item.Title, from, to, item.Reason, item.SelectedByDefault, item, badges);
+        ShowDetails(check, item);
+        return check;
+    }
+
+    /// <summary>
+    /// Précisions sous la ligne : description et failles corrigées (Windows Update), notes de version (applications),
+    /// et le lien vers l'article de Microsoft ou la page de l'éditeur.
+    /// </summary>
+    private static void ShowDetails(CheckItem check, UpdateItem item)
+    {
+        var lines = new[] { item.Details, UpdateDetails.CveSummary(item.Cves.Count) }.Where(l => !string.IsNullOrWhiteSpace(l));
+        check.Details = string.Join("\n", lines);
+        check.LinkUrl = item.InfoUrl ?? "";
+        check.LinkText = item.Source == UpdateSource.Application
+            ? "Notes de version de l'éditeur"
+            : item.NewVersion is { } kb && item.InfoUrl?.Contains("support.microsoft.com", StringComparison.OrdinalIgnoreCase) == true
+                ? $"Article {kb} chez Microsoft"
+                : "Plus d'informations chez Microsoft";
+    }
+
+    /// <summary>Notes de version des applications proposées, lues une par une par « winget show ».</summary>
+    private async Task LoadReleaseNotesAsync(IReadOnlyList<UpdateItem> apps, CancellationToken stop)
+    {
+        foreach (var item in apps)
+        {
+            if (stop.IsCancellationRequested || IsInstalling) return;
+            PackageNotes notes;
+            try
+            {
+                notes = await Task.Run(() => WingetService.Notes(item), stop);
+            }
+            catch (OperationCanceledException) { return; }
+            if (stop.IsCancellationRequested) return;
+
+            item.InfoUrl = notes.Url;
+            item.Details = notes.Text;
+            if (AllItems.FirstOrDefault(c => ReferenceEquals(c.Payload, item)) is { } check) ShowDetails(check, item);
+        }
+    }
+
+    // ================================================================ Historique
+
+    /// <summary>Lit l'historique de Windows Update (à l'ouverture de la page et après chaque installation).</summary>
+    [RelayCommand]
+    private async Task LoadHistory()
+    {
+        try
+        {
+            var view = await Task.Run(() => WindowsUpdateHistory.ReadView(HistorySize));
+            var entries = view.Entries;
+            History = entries.Select(e => new HistoryRow(
+                e.Date == DateTime.MinValue ? "?" : e.Date.ToString("dd/MM/yyyy HH:mm"),
+                e.Title,
+                (e.IsUninstall ? "désinstallation " : "") + WindowsUpdateHistory.Describe(e.Result),
+                e.Result switch
+                {
+                    HistoryResult.Succeeded => Severity.Ok,
+                    HistoryResult.SucceededWithErrors or HistoryResult.InProgress => Severity.Info,
+                    _ => Severity.Warning
+                },
+                e.ByAria,
+                e.Url)).ToList();
+            var failed = entries.Count(e => e.Result is HistoryResult.Failed or HistoryResult.Aborted);
+            var details = new List<string> { $"{entries.Count} dernières opérations" };
+            if (failed > 0) details.Add($"{failed} en échec");
+            if (view.GroupedDefinitions > 0)
+                details.Add($"définitions Defender : la plus récente seulement ({view.GroupedDefinitions} autres masquées)");
+            HistoryHeader = $"Historique de Windows Update ({string.Join(" · ", details)})";
+            HasHistory = History.Count > 0;
+        }
+        catch (Exception e)
+        {
+            // Historique facultatif : la page reste utilisable sans lui
+            ErrorLog.Write(e);
+            HasHistory = false;
+        }
+    }
+
+    [RelayCommand]
+    private void OpenUrl(string? url)
+    {
+        if (UpdateDetails.SafeUrl(url) is { } safe) Shell.OpenUnelevated(safe);
     }
 
     private void ShowNvidiaCard(NvidiaDriverCheck? check)
@@ -396,6 +501,7 @@ public sealed partial class UpdatesViewModel : ObservableObject
             }
         }
 
+        _notesStop?.Cancel();   // pas de « winget show » pendant les installations
         IsInstalling = true;
         StopRequested = false;
         ProgressValue = 0;
@@ -437,6 +543,7 @@ public sealed partial class UpdatesViewModel : ObservableObject
             IsInstalling = false;
             _stop.Dispose();
             _stop = null;
+            _ = LoadHistory();
         }
     }
 

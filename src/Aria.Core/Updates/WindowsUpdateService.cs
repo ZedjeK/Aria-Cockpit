@@ -98,18 +98,36 @@ public sealed class WindowsUpdateService
             title: Com.Str(update, "Title"),
             requiresReboot: reboot);
 
+        var title = Com.Str(update, "Title");
         return new UpdateItem
         {
             Key = $"wu:{Com.Str(Com.Get(update, "Identity")!, "UpdateID")}",
             Source = UpdateSource.WindowsUpdate,
-            Title = Com.Str(update, "Title"),
+            Title = title,
             NewVersion = kb is null ? null : $"KB{kb}",
             Reason = reason,
             SizeBytes = Convert.ToInt64(Com.Get(update, "MaxDownloadSize")),
             Flags = flags,
             SelectedByDefault = selected,
+            Details = UpdateDetails.CleanDescription(Com.Get(update, "Description") as string, title),
+            InfoUrl = UpdateDetails.WindowsUpdateLink(
+                Strings(update, "MoreInfoUrls"), kb, Com.Get(update, "SupportUrl") as string),
+            Cves = Strings(update, "CveIDs").OfType<string>().Where(c => c.Length > 0).Distinct().ToList(),
             ComUpdate = update
         };
+    }
+
+    /// <summary>Collection de chaînes d'une mise à jour (liens, CVE) ; vide si la propriété manque à cette version de l'agent.</summary>
+    private static IReadOnlyList<string?> Strings(object update, string property)
+    {
+        try
+        {
+            return Com.Items(Com.Get(update, property)).Select(s => s?.ToString()).ToList();
+        }
+        catch (Exception e) when (e is COMException or MissingMemberException or System.Reflection.TargetInvocationException)
+        {
+            return [];
+        }
     }
 
     /// <summary>
