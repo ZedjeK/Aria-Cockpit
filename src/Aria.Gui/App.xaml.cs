@@ -21,6 +21,22 @@ public partial class App : Application
             return;
         }
 
+        // Lancé par la tâche planifiée à l'ouverture de session : réapplique la limite de charge (ASUS, Lenovo), sans fenêtre
+        if (e.Args.Contains(Aria.Core.Battery.ChargeLimits.Argument, StringComparer.OrdinalIgnoreCase))
+        {
+            Aria.Core.Battery.ChargeLimits.ReapplyAtLogon();
+            Shutdown();
+            return;
+        }
+
+        // Déjà ouvert dans cette session : il revient au premier plan, sans seconde fenêtre
+        if (!Services.SingleInstance.Claim())
+        {
+            Services.SingleInstance.SignalRunning();
+            Shutdown();
+            return;
+        }
+
         // Thème « cockpit » : sombre imposé (les effets néon ne rendent rien sur fond clair)
         // et accent orange Blade Runner pour le menu, les boutons et les sélections.
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.None, updateAccent: false);
@@ -31,6 +47,18 @@ public partial class App : Application
         _ = state.AnalyzeAsync();
         // Ventilateurs laissés en manuel par un arrêt brutal d'Aria : rendus au pilote
         _ = Task.Run(Services.FanCurveService.RecoverAfterCrash);
+        // Ménage du dossier des données, une fois par jour au plus
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (DataRetention.RunDaily() is { } cleaned) ErrorLog.WriteLine(cleaned);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex);
+            }
+        });
     }
 
     private bool _showingError;

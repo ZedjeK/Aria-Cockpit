@@ -139,6 +139,14 @@ internal static class NativePower
     public static bool IsOnAcPower() =>
         !GetSystemPowerStatus(out var status) || status.ACLineStatus != 0;
 
+    /// <summary>Niveau de charge et branchement sur secteur (null quand Windows ne les connaît pas : valeur 255).</summary>
+    public static (int? ChargePercent, bool? OnAcPower) BatteryStatus()
+    {
+        if (!GetSystemPowerStatus(out var status)) return (null, null);
+        return (status.BatteryLifePercent <= 100 ? status.BatteryLifePercent : null,
+            status.ACLineStatus switch { 0 => false, 1 => true, _ => null });
+    }
+
     public static string PlanName(Guid plan) =>
         plan == Balanced ? "Équilibré"
         : plan == HighPerformance ? "Performances élevées"

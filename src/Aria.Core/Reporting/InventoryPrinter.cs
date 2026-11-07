@@ -131,7 +131,8 @@ public static class InventoryPrinter
         output.Section("ÉTAT DE WINDOWS");
         output.Line("Protection", hw.SystemState.SystemProtection switch { true => "points de restauration actifs", false => "désactivée", null => "?" });
         output.Line("Redémarrage", hw.SystemState.PendingReboot switch { true => "en attente", false => "aucun en attente", null => "?" });
-        if (hw.Battery is { } battery) output.Line("Batterie", $"{battery.HealthPercent} % de la capacité d'origine");
+        if (hw.Battery is { HasHealth: true } battery) output.Line("Batterie", $"{battery.HealthPercent} % de la capacité d'origine");
+        if (hw.ChargeLimit is { } limit) output.Line("Charge", $"{limit.Display} ({limit.VendorName})");
 
         if (hw.Warnings.Count > 0)
         {

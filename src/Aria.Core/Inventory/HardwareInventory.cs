@@ -28,8 +28,11 @@ public static class HardwareInventory
         hw.Peripherals = Safe(hw, "périphériques", PeripheralCollector.Collect, PeripheralInfo.Unknown);
         hw.Network = Safe(hw, "réseau", NetworkCollector.Collect, []);
         hw.SystemState = Safe(hw, "état de Windows", SystemStateCollector.Collect, SystemStateInfo.Unknown);
+        hw.Security = Safe(hw, "protections du PC", () => SecurityCollector.Collect(hw.Warnings), SecurityInfo.Unknown);
         if (hw.Machine.HasBattery)
             hw.Battery = Safe(hw, "batterie", BatteryCollector.Collect, null);
+        if (hw.IsLaptop && hw.Machine.HasBattery)
+            hw.ChargeLimit = Safe(hw, "limite de charge de la batterie", () => Battery.ChargeLimits.Read(hw), null);
 
         return hw;
     }

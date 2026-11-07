@@ -10,7 +10,7 @@ public enum BadgeKind { Reboot, Comfort, Caution, Info, Good }
 public sealed record Badge(string Text, BadgeKind Kind);
 
 /// <summary>
-/// Une ligne de liste à cocher, réutilisée par les pages Réglages et Mises à jour.
+/// Une ligne de liste à cocher, réutilisée par les pages Réglages, Mises à jour, Nettoyage et Restauration.
 /// <see cref="Payload"/> contient l'objet métier (un réglage, une mise à jour…).
 /// </summary>
 public sealed partial class CheckItem(
@@ -35,10 +35,11 @@ public sealed class CheckGroup : ObservableObject
 {
     private bool _bulkUpdate;
 
-    public CheckGroup(string title, IEnumerable<CheckItem> items, string? note = null)
+    public CheckGroup(string title, IEnumerable<CheckItem> items, string? note = null, string? description = null)
     {
         Title = title;
         Note = note ?? "";
+        Description = description ?? "";
         Items = new ObservableCollection<CheckItem>(items);
         foreach (var item in Items) item.PropertyChanged += OnItemChanged;
     }
@@ -48,8 +49,15 @@ public sealed class CheckGroup : ObservableObject
     /// <summary>Explication commune à tout le groupe, affichée une fois sous son titre.</summary>
     public string Note { get; }
     public bool HasNote => Note.Length > 0;
+
+    /// <summary>Ce que contient le groupe, affiché en tête de la catégorie dans le menu des catégories.</summary>
+    public string Description { get; }
+    public bool HasDescription => Description.Length > 0;
     public ObservableCollection<CheckItem> Items { get; }
     public string Header => $"{Title.ToUpperInvariant()} ({Items.Count})";
+
+    /// <summary>Lignes cochées sur le total, pour le menu des catégories (« 2 / 3 »).</summary>
+    public string Counter => $"{Items.Count(i => i.IsSelected)} / {Items.Count}";
 
     /// <summary>Vrai si tout est coché, faux si rien, null si mélange.</summary>
     public bool? AllSelected
@@ -62,11 +70,14 @@ public sealed class CheckGroup : ObservableObject
             foreach (var item in Items) item.IsSelected = selected;
             _bulkUpdate = false;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(Counter));
         }
     }
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!_bulkUpdate && e.PropertyName == nameof(CheckItem.IsSelected)) OnPropertyChanged(nameof(AllSelected));
+        if (_bulkUpdate || e.PropertyName != nameof(CheckItem.IsSelected)) return;
+        OnPropertyChanged(nameof(AllSelected));
+        OnPropertyChanged(nameof(Counter));
     }
 }

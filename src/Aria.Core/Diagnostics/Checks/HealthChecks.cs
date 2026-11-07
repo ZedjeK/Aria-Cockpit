@@ -251,7 +251,7 @@ public sealed class SystemHealthCheck : IDiagnosticCheck
         else if (state.PendingReboot == false)
             yield return new("system.reboot", "Aucun redémarrage en attente", Severity.Ok, "");
 
-        if (ctx.Hardware.Battery is { } battery && ctx.Hardware.IsLaptop)
+        if (ctx.Hardware.Battery is { HasHealth: true } battery && ctx.Hardware.IsLaptop)
         {
             var health = battery.HealthPercent;
             var detail = $"Capacité actuelle : {battery.FullChargeCapacity / 1000.0:0.#} Wh sur {battery.DesignCapacity / 1000.0:0.#} Wh d'origine.";

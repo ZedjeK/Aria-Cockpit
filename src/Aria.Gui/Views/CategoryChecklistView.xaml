@@ -1,0 +1,236 @@
+<!--
+  Liste à cocher par catégorie, pour les pages Réglages et Restauration. DataContext : liste de CheckGroup.
+  À gauche, le menu des catégories avec le nombre de lignes cochées ; à droite, les lignes de la catégorie choisie.
+  La première catégorie est choisie d'office (IsSynchronizedWithCurrentItem), y compris après une analyse.
+  Repris de CTI-Cockpit, habillé néon.
+-->
+<UserControl
+  x:Class="Aria.Gui.Views.CategoryChecklistView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects"
+  xmlns:vm="clr-namespace:Aria.Gui.ViewModels">
+  <UserControl.Resources>
+    <SolidColorBrush x:Key="MenuHoverBrush" Color="{StaticResource PanelHoverColor}" />
+
+    <!-- Ligne décochée : atténuée -->
+    <Style x:Key="RowDim" TargetType="Grid">
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding IsSelected}" Value="False">
+          <Setter Property="Opacity" Value="0.5" />
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Entrée du menu : barre orange, cadre néon et texte clair pour la catégorie affichée -->
+    <Style x:Key="MenuItem" TargetType="ListBoxItem">
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Border
+              x:Name="Box"
+              Padding="12,10"
+              Background="Transparent"
+              BorderBrush="Transparent"
+              BorderThickness="1">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Rectangle
+                  x:Name="Bar"
+                  Width="3"
+                  Margin="0,0,10,0"
+                  Fill="{StaticResource NeonOrangeBrush}"
+                  Visibility="Hidden" />
+                <TextBlock
+                  x:Name="Label"
+                  Grid.Column="1"
+                  VerticalAlignment="Center"
+                  FontFamily="{StaticResource TechFont}"
+                  FontSize="15"
+                  Foreground="{StaticResource NeonMutedBrush}"
+                  Text="{Binding Title}"
+                  TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                  x:Name="Count"
+                  Grid.Column="2"
+                  Margin="12,0,0,0"
+                  VerticalAlignment="Center"
+                  FontFamily="{StaticResource MonoFont}"
+                  FontSize="12"
+                  Foreground="{StaticResource NeonMutedBrush}"
+                  Text="{Binding Counter}" />
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="{StaticResource MenuHoverBrush}" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Box" Property="Background" Value="{StaticResource PanelBrush}" />
+                <Setter TargetName="Box" Property="BorderBrush" Value="#2E7DF9FF" />
+                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+                <Setter TargetName="Label" Property="Foreground" Value="{StaticResource NeonTextBrush}" />
+                <Setter TargetName="Label" Property="FontWeight" Value="SemiBold" />
+                <Setter TargetName="Count" Property="Foreground" Value="{StaticResource NeonCyanBrush}" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="230" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- ===== Menu des catégories ===== -->
+    <ListBox
+      x:Name="Menu"
+      Margin="0,0,20,0"
+      VerticalAlignment="Top"
+      Background="Transparent"
+      BorderThickness="0"
+      IsSynchronizedWithCurrentItem="True"
+      ItemContainerStyle="{StaticResource MenuItem}"
+      ItemsSource="{Binding}"
+      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListBox.Template>
+        <!-- Sans défilement propre : la page défile -->
+        <ControlTemplate TargetType="ListBox">
+          <ItemsPresenter />
+        </ControlTemplate>
+      </ListBox.Template>
+    </ListBox>
+
+    <!-- ===== Lignes de la catégorie choisie ===== -->
+    <ContentControl Grid.Column="1" Content="{Binding SelectedItem, ElementName=Menu}">
+      <ContentControl.Resources>
+        <DataTemplate DataType="{x:Type vm:CheckGroup}">
+          <StackPanel>
+            <!-- Ce que contient la catégorie (page Réglages) -->
+            <StackPanel Margin="4,0,0,14" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock
+                FontFamily="{StaticResource TechFont}"
+                FontSize="18"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource NeonTextBrush}"
+                Text="{Binding Title}" />
+              <TextBlock
+                Margin="0,4,0,0"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="{Binding Description}"
+                TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- Case de catégorie : tout cocher / tout décocher -->
+            <CheckBox Margin="4,0,0,10" IsChecked="{Binding AllSelected}">
+              <TextBlock
+                Margin="4,0,0,0"
+                Foreground="{StaticResource NeonCyanBrush}"
+                Style="{StaticResource TechLabel}"
+                Text="{Binding Title, StringFormat='TOUT COCHER · {0}'}" />
+            </CheckBox>
+            <TextBlock
+              Margin="36,-4,0,12"
+              Foreground="{StaticResource NeonMutedBrush}"
+              Text="{Binding Note}"
+              TextWrapping="Wrap"
+              Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}" />
+
+            <!-- Une ligne par élément, chacune dans son panneau néon (comme ChecklistView) -->
+            <ItemsControl ItemsSource="{Binding Items}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <ContentControl
+                    Margin="0,0,0,8"
+                    Padding="16,12"
+                    fx:Fx.Reveal="True"
+                    Style="{StaticResource NeonPanel}">
+                    <Grid Style="{StaticResource RowDim}">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+
+                      <!-- Toute la zone de texte coche/décoche la ligne -->
+                      <CheckBox
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Center"
+                        IsChecked="{Binding IsSelected}">
+                        <StackPanel Margin="6,0,18,0">
+                          <TextBlock
+                            FontFamily="{StaticResource TechFont}"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource NeonTextBrush}"
+                            Text="{Binding Title}"
+                            TextWrapping="Wrap" />
+                          <TextBlock
+                            Margin="0,3,0,0"
+                            Foreground="{StaticResource NeonMutedBrush}"
+                            Text="{Binding Reason}"
+                            TextWrapping="Wrap" />
+                        </StackPanel>
+                      </CheckBox>
+
+                      <!-- Actuel → Cible -->
+                      <StackPanel Grid.Column="1" Margin="0,0,6,0" VerticalAlignment="Center" Orientation="Horizontal">
+                        <TextBlock
+                          FontFamily="{StaticResource MonoFont}"
+                          Foreground="{StaticResource NeonMutedBrush}"
+                          Text="{Binding From}"
+                          Visibility="{Binding HasFrom, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock
+                          Margin="10,0"
+                          FontFamily="{StaticResource TechFont}"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource NeonOrangeBrush}"
+                          Text="→"
+                          Visibility="{Binding HasFrom, Converter={StaticResource BoolToVisibility}}" />
+                        <TextBlock
+                          FontFamily="{StaticResource MonoFont}"
+                          FontWeight="SemiBold"
+                          Foreground="{StaticResource NeonCyanBrush}"
+                          Text="{Binding To}"
+                          Visibility="{Binding HasTo, Converter={StaticResource BoolToVisibility}}" />
+                      </StackPanel>
+
+                      <ItemsControl Grid.Column="2" VerticalAlignment="Center" ItemsSource="{Binding Badges}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Style="{StaticResource BadgeBorder}">
+                              <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Text}" />
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </Grid>
+                  </ContentControl>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </DataTemplate>
+      </ContentControl.Resources>
+    </ContentControl>
+  </Grid>
+</UserControl>

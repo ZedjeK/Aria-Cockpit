@@ -22,6 +22,8 @@ public static class DiagnosticRunner
         new NvidiaAppTuningCheck(),
         new BootModeCheck(),
         new SecurityCheck(),
+        new FirewallCheck(),
+        new WindowsPatchCheck(),
         new CpuFeaturesCheck(),
         new BiosVersionCheck(),
         new GpuDriverCheck(),
@@ -29,6 +31,7 @@ public static class DiagnosticRunner
         new StorageCheck(),
         new NetworkCheck(),
         new SystemHealthCheck(),
+        new BatteryChargeCheck(),
         new StartupCheck()
     ];
 

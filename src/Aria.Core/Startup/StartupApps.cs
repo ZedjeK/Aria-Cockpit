@@ -24,7 +24,7 @@ public enum StartupSource
 /// <param name="Publisher">Éditeur inscrit dans l'exécutable (« Discord Inc. »), comme l'affiche Windows ; null s'il n'y en a pas.</param>
 public sealed record StartupEntry(StartupSource Source, string Name, string Command, string DisplayName, bool Enabled, string? Publisher = null)
 {
-    /// <summary>Composants de sécurité de Windows : jamais proposés à la désactivation.</summary>
+    /// <summary>Composants de sécurité de Windows et des pilotes : jamais proposés à la désactivation.</summary>
     public bool IsProtected => StartupApps.IsProtected(this);
 }
 
@@ -89,11 +89,36 @@ public static class StartupApps
     internal static bool IsEnabled(object? approvedValue) =>
         approvedValue is not byte[] { Length: > 0 } state || (state[0] & 1) == 0;
 
+    /// <summary>
+    /// Éditeurs dont les programmes de démarrage ne sont jamais proposés : pilotes audio et leur traitement du son.
+    /// Comparaison sur le début du nom.
+    /// </summary>
+    private static readonly string[] ProtectedPublishers =
+    [
+        "Realtek Semiconductor",   // pilote audio
+        "Waves Audio"              // traitement audio fourni avec le pilote
+    ];
+
+    /// <summary>Dossiers reconnus dans le chemin de l'exécutable (ou de la DLL lancée par rundll32).</summary>
+    private static readonly string[] ProtectedFolders =
+    [
+        @"\Windows Defender\",
+        @"\DriverStore\FileRepository\"    // composants de pilotes installés par Windows (audio, graphique…)
+    ];
+
+    /// <summary>Composants de sécurité de Windows et des pilotes (dont l'audio) : jamais proposés à la désactivation.</summary>
     internal static bool IsProtected(StartupEntry entry)
     {
         if (entry.Name.Equals("SecurityHealth", StringComparison.OrdinalIgnoreCase)) return true;
+        if (entry.Publisher is { } publisher
+            && ProtectedPublishers.Any(p => publisher.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+            return true;
+
         var exe = ExecutablePath(entry.Command) ?? "";
-        return exe.Contains(@"\Windows Defender\", StringComparison.OrdinalIgnoreCase)
+        // Lancé par rundll32 : c'est la DLL qui dit de quel logiciel il s'agit (ex. composant de pilote du DriverStore)
+        var hosted = HostedLibraryPath(entry.Command) ?? "";
+        return ProtectedFolders.Any(folder => exe.Contains(folder, StringComparison.OrdinalIgnoreCase)
+                                              || hosted.Contains(folder, StringComparison.OrdinalIgnoreCase))
                || Path.GetFileName(exe).Equals("SecurityHealthSystray.exe", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -111,6 +136,32 @@ public static class StartupApps
         if (exe > 0) return text[..(exe + 4)];
         var space = text.IndexOf(' ');
         return space > 0 ? text[..space] : text;
+    }
+
+    /// <summary>
+    /// DLL chargée quand la commande passe par rundll32 (« rundll32.exe C:\x.dll,Fonction ») : le vrai programme lancé,
+    /// rundll32 n'étant que l'outil de Windows qui l'exécute. null pour toute autre commande.
+    /// </summary>
+    internal static string? HostedLibraryPath(string command)
+    {
+        if (ExecutablePath(command) is not { } exe
+            || !Path.GetFileName(exe).Equals("rundll32.exe", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var text = Environment.ExpandEnvironmentVariables(command.Trim());
+        var rest = text[(text.IndexOf(exe, StringComparison.OrdinalIgnoreCase) + exe.Length)..];
+        if (rest.StartsWith('"')) rest = rest[1..];   // guillemet fermant de rundll32.exe
+        rest = rest.TrimStart();
+        if (rest.Length == 0) return null;
+
+        string library;
+        if (rest[0] == '"')
+        {
+            var end = rest.IndexOf('"', 1);
+            library = end > 1 ? rest[1..end] : "";
+        }
+        else library = rest.Split(',', 2)[0].Trim();
+        return library.Length > 0 ? library : null;
     }
 
     private static IEnumerable<StartupEntry> ScanRun(StartupSource source)
@@ -143,13 +194,15 @@ public static class StartupApps
 
     /// <summary>
     /// Nom et éditeur, comme dans Paramètres → Applications → Démarrage : description de l'exécutable
-    /// (à défaut, nom de la valeur) et société inscrite dans le fichier.
+    /// (à défaut, nom de la valeur) et société inscrite dans le fichier. Lancé par rundll32 : ceux de la DLL chargée,
+    /// sinon tous ces programmes s'afficheraient « Processus hôte Windows (Rundll32) · Microsoft Corporation ».
     /// </summary>
     private static (string Display, string? Publisher) Describe(string name, string command)
     {
         try
         {
-            if (ExecutablePath(command) is { } exe && File.Exists(exe))
+            var hosted = HostedLibraryPath(command);
+            if ((hosted is not null && File.Exists(hosted) ? hosted : ExecutablePath(command)) is { } exe && File.Exists(exe))
             {
                 var info = FileVersionInfo.GetVersionInfo(exe);
                 var description = (info.FileDescription ?? "").Trim();

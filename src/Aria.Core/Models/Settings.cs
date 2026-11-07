@@ -1,17 +1,45 @@
 namespace Aria.Core.Models;
 
-public enum SettingCategory { Windows, Nvidia, Privacy, Startup, Apps }
+/// <summary>
+/// Catégories de réglages, dans l'ordre d'affichage (listes, menu des catégories, rapports, fiche PC, console).
+/// Les sauvegardes enregistrent la catégorie par son nom : l'ordre peut changer sans les rendre illisibles.
+/// </summary>
+public enum SettingCategory { Windows, Battery, Nvidia, Privacy, Startup, Apps }
 
 /// <summary>Nom affiché de chaque groupe de réglages (listes, rapports, fiche PC, console).</summary>
 public static class SettingCategoryNames
 {
     public static string Of(SettingCategory category) => category switch
     {
+        SettingCategory.Battery => "Batterie",
         SettingCategory.Nvidia => "NVIDIA",
         SettingCategory.Privacy => "Confidentialité",
         SettingCategory.Startup => "Démarrage",
         SettingCategory.Apps => "Applications",
         _ => "Windows"
+    };
+
+    /// <summary>Ce que contient la catégorie, en une ou deux phrases, affiché en tête dans le menu des catégories.</summary>
+    public static string Describe(SettingCategory category) => category switch
+    {
+        SettingCategory.Battery =>
+            "Plafonne la charge pour ménager la batterie d'un portable souvent branché : une batterie qui reste pleine, " +
+            "surtout au chaud, perd sa capacité bien plus vite.",
+        SettingCategory.Nvidia =>
+            "Profil global du pilote NVIDIA : latence, synchronisation, limite d'images, cache des shaders. Les profils " +
+            "propres à chaque jeu restent prioritaires.",
+        SettingCategory.Privacy =>
+            "Limite les données envoyées à Microsoft et les publicités de Windows, et arrête des services inutiles. " +
+            "Aucun gain de FPS : c'est pour la vie privée et la surface d'attaque.",
+        SettingCategory.Startup =>
+            "Programmes qui se lancent seuls à l'ouverture de session. En désactiver quelques-uns rend le démarrage plus " +
+            "rapide et libère de la mémoire ; rien n'est désinstallé.",
+        SettingCategory.Apps =>
+            "Applications installées d'office avec Windows ou en promotion sur les PC neufs. Seules celles présentes sur " +
+            "ce PC sont listées ; la désinstallation ne concerne que votre compte.",
+        _ =>
+            "Réglages du système pour le jeu et l'affichage : fréquence des écrans, alimentation, Mode Jeu, planification " +
+            "GPU, souris."
     };
 }
 
