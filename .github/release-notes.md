@@ -17,12 +17,17 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 
 ## Nouveautés de la {VERSION}
 
-- **Courbe de ventilation** : dans Réglage GPU, une nouvelle carte « Ventilateur » remplace la courbe du pilote NVIDIA par la tienne. Préréglages Silencieux, Équilibré et Refroidissement max, ou une courbe personnalisée (2 à 6 points température → vitesse), confirmée avant d'être appliquée
-- **Mes courbes** : enregistre une courbe sous un nom (« Nuit », « Jeu »…) et recharge-la plus tard, comme les profils GPU
-- **Sous le premier point, le pilote garde la main** : les ventilateurs peuvent toujours s'arrêter au repos. La vitesse monte aussitôt avec la température et redescend en douceur, sans va-et-vient
-- **Sécurités** : plein régime à 85 °C quelle que soit la courbe, et retour au pilote si la température devient illisible ou si le pilote refuse une vitesse
-- **Tant qu'Aria est ouvert** : la courbe tourne quelle que soit la page affichée. La fermeture d'Aria, ou « Rendre la main au pilote », remet le réglage de NVIDIA ; après un arrêt brutal, le lancement suivant le remet aussi et le signale
-- **Un dossier pour toutes les données** : sauvegardes, rapports, réglage GPU, profils et courbe de ventilation sont désormais dans ton profil, `C:\Users\<toi>\.Aria-Cockpit`, plus facile à trouver. L'ancien dossier (`C:\ProgramData\AriaCockpit`) est déplacé automatiquement au premier lancement. Tu peux tout y lire, mais seuls les administrateurs peuvent y écrire, pour qu'un programme lancé sans droits ne puisse pas modifier ce qu'Aria réapplique
+- **Menu des catégories** dans Réglages et Restauration : Windows, NVIDIA, Confidentialité, Démarrage et Applications sont listés à gauche, toujours dans le même ordre, avec le nombre de lignes cochées ; chaque catégorie s'affiche seule, avec une phrase qui dit ce qu'elle contient
+- **Sécurité dans le diagnostic** : pare-feu Windows sur les profils domaine, privé et public (un pare-feu d'un autre éditeur est reconnu), et date du dernier correctif Windows, avec une alerte au-delà de 45 jours
+- **Programmes au démarrage** : un programme lancé par l'intermédiaire de Windows (rundll32) affiche son vrai nom et son éditeur, par exemple « Logitech Download Assistant » au lieu de « Processus hôte Windows (Rundll32) ». Les composants des pilotes (audio Realtek et Waves, magasin de pilotes de Windows) ne sont plus proposés à la désactivation. Sur Mon PC, le point « programmes au démarrage » distingue ceux que tu peux désactiver de ceux qui sont toujours gardés, et ne conseille de faire le tri qu'à partir de 5 programmes désactivables
+- **Limite de charge de la batterie** (portables), nouvelle catégorie Batterie dans Réglages : une batterie qui reste à 100 % s'use bien plus vite. Aria la règle lui-même sur les **Dell** (arrêt à 80 %, reprise sous 50 %) et les **HP** (« Maximize My Battery Health ») par les interfaces officielles de leur BIOS, et, en **expérimental** (décoché), sur les **ASUS** (arrêt à 80 %, réappliqué à chaque ouverture de session) et les **Lenovo** Legion, LOQ, IdeaPad et Yoga (mode conservation). Sauvegardée et réversible comme les autres réglages. Ailleurs (ThinkPad, Acer, MSI, Surface…), le diagnostic dit où la régler
+- **Carte Batterie** sur Mon PC (portables) : niveau de charge, secteur ou batterie, santé par rapport à la capacité d'origine, nombre de cycles, limite de charge. Sur batterie, elle rappelle que la carte graphique est bridée
+- **Une seule fenêtre à la fois** : relancer Aria Cockpit ramène au premier plan la fenêtre déjà ouverte, au lieu d'en ouvrir une seconde qui se disputerait la courbe de ventilation et le réglage GPU avec la première
+- **Ménage automatique du dossier des données**, une fois par jour au plus : rapports et fiches PC supprimés au-delà de 6 mois, sauvegardes au-delà de 12 mois (les 10 plus récentes sont toujours gardées), journaux archivés au-delà de 1 Mo. Seuls les fichiers créés par Aria sont concernés ; les réglages en place ne sont jamais touchés
+
+La plupart de ces nouveautés sont reprises de CTI-Cockpit, la version professionnelle d'Aria Cockpit.
+
+Rappel de la 0.22.0 : courbe de ventilation dans Réglage GPU (préréglages, courbe personnalisée, « Mes courbes », sécurités à 85 °C, retour au pilote à la fermeture) ; toutes les données dans ton profil, `C:\Users\<toi>\.Aria-Cockpit`, modifiables par les seuls administrateurs.
 
 Rappel de la 0.21.0 : le préréglage Ultra RT et le contrôle en ray tracing de la validation ont été retirés (ils n'aidaient pas à trouver un meilleur réglage) ; le banc Ultra donne exactement la même image qu'avant.
 

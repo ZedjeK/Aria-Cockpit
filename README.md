@@ -11,17 +11,17 @@
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.22 · Windows 11 x64 · carte NVIDIA conseillée
+  <a href="../../releases/latest"><b>Télécharger la dernière version</b></a> · v0.23 · Windows 11 x64 · carte NVIDIA conseillée
 </p>
 
 ## Ce qu'il fait
 
 | Page | Ce que ça fait |
 | --- | --- |
-| **Mon PC** | Un cockpit : composants détectés de part et d'autre, jauge de conformité au centre. Diagnostic complet, guide BIOS selon la marque de la carte mère, fiche PC en HTML |
+| **Mon PC** | Un cockpit : composants détectés de part et d'autre (et la batterie sur un portable : charge, secteur, santé, cycles, limite de charge), jauge de conformité au centre. Diagnostic complet, guide BIOS selon la marque de la carte mère, fiche PC en HTML |
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
-| **Réglages** | Windows, NVIDIA, confidentialité, programmes au démarrage, applications préinstallées : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
+| **Réglages** | Windows, limite de charge de la batterie (portables Dell, HP, ASUS, Lenovo), NVIDIA, confidentialité, programmes au démarrage, applications préinstallées, une catégorie par entrée du menu de gauche : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
 | **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul et de mémoire vidéo ; courbe de ventilation ; un garde-fou signale les plantages du pilote |
 | **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
@@ -50,14 +50,17 @@ n'est jamais modifié, seulement lu et expliqué.
 
 Aria Cockpit demande les **droits administrateur** : il en a besoin pour lire et modifier les réglages du système.
 Lance-le depuis ta propre session (si un autre compte administrateur valide l'élévation, les réglages personnels
-comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là).
+comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là). Une seule fenêtre à la fois : le relancer ramène au
+premier plan celle qui est déjà ouverte.
 
 ### Diagnostic (lecture seule)
 
 Branchement des écrans (carte graphique ou carte mère), câble et fréquence, HDR, lien PCIe et Resizable BAR de la
 carte NVIDIA, mémoire (canal, vitesse, profil XMP/EXPO), P-cores et E-cores, microcode Intel 13e et 14e génération,
 mode de démarrage, Secure Boot et TPM, âge du BIOS et du pilote graphique, santé et espace libre des disques,
-réseau, programmes au démarrage, protection du système, redémarrage en attente, batterie, G-SYNC (disponible mais
+réseau, pare-feu Windows (profils domaine, privé et public), date du dernier correctif Windows (alerte au-delà de
+45 jours), programmes au démarrage (désactivables et toujours gardés comptés à part, conseil à partir de 5
+désactivables), protection du système, redémarrage en attente, batterie et sa limite de charge, G-SYNC (disponible mais
 désactivé), conseil DLSS au modèle près, limite de puissance de la carte comparée à sa valeur d'usine (une carte
 bridée par NVIDIA App ou Afterburner est signalée), et overclock de NVIDIA App (réglage automatique, scan en
 arrière-plan, courbe enregistrée).
@@ -81,6 +84,34 @@ l'analyse précédente pour comparer. Les artefacts visuels et les saccades ne s
 pour eux, tes yeux restent le meilleur juge.
 
 ## Réglages
+
+Les catégories sont listées dans un menu à gauche, toujours dans le même ordre (Windows, Batterie, NVIDIA,
+Confidentialité, Démarrage, Applications), avec le nombre de lignes cochées ; seules celles qui ont quelque chose à
+changer apparaissent. La page Restauration présente les réglages d'une sauvegarde de la même façon.
+
+### Batterie (portables)
+
+Une batterie lithium-ion qui reste chargée à 100 %, surtout au chaud, perd sa capacité bien plus vite : c'est le cas
+d'un portable de jeu branché en permanence. Windows n'a pas d'interface commune pour limiter la charge, chaque fabricant
+a la sienne. Aria Cockpit règle lui-même la limite quand le portable expose celle de son fabricant, avec sauvegarde et
+restauration comme les autres réglages :
+
+| Fabricant | Proposé | Comment | Coché |
+|---|---|---|---|
+| **Dell** (et Alienware si le BIOS l'expose) | Arrêt à 80 %, reprise sous 50 % | Interface WMI intégrée au BIOS (modèles pro depuis 2018), écrite dans le BIOS | oui |
+| **HP** | « Maximize My Battery Health » | Interface WMI officielle du BIOS, réglage « Battery Health Manager » (BIOS depuis fin 2018) ; libellés lus dans le BIOS | oui |
+| **ASUS** (ROG, TUF, Zenbook…) | Arrêt à 80 % | Pilote ACPI d'ASUS (ATKACPI), méthode de G-Helper, **expérimental** ; réappliquée à chaque ouverture de session (le BIOS remet 100 % au démarrage), et notée pour MyASUS | non |
+| **Lenovo** (Legion, LOQ, IdeaPad, Yoga) | Mode conservation (plafond fixé par Lenovo selon le modèle) | Pilote Lenovo Energy Management, méthode de Lenovo Legion Toolkit, **expérimental** ; réappliqué à l'ouverture de session | non |
+
+ASUS et Lenovo ne documentent pas ces interfaces : elles sont marquées « EXPÉRIMENTAL » et décochées. La tâche
+planifiée « Aria Cockpit\Limite de charge » les réapplique 20 secondes après l'ouverture de session, sans fenêtre ; elle
+est supprimée dès que la charge complète est remise. Avec un mot de passe administrateur du BIOS (Dell, HP), le réglage
+n'est pas proposé.
+
+Ailleurs, le diagnostic dit où régler la limite : Lenovo Vantage pour les ThinkPad, Acer Care Center, AcerSense ou
+NitroSense, MSI Center (« Battery Master »), l'application Surface, ou à défaut le logiciel du fabricant ou le BIOS.
+Acer n'expose pas d'interface utilisable depuis Windows, et MSI demanderait d'écrire directement dans le contrôleur
+embarqué par un pilote noyau que Windows signale comme dangereux : Aria ne le fait pas.
 
 ### Windows
 
@@ -140,8 +171,10 @@ surface d'attaque.
 
 Les programmes lancés à l'ouverture de session, comme dans l'onglet Démarrage du Gestionnaire des tâches et avec le
 même mécanisme : nom et éditeur, compte concerné, tout décoché par défaut. Désactiver ne désinstalle rien et se
-réactive depuis Restauration ou le Gestionnaire des tâches. Les composants de sécurité de Windows ne sont jamais
-proposés.
+réactive depuis Restauration ou le Gestionnaire des tâches. Ne sont jamais proposés : les composants de sécurité de
+Windows et ceux des pilotes (magasin de pilotes de Windows, audio Realtek et Waves). Un programme lancé par
+l'intermédiaire de Windows (rundll32) affiche son vrai nom et son éditeur, par exemple « Logitech Download Assistant »
+au lieu de « Processus hôte Windows (Rundll32) · Microsoft Corporation ».
 
 ### Applications
 
@@ -418,11 +451,24 @@ Tout est rangé dans un seul dossier, dans ton profil : `C:\Users\<toi>\.Aria-Co
 - Rapports : `Rapports`
 - Réglage GPU en place et journal de la tâche de démarrage : `gpu-profile.json` et `gpu-profile.log`
 - Profils GPU enregistrés : `profils.json` ; résultat d'Équilibre : `equilibre.json` ; courbe de ventilation : `ventilateur.json`, courbes enregistrées : `ventilateur-profils.json`
+- Limite de charge à réappliquer (ASUS, Lenovo) et journal de sa tâche : `limite-charge.json` et `limite-charge.log`
 - Journal des erreurs : `erreurs.log`
 
 Tu peux tout ouvrir et lire, mais seuls les administrateurs peuvent y écrire : Aria Cockpit tourne en administrateur et
 fait confiance à ces fichiers (la Restauration réécrit le registre d'après les sauvegardes, la tâche de démarrage applique
 le réglage GPU), alors un programme lancé sans droits ne doit pas pouvoir les modifier.
+
+**Ménage automatique**, une fois par jour au plus, au lancement :
+
+| Élément | Règle |
+|---|---|
+| Rapports, fiches PC et rapports de réglage GPU | supprimés au-delà de 6 mois |
+| Sauvegardes | supprimées au-delà de 12 mois, sauf les 10 plus récentes, toujours gardées quel que soit leur âge |
+| `erreurs.log`, `gpu-profile.log` et `limite-charge.log` | au-delà de 1 Mo, archivés dans `nom-precedent.log` (qui remplace l'archive précédente) |
+
+Seuls les fichiers créés par Aria Cockpit sont concernés, reconnus à leur nom ; leur âge se lit dans ce nom
+(`rapport_2026-10-26_211350.txt`). Un fichier ajouté à la main n'est jamais supprimé, et les réglages en place (réglage
+GPU, Équilibre, profils, courbes de ventilation) ne sont jamais touchés. Le résultat du ménage est noté dans `erreurs.log`.
 
 Jusqu'à la 0.21, les données étaient dans `C:\ProgramData\AriaCockpit` (avant encore `C:\ProgramData\Aria`, 0.13 et
 0.14, ou `C:\ProgramData\PCTune`, 0.12 et avant) : ce dossier est déplacé automatiquement au premier lancement, les
@@ -500,3 +546,7 @@ côté d'`Aria-Cockpit.exe` et y placer le fichier modifié (même nom) ; il rem
 - Recommandations G-SYNC : [Blur Busters, G-SYNC 101](https://www.blurbusters.com/gsync/gsync101-input-lag-tests-and-settings/14/).
 - Réglages de confidentialité : documentation Microsoft (Policy CSP et « Manage connections from Windows operating
   system components to Microsoft services »).
+- Limite de charge : interfaces WMI du BIOS publiées par Dell (Endpoint-Management-Script-Library) et HP (HP Client
+  Management) ; protocoles ASUS et Lenovo relevés dans [G-Helper](https://github.com/seerge/g-helper), le pilote
+  Linux asus-wmi et [Lenovo Legion Toolkit](https://github.com/BartoszCichecki/LenovoLegionToolkit) (aucun code
+  repris, seulement les identifiants de l'interface). Repris de CTI-Cockpit pour Dell.
