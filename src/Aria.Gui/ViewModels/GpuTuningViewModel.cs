@@ -180,8 +180,8 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         HasCrashes = saved is not null && crashes.Count > 0;
         CrashText = HasCrashes ? DriverIncidents.Advise(crashes, saved!.AppliedAt, state) : "";
 
-        // Tâche de démarrage absente ou pointant vers un ancien emplacement d'Aria
-        var exe = Environment.ProcessPath ?? "";
+        // Tâche de démarrage absente ou ne lançant pas la copie protégée d'Aria (Program Files)
+        var exe = Aria.Core.Settings.LogonExe.PathFor(Environment.ProcessPath ?? "Aria-Cockpit.exe");
         var wanted = saved is not null && GpuTuningState.TryParse(saved.Current, out var keep) && keep.AtStartup;
         HasTaskProblem = wanted && (!state.AtStartup || !string.Equals(taskCommand, exe, StringComparison.OrdinalIgnoreCase));
         TaskText = !HasTaskProblem ? ""

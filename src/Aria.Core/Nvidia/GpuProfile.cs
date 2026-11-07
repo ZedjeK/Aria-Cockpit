@@ -3,6 +3,7 @@ using System.Diagnostics.Eventing.Reader;
 using System.Text.Json;
 using Aria.Core.Backup;
 using Aria.Core.Models;
+using Aria.Core.Settings;
 
 namespace Aria.Core.Nvidia;
 
@@ -211,7 +212,8 @@ public static class GpuProfile
 
 /// <summary>
 /// Tâche planifiée « Aria Cockpit\Profil GPU » : lance Aria Cockpit en mode silencieux à l'ouverture de session,
-/// avec les droits administrateur (sans fenêtre UAC), pour réappliquer le réglage GPU.
+/// avec les droits administrateur (sans fenêtre UAC), pour réappliquer le réglage GPU. Elle lance la copie protégée
+/// de l'exe (<see cref="LogonExe"/>), jamais l'exe dézippé par l'utilisateur.
 /// </summary>
 public static class StartupTask
 {
@@ -220,12 +222,16 @@ public static class StartupTask
     public const string LegacyName = @"Aria\Profil GPU";
     public const string Argument = "--gpu-profile";
 
-    public static bool Exists() => OperatingSystem.IsWindows() && Run($"/Query /TN \"{Name}\"").Code == 0;
+    public static bool Exists() => TaskExists(Name);
 
-    /// <summary>Commande lancée par la tâche (pour vérifier qu'elle pointe toujours vers cet exe).</summary>
-    public static string? Command()
+    internal static bool TaskExists(string name) => OperatingSystem.IsWindows() && Run($"/Query /TN \"{name}\"").Code == 0;
+
+    /// <summary>Commande lancée par la tâche (pour vérifier qu'elle pointe toujours vers la copie protégée).</summary>
+    public static string? Command() => CommandOf(Name);
+
+    internal static string? CommandOf(string name)
     {
-        var (code, output) = Run($"/Query /TN \"{Name}\" /XML");
+        var (code, output) = Run($"/Query /TN \"{name}\" /XML");
         if (code != 0) return null;
         var start = output.IndexOf("<Command>", StringComparison.Ordinal);
         var end = output.IndexOf("</Command>", StringComparison.Ordinal);
@@ -234,9 +240,14 @@ public static class StartupTask
 
     public static void Create(string exePath)
     {
-        // 20 s après l'ouverture de session : le pilote graphique est prêt
-        var (code, output) = Run($"/Create /TN \"{Name}\" /TR \"\\\"{exePath}\\\" {Argument}\" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /F");
-        if (code != 0) throw new GpuTuningException($"Tâche de démarrage refusée par Windows : {output.Trim()}");
+        try
+        {
+            LogonExe.CreateTask(Name, Argument, exePath);
+        }
+        catch (InvalidOperationException e)
+        {
+            throw new GpuTuningException(e.Message);
+        }
         DeleteLegacy();
     }
 
@@ -244,6 +255,7 @@ public static class StartupTask
     {
         if (Exists()) Run($"/Delete /TN \"{Name}\" /F");
         DeleteLegacy();
+        LogonExe.RemoveIfUnused();
     }
 
     private static void DeleteLegacy()

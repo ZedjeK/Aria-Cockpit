@@ -458,6 +458,12 @@ Tu peux tout ouvrir et lire, mais seuls les administrateurs peuvent y écrire : 
 fait confiance à ces fichiers (la Restauration réécrit le registre d'après les sauvegardes, la tâche de démarrage applique
 le réglage GPU), alors un programme lancé sans droits ne doit pas pouvoir les modifier.
 
+Pour la même raison, les tâches de démarrage (profil GPU, limite de charge) ne lancent pas l'exe que tu as dézippé :
+elles tournent en administrateur sans fenêtre UAC, et un programme sans droits pourrait remplacer cet exe. Elles lancent
+une copie rangée dans `C:\Program Files\Aria Cockpit`, où seuls les administrateurs écrivent. Aria la remet à jour à
+chaque lancement, y repointe les tâches créées par une version plus ancienne, et la supprime quand plus aucune tâche
+ne s'en sert.
+
 **Ménage automatique**, une fois par jour au plus, au lancement :
 
 | Élément | Règle |
