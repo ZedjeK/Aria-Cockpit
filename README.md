@@ -553,7 +553,9 @@ côté d'`Aria-Cockpit.exe` et y placer le fichier modifié (même nom) ; il rem
 ## Crédits
 
 - Développé par Jérémy Zemani. Anciennement Aria (versions 0.13 et 0.14) et PC-Tune (jusqu'à la 0.12).
-- Interface : [WPF-UI](https://github.com/lepoco/wpfui) (MIT) et CommunityToolkit.Mvvm (MIT).
+- Interface : [WPF-UI](https://github.com/lepoco/wpfui) (MIT) et CommunityToolkit.Mvvm (MIT). Polices
+  [Space Grotesk](https://github.com/floriankarsten/space-grotesk) et [IBM Plex Mono](https://github.com/IBM/plex),
+  communes aux applis Aria, sous licence SIL Open Font License 1.1 (fichiers et textes dans `src/Aria.Gui/Assets/Fonts`).
 - Banc d'essai : Direct3D 12 et DXGI pour .NET par [Vortice.Windows](https://github.com/amerkoleci/Vortice.Windows) (MIT) ;
   shaders compilés avec le [DirectX Shader Compiler](https://github.com/microsoft/DirectXShaderCompiler) de Microsoft.
 - Identifiants des fonctions et réglages NVIDIA : [SDK NVAPI](https://github.com/NVIDIA/nvapi) (MIT).

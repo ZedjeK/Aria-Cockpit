@@ -10,7 +10,7 @@
   <Color x:Key="NeonOrangeColor">#FFFF8A1F</Color>
   <Color x:Key="NeonCyanColor">#FF7DF9FF</Color>
   <Color x:Key="NeonBlueColor">#FF5C8BFF</Color>
-  <Color x:Key="NeonRedColor">#FFFF3D5A</Color>
+  <Color x:Key="NeonRedColor">#FFFF5C7A</Color>
   <!-- « Positif / conforme » : cyan glacé, comme le reste de la palette -->
   <Color x:Key="NeonTealColor">#FF7DF9FF</Color>
   <!-- Succès (« appliqué », « installé ») : cyan glacé, comme « conforme » -->
@@ -26,9 +26,9 @@
   <SolidColorBrush x:Key="NeonRedBrush" Color="{StaticResource NeonRedColor}" />
   <SolidColorBrush x:Key="NeonTealBrush" Color="{StaticResource NeonTealColor}" />
   <SolidColorBrush x:Key="NeonGreenBrush" Color="{StaticResource NeonGreenColor}" />
-  <SolidColorBrush x:Key="NeonTextBrush" Color="#FFE6F4FF" />
+  <SolidColorBrush x:Key="NeonTextBrush" Color="#FFDDEBFF" />
   <SolidColorBrush x:Key="NeonWhiteBrush" Color="#FFEFFFFF" />
-  <SolidColorBrush x:Key="NeonMutedBrush" Color="#FF8FA6C4" />
+  <SolidColorBrush x:Key="NeonMutedBrush" Color="#FF93A8C8" />
   <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
 
   <!-- Couleurs des pastilles de diagnostic -->
@@ -90,13 +90,14 @@
   </DrawingBrush>
 
   <!-- ===== Polices ===== -->
-  <!-- Bahnschrift est installée sur tous les Windows 10 et 11 : rendu « affichage de bord » -->
-  <FontFamily x:Key="TechFont">Bahnschrift, Segoe UI</FontFamily>
   <!--
-    Consolas d'abord : police du dossier Windows, toujours présente. Cascadia Mono peut être fournie par
-    Terminal Windows et disparaître pendant sa mise à jour (cause du plantage du 08/10/2026).
+    Polices de la famille Aria (Vault, Scope, Shield…), embarquées dans l'exe (Assets/Fonts, licence SIL OFL 1.1) :
+    elles ne dépendent d'aucune installation, contrairement à Cascadia Mono qui peut disparaître pendant une mise à
+    jour de Terminal Windows (cause du plantage du 08/10/2026). Bahnschrift et Consolas, présentes sur tous les
+    Windows 10 et 11, restent en secours.
   -->
-  <FontFamily x:Key="MonoFont">Consolas, Cascadia Mono, Courier New</FontFamily>
+  <FontFamily x:Key="TechFont">pack://application:,,,/Assets/Fonts/#Space Grotesk, Bahnschrift, Segoe UI</FontFamily>
+  <FontFamily x:Key="MonoFont">pack://application:,,,/Assets/Fonts/#IBM Plex Mono, Consolas, Courier New</FontFamily>
 
   <!-- ===== Styles ===== -->
 
@@ -264,7 +265,7 @@
       </DataTrigger>
       <DataTrigger Binding="{Binding Kind}" Value="Caution">
         <Setter Property="BorderBrush" Value="{StaticResource NeonRedBrush}" />
-        <Setter Property="Background" Value="#1AFF3D5A" />
+        <Setter Property="Background" Value="#1AFF5C7A" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Kind}" Value="Good">
         <Setter Property="BorderBrush" Value="{StaticResource NeonTealBrush}" />

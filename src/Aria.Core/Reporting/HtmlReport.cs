@@ -292,12 +292,12 @@ public static class HtmlReport
 
     private const string Css = """
 
-        :root { --bg:#05070d; --panel:#0b111e; --line:#19e3ff33; --text:#e6f1fa; --muted:#8da2b8;
-                --orange:#ff8a1f; --cyan:#19e3ff; --teal:#2ef2b8; --red:#ff3d5a; --green:#3cff7a; }
+        :root { --bg:#030812; --panel:#06101f; --line:#7df9ff33; --text:#ddebff; --muted:#93a8c8;
+                --orange:#ff8a1f; --cyan:#7df9ff; --teal:#7df9ff; --red:#ff5c7a; --green:#7df9ff; }
         * { box-sizing:border-box; }
         body { margin:0; background:var(--bg); color:var(--text);
                font:15px/1.5 Bahnschrift, "Segoe UI", system-ui, sans-serif;
-               background-image:radial-gradient(circle at 0 0, #ff8a1f22, transparent 40%), radial-gradient(circle at 100% 100%, #19e3ff1a, transparent 45%); }
+               background-image:radial-gradient(circle at 0 0, #ff8a1f22, transparent 40%), radial-gradient(circle at 100% 100%, #7df9ff1a, transparent 45%); }
         main { max-width:1100px; margin:0 auto; padding:32px 16px 48px; }
         h1 { margin:6px 0 2px; font-size:38px; font-weight:600; color:var(--cyan); text-shadow:0 0 18px #ff8a1f8c; overflow-wrap:anywhere; }
         h2 { margin:36px 0 14px; font-size:16px; letter-spacing:.08em; text-transform:uppercase; color:var(--cyan);
@@ -309,14 +309,14 @@ public static class HtmlReport
         .tag, .label { font-size:11px; letter-spacing:.08em; font-weight:600; color:var(--muted); }
         .tag { color:var(--teal); }
         .hero { display:flex; gap:24px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-                padding:24px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(135deg, #ff8a1f1a, #0b111ecc 45%, #19e3ff14); }
+                padding:24px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(135deg, #ff8a1f1a, #0b111ecc 45%, #7df9ff14); }
         .hero-text { flex:1 1 360px; min-width:0; }
         .counters { display:flex; flex-wrap:wrap; gap:28px; margin-top:18px; }
         .counter .value { font-size:30px; font-weight:600; line-height:1.1; }
         .ring { position:relative; width:170px; height:170px; flex:0 0 auto; margin:0 auto; }
         .ring svg { width:100%; height:100%; }
         .ring circle { fill:none; stroke-width:10; }
-        .ring .track { stroke:#19e3ff1f; }
+        .ring .track { stroke:#7df9ff1f; }
         .ring .arc { stroke-linecap:round; filter:drop-shadow(0 0 6px currentColor); }
         .ring.low { color:var(--red); } .ring.medium { color:var(--orange); } .ring.high { color:var(--green); }
         .ring .arc { stroke:currentColor; }
@@ -347,7 +347,7 @@ public static class HtmlReport
         /* Mêmes colonnes pour Windows et NVIDIA ; sur téléphone, le tableau défile dans son cadre */
         table.settings { table-layout:fixed; min-width:600px; }
         .c-name { width:34%; } .c-value { width:22%; } .c-state { width:22%; }
-        th, td { text-align:left; padding:8px 12px; border-bottom:1px solid #19e3ff1a; vertical-align:top; }
+        th, td { text-align:left; padding:8px 12px; border-bottom:1px solid #7df9ff1a; vertical-align:top; }
         th { font-size:11px; letter-spacing:.08em; color:var(--muted); text-transform:uppercase; }
         tr:last-child td { border-bottom:none; }
         .mono { font-family:Consolas, "Cascadia Mono", monospace; }
