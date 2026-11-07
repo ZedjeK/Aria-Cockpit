@@ -553,6 +553,9 @@ côté d'`Aria-Cockpit.exe` et y placer le fichier modifié (même nom) ; il rem
 ## Crédits
 
 - Développé par Jérémy Zemani. Anciennement Aria (versions 0.13 et 0.14) et PC-Tune (jusqu'à la 0.12).
+- Code d'Aria Cockpit sous licence MIT (`LICENSE`). Les bibliothèques intégrées aux exe (paquets NuGet ci-dessous et,
+  pour la version autonome, le runtime .NET) sont listées avec leurs copyrights et le texte de leurs licences dans
+  `THIRD-PARTY-NOTICES.txt`, joint aux deux zips de chaque release.
 - Interface : [WPF-UI](https://github.com/lepoco/wpfui) (MIT) et CommunityToolkit.Mvvm (MIT). Polices
   [Space Grotesk](https://github.com/floriankarsten/space-grotesk) et [IBM Plex Mono](https://github.com/IBM/plex),
   communes aux applis Aria, sous licence SIL Open Font License 1.1 (fichiers et textes dans `src/Aria.Gui/Assets/Fonts`).
