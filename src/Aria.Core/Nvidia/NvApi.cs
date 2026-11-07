@@ -75,7 +75,9 @@ internal static class NvApi
     {
         if (!OperatingSystem.IsWindows()) return "NVAPI n'existe que sous Windows";
         if (!Environment.Is64BitProcess) return "NVAPI 64 bits requiert un programme 64 bits";
-        if (!NativeLibrary.TryLoad("nvapi64.dll", out var library))
+        // System32 uniquement (installé là par le pilote) : Aria tourne en administrateur, une nvapi64.dll posée à côté
+        // de l'exe ou dans le dossier courant ne doit jamais être chargée à la place de celle du pilote.
+        if (!NativeLibrary.TryLoad("nvapi64.dll", typeof(NvApi).Assembly, DllImportSearchPath.System32, out var library))
             return "nvapi64.dll introuvable : pilote NVIDIA absent ou incomplet";
         if (!NativeLibrary.TryGetExport(library, "nvapi_QueryInterface", out var query))
             return "nvapi64.dll ne fournit pas nvapi_QueryInterface";
