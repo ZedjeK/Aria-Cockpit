@@ -59,7 +59,7 @@
       <Border
         Margin="0,20,0,0"
         Padding="16,12"
-        Background="#1FFF3D5A"
+        Background="#1FFF5C7A"
         BorderBrush="{StaticResource NeonRedBrush}"
         BorderThickness="2,0,0,0"
         Visibility="{Binding HasCrashes, Converter={StaticResource BoolToVisibility}}">
@@ -142,7 +142,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding MessageIsError}" Value="True">
-                <Setter Property="Background" Value="#1FFF3D5A" />
+                <Setter Property="Background" Value="#1FFF5C7A" />
                 <Setter Property="BorderBrush" Value="{StaticResource NeonRedBrush}" />
               </DataTrigger>
             </Style.Triggers>
@@ -566,7 +566,7 @@
                     <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding MessageIsError}" Value="True">
-                        <Setter Property="Background" Value="#1FFF3D5A" />
+                        <Setter Property="Background" Value="#1FFF5C7A" />
                         <Setter Property="BorderBrush" Value="{StaticResource NeonRedBrush}" />
                       </DataTrigger>
                     </Style.Triggers>

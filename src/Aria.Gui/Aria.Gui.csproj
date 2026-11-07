@@ -33,6 +33,7 @@
   <ItemGroup>
     <!-- Même icône pour la fenêtre -->
     <Resource Include="Assets\Aria-Cockpit.ico" />
+    <Resource Include="Assets\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

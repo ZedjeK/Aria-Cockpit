@@ -29,8 +29,8 @@
       <SolidColorBrush x:Key="CardBackgroundPointerOver" Color="#D90F1C36" />
       <SolidColorBrush x:Key="CardBackgroundPressed" Color="#E6142442" />
       <SolidColorBrush x:Key="CardBorderBrush" Color="#407DF9FF" />
-      <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFE6F4FF" />
-      <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#FF8FA6C4" />
+      <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFDDEBFF" />
+      <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#FF93A8C8" />
     </ResourceDictionary>
   </Application.Resources>
 </Application>

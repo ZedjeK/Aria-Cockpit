@@ -15,7 +15,7 @@
       <Polygon
         Points="26,7 134,7 153,26 153,134 134,153 26,153 7,134 7,26"
         Stroke="#A64D7CFF"
-        StrokeThickness="2.5" />
+        StrokeThickness="1.8" />
 
       <!-- Jambe gauche : cyan glacé -->
       <Canvas>
@@ -26,7 +26,7 @@
           Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
           Stroke="#FF7DF9FF"
           StrokeLineJoin="Round"
-          StrokeThickness="6">
+          StrokeThickness="5">
           <Path.Clip>
             <RectangleGeometry Rect="0,72,80,90" />
           </Path.Clip>
@@ -42,7 +42,7 @@
           Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
           Stroke="#FF5C8BFF"
           StrokeLineJoin="Round"
-          StrokeThickness="6">
+          StrokeThickness="5">
           <Path.Clip>
             <RectangleGeometry Rect="80,72,80,90" />
           </Path.Clip>
@@ -58,7 +58,7 @@
           Data="M30,130 L70,30 L90,30 L130,130 L110,130 L80,54 L50,130 Z"
           Stroke="#FFFFFFFF"
           StrokeLineJoin="Round"
-          StrokeThickness="6">
+          StrokeThickness="5">
           <Path.Clip>
             <RectangleGeometry Rect="0,0,160,72" />
           </Path.Clip>
