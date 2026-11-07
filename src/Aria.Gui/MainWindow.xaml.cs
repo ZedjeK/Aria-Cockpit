@@ -25,6 +25,7 @@ public partial class MainWindow : FluentWindow
             PageScroller.ScrollToTop();
         };
         VersionText.Text = "v" + CurrentVersionText;
+        SingleInstance.Listen(this, BringToFront);
         Loaded += (_, _) =>
         {
             ShowPage(typeof(DashboardPage));
@@ -43,6 +44,17 @@ public partial class MainWindow : FluentWindow
         if (_update is null) return;
         UpdateText.Text = $"Aria Cockpit {_update.Latest} est disponible (version installée : {current}). Rien n'est installé automatiquement.";
         UpdateBanner.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>Aria Cockpit relancé alors qu'il est déjà ouvert : la fenêtre existante revient au premier plan.</summary>
+    private void BringToFront()
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Show();
+        Activate();
+        // Passage au premier plan garanti même si Windows refuse Activate seul (fenêtre d'un autre processus devant)
+        Topmost = true;
+        Topmost = false;
     }
 
     private void OnOpenUpdate(object sender, RoutedEventArgs e)

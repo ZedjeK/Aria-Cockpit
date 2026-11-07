@@ -251,7 +251,8 @@ public static class StartupTask
         if (OperatingSystem.IsWindows() && Run($"/Query /TN \"{LegacyName}\"").Code == 0) Run($"/Delete /TN \"{LegacyName}\" /F");
     }
 
-    private static (int Code, string Output) Run(string arguments)
+    /// <summary>Lance schtasks.exe (aussi utilisé par la tâche de la limite de charge).</summary>
+    internal static (int Code, string Output) Run(string arguments)
     {
         try
         {

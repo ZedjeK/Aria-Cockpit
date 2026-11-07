@@ -179,7 +179,7 @@
 
           <ContentControl Content="RÉGLAGES À RESTAURER" Style="{StaticResource SectionHeader}" />
 
-          <views:ChecklistView DataContext="{Binding Groups}" Visibility="{Binding DataContext.HasChanges, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BoolToVisibility}}" />
+          <views:CategoryChecklistView DataContext="{Binding Groups}" Visibility="{Binding DataContext.HasChanges, RelativeSource={RelativeSource AncestorType=Page}, Converter={StaticResource BoolToVisibility}}" />
 
           <!-- Tout est déjà à la valeur enregistrée -->
           <ContentControl fx:Fx.Reveal="True" Style="{StaticResource NeonPanel}" Visibility="{Binding HasNoChanges, Converter={StaticResource BoolToVisibility}}">

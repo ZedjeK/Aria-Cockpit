@@ -203,7 +203,7 @@ public sealed partial class RestoreViewModel : ChangeViewModelBase
         SelectionSubtitle = $"{file.Reason}  ·  {(count == 1 ? "1 réglage enregistré" : $"{count} réglages enregistrés")}";
 
         Groups = plan.Where(p => p.NeedsChange)
-            .GroupBy(p => p.Setting.Category)
+            .GroupBy(p => p.Setting.Category).OrderBy(g => g.Key)
             .Select(g => new CheckGroup(SettingCategoryNames.Of(g.Key), g.Select(ToCheckItem)))
             .ToList();
         foreach (var item in AllItems) item.PropertyChanged += (_, e) =>

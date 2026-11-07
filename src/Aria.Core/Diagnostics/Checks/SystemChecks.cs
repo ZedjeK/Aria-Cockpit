@@ -90,21 +90,50 @@ internal static class GameLibraries
     }
 }
 
-/// <summary>Programmes lancés au démarrage de Windows (information).</summary>
+/// <summary>
+/// Programmes lancés au démarrage de Windows (information). Distingue ceux qui peuvent être désactivés (proposés
+/// dans Réglages → Démarrage) de ceux qui sont toujours gardés (sécurité de Windows, pilotes), pour que le nombre et
+/// le conseil correspondent à ce que la page Réglages propose vraiment. Repris de CTI-Cockpit.
+/// </summary>
 public sealed class StartupCheck : IDiagnosticCheck
 {
+    /// <summary>À partir de ce nombre de programmes désactivables, le point passe en information avec un conseil.</summary>
+    internal const int ReviewThreshold = 5;
+
     public string Name => "programmes au démarrage";
 
     public IEnumerable<DiagnosticFinding> Run(DiagnosticContext ctx)
     {
-        var list = StartupApps.Scan().Where(e => e.Enabled).Select(e => e.DisplayName)
-            .Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
-        if (list.Count == 0) yield break;
-
-        yield return new("startup", $"{list.Count} programmes au démarrage", list.Count > 15 ? Severity.Info : Severity.Ok,
-            string.Join(", ", list),
-            list.Count > 15
-                ? "Désactiver ceux dont vous n'avez pas besoin : Réglages → Démarrage (réversible). Garder les pilotes (audio, NVIDIA…)."
-                : null);
+        if (Evaluate(StartupApps.Scan()) is { } finding) yield return finding;
     }
+
+    internal static DiagnosticFinding? Evaluate(IEnumerable<StartupEntry> entries)
+    {
+        var enabled = entries.Where(e => e.Enabled).ToList();
+        if (enabled.Count == 0) return null;
+
+        List<string> Names(bool isProtected) => enabled.Where(e => e.IsProtected == isProtected).Select(e => e.DisplayName)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.CurrentCultureIgnoreCase).ToList();
+        var optional = Names(false);
+        var kept = Names(true);
+        var total = optional.Count + kept.Count;
+
+        var title = optional.Count switch
+        {
+            0 => $"{Programs(total)} au démarrage, tous gardés",
+            1 => $"{Programs(total)} au démarrage, dont 1 désactivable",
+            var n => $"{Programs(total)} au démarrage, dont {n} désactivables"
+        };
+        var detail = string.Join(" ", new[]
+        {
+            optional.Count > 0 ? $"Désactivables : {string.Join(", ", optional)}." : null,
+            kept.Count > 0 ? $"Gardés (sécurité de Windows, pilotes) : {string.Join(", ", kept)}." : null
+        }.OfType<string>());
+
+        var review = optional.Count >= ReviewThreshold;
+        return new("startup", title, review ? Severity.Info : Severity.Ok, detail,
+            review ? $"Réglages → Démarrage : {optional.Count} programmes à revoir, désactivation réversible." : null);
+    }
+
+    private static string Programs(int count) => count == 1 ? "1 programme" : $"{count} programmes";
 }

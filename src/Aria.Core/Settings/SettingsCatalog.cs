@@ -26,6 +26,9 @@ public static class SettingsCatalog
         settings.Add(new MouseAccelerationSetting());
         settings.Add(new AnimationsSetting());
 
+        // Limite de charge de la batterie : portables Dell, HP, ASUS et Lenovo grand public dont l'interface répond
+        settings.Add(new Battery.BatteryChargeLimitSetting(GuiExePath(), hw.ChargeLimit?.Vendor));
+
         // Réglages du pilote NVIDIA (profil global) et plage dynamique de chaque écran NVIDIA
         settings.AddRange(NvidiaSettings.Build(hw));
 

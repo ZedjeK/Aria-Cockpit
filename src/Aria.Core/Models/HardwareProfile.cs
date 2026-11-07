@@ -174,10 +174,33 @@ public sealed record SystemStateInfo(bool? PendingReboot, bool? SystemProtection
     public static readonly SystemStateInfo Unknown = new(null, null);
 }
 
-/// <param name="DesignCapacity">Capacité d'origine (mWh).</param>
-/// <param name="FullChargeCapacity">Capacité actuelle à pleine charge (mWh).</param>
-public sealed record BatteryInfo(long DesignCapacity, long FullChargeCapacity)
+/// <summary>Protections de base du PC, lues pour le diagnostic de sécurité (jamais modifiées). Repris de CTI-Cockpit.</summary>
+/// <param name="Firewall">Pare-feu Windows par profil (« Domaine », « Privé », « Public ») : vrai s'il est actif. Vide si illisible.</param>
+/// <param name="ThirdPartyFirewall">Pare-feu d'un autre éditeur déclaré au Centre de sécurité de Windows, s'il y en a un.</param>
+/// <param name="LastUpdateInstalled">Dernière installation réussie par Windows Update (hors définitions antivirus et pilotes).</param>
+public sealed record SecurityInfo(
+    IReadOnlyDictionary<string, bool> Firewall,
+    string? ThirdPartyFirewall,
+    DateTime? LastUpdateInstalled)
 {
+    public static readonly SecurityInfo Unknown = new(new Dictionary<string, bool>(), null, null);
+}
+
+/// <param name="DesignCapacity">Capacité d'origine (mWh), 0 si illisible.</param>
+/// <param name="FullChargeCapacity">Capacité actuelle à pleine charge (mWh), 0 si illisible.</param>
+/// <param name="ChargePercent">Niveau de charge actuel, si connu.</param>
+/// <param name="OnAcPower">Branché sur secteur, si connu.</param>
+/// <param name="CycleCount">Nombre de cycles de charge, si la batterie le rapporte.</param>
+public sealed record BatteryInfo(
+    long DesignCapacity,
+    long FullChargeCapacity,
+    int? ChargePercent = null,
+    bool? OnAcPower = null,
+    int? CycleCount = null)
+{
+    /// <summary>Capacités lisibles et cohérentes : la santé peut être calculée.</summary>
+    public bool HasHealth => DesignCapacity > 0 && FullChargeCapacity > 0;
+
     /// <summary>Capacité restante par rapport à l'origine, en %.</summary>
     public int HealthPercent => DesignCapacity <= 0 ? 0 : (int)Math.Round(100.0 * FullChargeCapacity / DesignCapacity);
 }
@@ -214,7 +237,10 @@ public sealed class HardwareProfile
     public PeripheralInfo Peripherals { get; set; } = PeripheralInfo.Unknown;
     public IReadOnlyList<NetworkAdapterInfo> Network { get; set; } = [];
     public SystemStateInfo SystemState { get; set; } = SystemStateInfo.Unknown;
+    public SecurityInfo Security { get; set; } = SecurityInfo.Unknown;
     public BatteryInfo? Battery { get; set; }
+    /// <summary>Limite de charge (Dell, HP, ASUS, Lenovo grand public). null ailleurs, ou si le portable ne l'expose pas à Windows.</summary>
+    public ChargeLimitInfo? ChargeLimit { get; set; }
 
     /// <summary>Problèmes rencontrés pendant la détection (non bloquants).</summary>
     public List<string> Warnings { get; } = [];

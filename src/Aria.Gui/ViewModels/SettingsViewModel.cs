@@ -68,14 +68,15 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
 
         var plan = _analysis.Plan;
         Groups = plan.Where(p => p.NeedsChange)
-            .GroupBy(p => p.Setting.Category)
+            .GroupBy(p => p.Setting.Category).OrderBy(g => g.Key)
             .Select(g => new CheckGroup(SettingCategoryNames.Of(g.Key), g.Select(ToCheckItem),
                 g.Key switch
                 {
                     SettingCategory.Startup => StartupAppSetting.GroupNote,
                     SettingCategory.Apps => StoreApps.GroupNote,
                     _ => null
-                }))
+                },
+                SettingCategoryNames.Describe(g.Key)))
             .ToList();
         foreach (var item in AllItems) item.PropertyChanged += (_, e) =>
         {
@@ -103,8 +104,12 @@ public sealed partial class SettingsViewModel : ChangeViewModelBase
     {
         var badges = new List<Badge>();
         if (p.Setting.RequiresReboot) badges.Add(new Badge("REDÉMARRAGE", BadgeKind.Reboot));
+        // Limite de charge par une interface que le fabricant ne documente pas (ASUS, Lenovo)
+        if (p.Setting is Aria.Core.Battery.BatteryChargeLimitSetting { Experimental: true })
+            badges.Add(new Badge("EXPÉRIMENTAL", BadgeKind.Caution));
         if (!p.Setting.SelectedByDefault)
-            badges.Add(new Badge(p.Setting.Category is SettingCategory.Privacy or SettingCategory.Startup or SettingCategory.Apps ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
+            badges.Add(new Badge(p.Setting.Category is SettingCategory.Privacy or SettingCategory.Startup or SettingCategory.Apps
+                or SettingCategory.Battery ? "AU CHOIX" : "CONFORT", BadgeKind.Comfort));
         return new CheckItem(p.Setting.DisplayName, p.Current!.Display, p.Target!.Value.Display, p.Target.Reason,
             p.Setting.SelectedByDefault, p, badges);
     }

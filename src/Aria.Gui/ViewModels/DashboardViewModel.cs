@@ -270,11 +270,34 @@ public sealed partial class DashboardViewModel : ObservableObject
         if (hw.SystemState.SystemProtection is { } protection)
             systemDetails.Add($"Points de restauration : {(protection ? "actifs" : "désactivés")}");
         if (hw.SystemState.PendingReboot == true) systemDetails.Add("Redémarrage en attente");
-        if (hw.Battery is { } battery) systemDetails.Add($"Batterie : {battery.HealthPercent} % de sa capacité d'origine");
         if (hw.Peripherals.GameControllers.Count > 0) systemDetails.Add($"Manette : {hw.Peripherals.GameControllers[0]}");
         cards.Add(new("Système", SymbolRegular.Window24, $"{hw.Os.Name} {hw.Os.DisplayVersion}".Trim(), systemDetails));
 
+        // Batterie : portables seulement (repris de CTI-Cockpit)
+        if (hw.IsLaptop && hw.Battery is { } battery) cards.Add(BatteryCard(battery, hw.ChargeLimit));
+
         return cards;
+    }
+
+    /// <summary>Carte Batterie : charge et secteur en titre ; santé, cycles et limite de charge en détail.</summary>
+    internal static HardwareCard BatteryCard(BatteryInfo battery, ChargeLimitInfo? limit = null)
+    {
+        var main = string.Join(" · ", new[]
+        {
+            battery.ChargePercent is { } charge ? $"{charge} %" : null,
+            battery.OnAcPower switch { true => "sur secteur", false => "sur batterie", null => null }
+        }.OfType<string>());
+
+        var details = new List<string>();
+        if (battery.HasHealth)
+            details.Add($"Santé {battery.HealthPercent} % · {battery.FullChargeCapacity / 1000.0:0.#} Wh sur {battery.DesignCapacity / 1000.0:0.#} Wh d'origine");
+        if (battery.CycleCount is { } cycles) details.Add($"{cycles} cycles de charge");
+        if (limit is not null)
+            details.Add($"Limite de charge : {BatteryChargeCheck.LowerFirst(limit.Display)}{(limit.Experimental ? " (expérimental)" : "")}");
+        // Sur batterie, la carte graphique est bridée : mesures et assistant du réglage GPU faussés
+        if (battery.OnAcPower == false) details.Add("Sur batterie, la carte graphique est bridée : brancher avant de jouer ou de mesurer");
+
+        return new("Batterie", SymbolRegular.Battery824, main.Length > 0 ? main : "État inconnu", details);
     }
 
     private static string Dlss(Aria.Core.Nvidia.DlssSupport dlss) => dlss switch
