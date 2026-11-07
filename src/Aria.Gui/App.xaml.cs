@@ -59,6 +59,19 @@ public partial class App : Application
                 ErrorLog.Write(ex);
             }
         });
+        // Tâches de démarrage : copie protégée de l'exe remise à jour, anciennes tâches repointées vers elle
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (Environment.ProcessPath is { } exe && Aria.Core.Settings.LogonExe.Refresh(exe) is { } moved)
+                    ErrorLog.WriteLine(moved);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex);
+            }
+        });
     }
 
     private bool _showingError;

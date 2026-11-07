@@ -99,14 +99,14 @@ public static class ChargeLimits
         {
             Directory.CreateDirectory(BackupStore.DataRoot);
             File.WriteAllText(SavedPath, JsonSerializer.Serialize(new Saved(applied.Vendor, applied.Raw)));
-            var (code, output) = Nvidia.StartupTask.Run(
-                $"/Create /TN \"{TaskName}\" /TR \"\\\"{exePath}\\\" {Argument}\" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /F");
-            if (code != 0) throw new InvalidOperationException($"Tâche de démarrage refusée par Windows : {output.Trim()}");
+            // Lance la copie protégée de l'exe (Program Files), jamais l'exe dézippé : voir LogonExe
+            Settings.LogonExe.CreateTask(TaskName, Argument, exePath);
         }
         else
         {
             File.Delete(SavedPath);
-            if (Nvidia.StartupTask.Run($"/Query /TN \"{TaskName}\"").Code == 0) Nvidia.StartupTask.Run($"/Delete /TN \"{TaskName}\" /F");
+            if (Nvidia.StartupTask.TaskExists(TaskName)) Nvidia.StartupTask.Run($"/Delete /TN \"{TaskName}\" /F");
+            Settings.LogonExe.RemoveIfUnused();
         }
     }
 
