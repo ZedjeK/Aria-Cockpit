@@ -1,0 +1,234 @@
+Aria Cockpit : mentions des logiciels tiers
+===========================================
+
+Le code propre à Aria Cockpit est publié sous licence MIT (fichier LICENSE).
+Aria-Cockpit.exe et Aria-Bench.exe (et Aria.Cli.exe, si on le compile soi-même)
+intègrent les logiciels tiers ci-dessous. Leurs licences demandent de joindre
+l'avis de copyright et le texte de la licence : les voici.
+
+Les copyrights sont repris tels quels des fichiers des paquets (.nuspec, LICENSE,
+ThirdPartyNotices) ou des polices elles-mêmes.
+
+
+== Paquets NuGet intégrés à Aria-Cockpit.exe ==
+
+Paquet                         Version     Licence  Projet
+CommunityToolkit.Mvvm          8.4.0       MIT      https://github.com/CommunityToolkit/dotnet
+WPF-UI                         4.3.0       MIT      https://github.com/lepoco/wpfui
+WPF-UI.Abstractions            4.3.0       MIT      https://github.com/lepoco/wpfui
+System.Management              10.0.0      MIT      https://github.com/dotnet/dotnet
+
+Wpf.Ui.dll intègre lui-même (ThirdPartyNotices.txt du paquet WPF-UI) :
+  - les polices Fluent System Icons (MIT)  https://github.com/microsoft/fluentui-system-icons
+  - VirtualizingWrapPanel 2.0.6 (MIT)       https://github.com/sbaeumlisberger/VirtualizingWrapPanel
+  - du code de dotnet/wpf (MIT)             https://github.com/dotnet/wpf
+  - du code de microsoft-ui-xaml (MIT)      https://github.com/microsoft/microsoft-ui-xaml
+
+
+== Paquets NuGet intégrés à Aria-Bench.exe ==
+
+Paquet                                       Version     Licence  Projet
+Vortice.Direct3D12                           3.8.3       MIT      https://github.com/amerkoleci/Vortice.Windows
+Vortice.DXGI                                 3.8.3       MIT      https://github.com/amerkoleci/Vortice.Windows
+Vortice.DirectX                              3.8.3       MIT      https://github.com/amerkoleci/Vortice.Windows
+Vortice.Mathematics                          2.1.0       MIT      https://github.com/amerkoleci/Vortice.Mathematics
+SharpGen.Runtime                             2.4.2-beta  MIT      https://github.com/SharpGenTools/SharpGenTools
+SharpGen.Runtime.COM                         2.4.2-beta  MIT      https://github.com/SharpGenTools/SharpGenTools
+System.Diagnostics.PerformanceCounter        10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Diagnostics.EventLog                  10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Configuration.ConfigurationManager    10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Security.Cryptography.ProtectedData   10.0.0      MIT      https://github.com/dotnet/dotnet
+
+
+== Paquets NuGet intégrés à Aria.Cli.exe (version console, absente des zips) ==
+
+Paquet                                       Version     Licence  Projet
+Spectre.Console                              0.50.0      MIT      https://github.com/spectreconsole/spectre.console
+System.Management                            10.0.0      MIT      https://github.com/dotnet/dotnet
+System.CodeDom                               10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Diagnostics.PerformanceCounter        10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Diagnostics.EventLog                  10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Configuration.ConfigurationManager    10.0.0      MIT      https://github.com/dotnet/dotnet
+System.Security.Cryptography.ProtectedData   10.0.0      MIT      https://github.com/dotnet/dotnet
+
+
+== Runtime .NET (version autonome seulement) ==
+
+La version autonome embarque le runtime .NET 10 dans chaque exe ; la version
+légère s'appuie sur le runtime installé sur la machine et ne le redistribue pas.
+
+Composant                      Version   Licence  Projet
+Microsoft.NETCore.App          10.0.x    MIT      https://github.com/dotnet/runtime
+Microsoft.WindowsDesktop.App   10.0.x    MIT      https://github.com/dotnet/wpf
+  (WPF, dans Aria-Cockpit.exe seulement)
+
+10.0.x : la version du SDK .NET 10 qui a compilé la release.
+Le runtime intègre lui-même des composants tiers, sous leurs propres licences :
+  https://github.com/dotnet/runtime/blob/main/THIRD-PARTY-NOTICES.TXT
+  https://github.com/dotnet/wpf/blob/main/THIRD-PARTY-NOTICES.TXT
+(Les paquets System.* ci-dessus renvoient aux mêmes mentions.)
+
+
+== Autres éléments intégrés ==
+
+Space Grotesk     SIL Open Font License 1.1   https://github.com/floriankarsten/space-grotesk
+IBM Plex Mono     SIL Open Font License 1.1   https://github.com/IBM/plex
+  (polices intégrées à Aria-Cockpit.exe ; texte de la licence plus bas)
+SDK NVAPI         MIT                         https://github.com/NVIDIA/nvapi
+  (identifiants des fonctions et des réglages du pilote, relevés dans les
+  en-têtes du SDK)
+nvidia-data       domaine public              https://github.com/ZenitH-AT/nvidia-data
+  (table des modèles de cartes NVIDIA, intégrée à Aria.Core)
+
+
+== Licence MIT ==
+
+Copyrights concernés :
+
+  CommunityToolkit.Mvvm
+    Copyright © .NET Foundation and Contributors. All rights reserved.
+  WPF-UI, WPF-UI.Abstractions
+    Copyright (c) 2021-2025 Leszek Pomianowski and WPF UI Contributors. https://lepo.co/
+  Fluent System Icons (dans Wpf.Ui.dll)
+    Copyright (c) 2020 Microsoft Corporation
+  VirtualizingWrapPanel (dans Wpf.Ui.dll)
+    Copyright (c) 2019 S. Bäumlisberger
+  dotnet/wpf (dans Wpf.Ui.dll)
+    Copyright (c) .NET Foundation and Contributors. All rights reserved.
+  microsoft-ui-xaml (dans Wpf.Ui.dll)
+    Copyright (c) Microsoft Corporation. All rights reserved.
+  System.Management, System.CodeDom, System.Diagnostics.PerformanceCounter,
+  System.Diagnostics.EventLog, System.Configuration.ConfigurationManager,
+  System.Security.Cryptography.ProtectedData
+    © Microsoft Corporation. All rights reserved.
+  Runtime .NET (Microsoft.NETCore.App, Microsoft.WindowsDesktop.App)
+    Copyright (c) .NET Foundation and Contributors. All rights reserved.
+  Vortice.Direct3D12, Vortice.DXGI, Vortice.DirectX, Vortice.Mathematics
+    Copyright (c) Amer Koleci and Contributors
+  SharpGen.Runtime, SharpGen.Runtime.COM
+    (c) 2010-2017 Alexandre Mutel, 2017-2023 Jeremy Koritzinsky, 2023-2024 Amer Koleci
+  Spectre.Console
+    Patrik Svensson, Phil Scott, Nils Andresen, Cédric Luthi, Frank Ray
+  SDK NVAPI
+    voir https://github.com/NVIDIA/nvapi
+
+Texte de la licence (le même pour tous) :
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+== SIL Open Font License 1.1 ==
+
+Copyrights concernés :
+
+  Space Grotesk
+    Copyright 2020 The Space Grotesk Project Authors (https://github.com/floriankarsten/space-grotesk)
+  IBM Plex Mono
+    Copyright 2017 IBM Corp. All rights reserved.
+
+Texte de la licence (aussi dans src/Aria.Gui/Assets/Fonts) :
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
