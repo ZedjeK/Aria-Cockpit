@@ -27,7 +27,7 @@
     <!-- Contrôles au style Windows 11 (Fluent, Mica, thème clair/sombre) -->
     <PackageReference Include="WPF-UI" Version="4.3.0" />
     <!-- Liaison interface ↔ logique (MVVM), bibliothèque officielle Microsoft -->
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
   <ItemGroup>
