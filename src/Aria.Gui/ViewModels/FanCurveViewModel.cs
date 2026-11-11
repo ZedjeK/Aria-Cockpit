@@ -33,6 +33,12 @@ public sealed partial class FanCurveViewModel : ObservableObject
     /// <summary>Nom de la courbe enregistrée chargée dans « Personnalisée » (null dès qu'un point change).</summary>
     private string? _customName;
 
+    /// <summary>
+    /// Courbe en cours telle que la page la connaît (null : pilote). Si elle ne correspond plus à celle qui tourne,
+    /// c'est qu'elle a été lancée ou arrêtée ailleurs (menu de l'icône) : la page se remet d'accord en s'affichant.
+    /// </summary>
+    private string? _knownRunning;
+
     public IReadOnlyList<string> Choices { get; } = [AutoChoice, .. FanCurve.Presets.Select(p => p.Name), CustomChoice];
 
     public ObservableCollection<FanPointRow> Points { get; } = [];
@@ -85,10 +91,32 @@ public sealed partial class FanCurveViewModel : ObservableObject
             Selected = FanCurveService.Running is not { } running ? AutoChoice
                 : IsPreset(running.Name) ? running.Name
                 : CustomChoice;
+            _knownRunning = FanCurveService.Running?.Name;
             if (FanCurveService.RecoveryNote is { } note) Show(note, FanCurveService.RecoveryFailed);
             await LoadProfilesAsync();
         }
+        else if (FanCurveService.Running?.Name != _knownRunning)
+        {
+            FollowRunning();
+            await LoadProfilesAsync();
+        }
         RefreshStatus();
+    }
+
+    /// <summary>La courbe a changé hors de la page (menu de l'icône) : le choix affiché suit celle qui tourne.</summary>
+    private void FollowRunning()
+    {
+        var running = FanCurveService.Running;
+        _knownRunning = running?.Name;
+        if (running is not null && !IsPreset(running.Name))
+        {
+            _custom = running.Points;
+            _customName = running.Name == CustomChoice ? null : running.Name;
+        }
+        _filling = true;
+        Selected = running is null ? AutoChoice : IsPreset(running.Name) ? running.Name : CustomChoice;
+        _filling = false;
+        if (running is not null) Fill(running.Points);
     }
 
     private static bool IsPreset(string name) => FanCurve.Presets.Any(p => p.Name == name);
@@ -262,6 +290,7 @@ public sealed partial class FanCurveViewModel : ObservableObject
         finally
         {
             IsBusy = false;
+            _knownRunning = FanCurveService.Running?.Name;
             RefreshStatus();
         }
     }

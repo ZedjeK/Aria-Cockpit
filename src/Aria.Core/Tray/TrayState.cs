@@ -28,6 +28,26 @@ public enum TrayIconKind
     Alert
 }
 
+/// <summary>Ce que le menu de l'icône propose de lancer.</summary>
+public static class TrayChoices
+{
+    /// <summary>
+    /// Courbes de ventilation du menu : les préréglages, puis « Mes courbes », puis la dernière courbe personnalisée
+    /// si elle n'a pas été enregistrée sous un nom. Une seule entrée par nom.
+    /// </summary>
+    public static IReadOnlyList<FanCurve> FanCurves(IEnumerable<SavedFanProfile> saved, FanCurveChoice? last)
+    {
+        var curves = new List<FanCurve>(FanCurve.Presets);
+        foreach (var curve in saved.Select(p => p.Curve).Concat(last is null ? [] : [last.Curve]))
+            if (!curves.Any(c => SameName(c.Name, curve.Name)))
+                curves.Add(curve);
+        return curves;
+    }
+
+    public static bool SameName(string? a, string? b) =>
+        a is not null && b is not null && string.Equals(a.Trim(), b.Trim(), StringComparison.CurrentCultureIgnoreCase);
+}
+
 /// <summary>
 /// Ce que l'icône de la zone de notification, son infobulle, son menu et la règle de fermeture ont besoin de savoir.
 /// </summary>

@@ -70,8 +70,18 @@ que la carte répond, pas ce qu'Aria croit avoir posé. Le plafond de fréquence
 compte donc pas dans cette vérification.
 
 - **Infobulle** : l'état en une ligne, avec la température du GPU et la vitesse des ventilateurs.
-- **Clic gauche** : rouvre la fenêtre. **Clic droit** : ouvrir, l'état détaillé, aller droit à Réglage GPU, Mises à
-  jour ou Rapports, quitter.
+- **Clic gauche** : rouvre la fenêtre. **Clic droit** : ouvrir, l'état détaillé, les actions ci-dessous, aller droit à
+  Réglage GPU, Mises à jour ou Rapports, quitter.
+- **Ventilateurs** (menu) : lance un préréglage, une de tes courbes enregistrées ou la dernière courbe personnalisée,
+  ou rend la main au pilote, sans ouvrir la fenêtre. Le choix en place est marqué d'un « ● ». Ici, pas de fenêtre de
+  confirmation : la courbe démarre tout de suite, et la page Réglage GPU reprend le même choix à son prochain affichage.
+- **Profil GPU** (menu) : pose un de tes profils enregistrés pour cette carte, ou revient au réglage d'usine (après
+  confirmation, car la tâche de démarrage est supprimée). « Garder au démarrage » reste tel qu'il est : un profil posé
+  d'ici est réappliqué à l'ouverture de session seulement si le réglage en place l'était déjà. Un profil enregistré
+  avec un autre pilote est signalé, et demande confirmation. C'est aussi le moyen de reposer un profil perdu (pastille
+  jaune).
+- Le résultat de chaque action arrive par une notification Windows. Une seule action à la fois, et aucune pendant que
+  l'assistant de Réglage GPU fait ses mesures.
 - **Fermer la fenêtre** range Aria dans son icône tant qu'elle a quelque chose d'actif : profil GPU en place (ou
   perdu), courbe de ventilation en cours, ou opération en cours (application de réglages, restauration, nettoyage,
   installation de mises à jour, assistant, analyse de performance). Une notification dit pourquoi elle reste. S'il n'y

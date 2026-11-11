@@ -17,7 +17,8 @@ namespace Aria.Gui.Services;
 ///   icône      délavée (rien d'actif), normale (profil GPU en place ou courbe en cours), pastille jaune (le profil
 ///              enregistré n'est plus sur la carte), pastille cyan (Aria pilote les ventilateurs)
 ///   infobulle  « Aria Cockpit · profil GPU appliqué · courbe « Ma config » · 52 °C · ventilateurs 60 % »
-///   menu       ouvrir, état, aller à une page, quitter
+///   menu       ouvrir, état, lancer ou arrêter une courbe de ventilation, poser un profil GPU ou revenir à l'usine,
+///              aller à une page, quitter
 ///
 /// L'état du réglage GPU est relu sur la carte toutes les 5 s, hors du fil de l'interface : l'icône dit ce que la
 /// carte répond, pas ce qu'Aria croit avoir posé.
@@ -43,8 +44,14 @@ public sealed class TrayIcon : IDisposable
     private readonly Dictionary<(TrayIconKind Kind, bool Fan), Icon> _icons = [];
     private readonly List<IntPtr> _iconHandles = [];
     private Forms.ToolStripLabel? _profileLine, _fanLine, _workLine;
+    private Forms.ToolStripMenuItem? _fanMenu, _gpuMenu;
     private string? _signature;
-    private bool _reading, _disposed;
+    private bool _reading, _acting, _disposed;
+
+    /// <summary>Carte réglable et son réglage au dernier relevé ; null sans carte NVIDIA réglable.</summary>
+    private GpuTuner? _tuner;
+    private GpuTuningState? _card;
+    private bool _fansAvailable;
 
     /// <summary>Dernier état relevé (5 s au plus).</summary>
     public TrayState State { get; private set; } = TrayState.Empty;
@@ -117,11 +124,12 @@ public sealed class TrayIcon : IDisposable
         if (FanCurveService.Running?.Name != State.FanCurve) RefreshSoon();
     }
 
-    private static TrayState Read(TrayState previous)
+    private TrayState Read(TrayState previous)
     {
         var (profile, profileText) = (GpuProfileStatus.Unknown, (string?)null);
         if (GpuProfile.Tuner is { } tuner)
         {
+            _tuner = tuner;
             // Pendant que l'assistant teste des paliers, la carte change exprès : on garde le dernier état sûr
             if (MeasurementGate.AssistantRunning) (profile, profileText) = (previous.Profile, previous.ProfileText);
             else
@@ -130,6 +138,7 @@ public sealed class TrayIcon : IDisposable
                 {
                     var (status, card) = GpuProfile.Status(tuner);
                     (profile, profileText) = (status, card.Describe());
+                    _card = card;
                 }
                 catch (GpuTuningException)
                 {
@@ -141,6 +150,7 @@ public sealed class TrayIcon : IDisposable
         uint? temperature = null, speed = null;
         if (FanCurveService.Device is { } fans)
         {
+            _fansAvailable = true;
             temperature = fans.ReadTemperature();
             speed = fans.ReadSpeeds().Max();
         }
@@ -197,6 +207,16 @@ public sealed class TrayIcon : IDisposable
         if (_workLine is not null) menu.Items.Add(_workLine);
         menu.Items.Add(new Forms.ToolStripSeparator());
 
+        // Actions sans ouvrir la fenêtre : leurs listes sont refaites à chaque ouverture du menu (une courbe ou un
+        // profil enregistré entre-temps y apparaît tout de suite)
+        _fanMenu = Submenu("Ventilateurs");
+        _gpuMenu = Submenu("Profil GPU");
+        menu.Items.Add(_fanMenu);
+        menu.Items.Add(_gpuMenu);
+        menu.Items.Add(new Forms.ToolStripSeparator());
+        menu.Opening += (_, _) => FillActions();
+        FillActions();
+
         menu.Items.Add(Item("Réglage GPU", () => _openPage(typeof(GpuTuningPage))));
         menu.Items.Add(Item("Mises à jour", () => _openPage(typeof(UpdatesPage))));
         menu.Items.Add(Item("Rapports", () => _openPage(typeof(ReportsPage))));
@@ -204,6 +224,150 @@ public sealed class TrayIcon : IDisposable
 
         menu.Items.Add(Item("Quitter Aria Cockpit", _quit));
         return menu;
+    }
+
+    private static Forms.ToolStripMenuItem Submenu(string text)
+    {
+        var item = new Forms.ToolStripMenuItem(text) { ForeColor = MenuText };
+        var list = (Forms.ToolStripDropDownMenu)item.DropDown;
+        list.ShowImageMargin = false;
+        list.BackColor = MenuBack;
+        list.ForeColor = MenuText;
+        return item;
+    }
+
+    /// <summary>« ● » devant le choix en place.</summary>
+    private static string Mark(bool active, string text) => (active ? "●  " : "     ") + text;
+
+    // ---------------------------------------------------------------- Actions du menu
+
+    /// <summary>Remplit « Ventilateurs » et « Profil GPU » d'après les fichiers et l'état du moment.</summary>
+    private void FillActions()
+    {
+        if (_fanMenu is null || _gpuMenu is null) return;
+        try
+        {
+            // Pendant l'assistant, la carte et les ventilateurs font partie de la mesure : on n'y touche pas d'ici
+            var free = !MeasurementGate.AssistantRunning && !_acting;
+            FillFans(_fanMenu, free);
+            FillGpu(_gpuMenu, free);
+        }
+        catch (Exception e)
+        {
+            // Fichier de profils illisible : le menu garde ses autres entrées
+            ErrorLog.Write(e);
+        }
+    }
+
+    private void FillFans(Forms.ToolStripMenuItem menu, bool free)
+    {
+        menu.Visible = _fansAvailable;
+        menu.Enabled = free;
+        menu.DropDownItems.Clear();
+        if (!_fansAvailable) return;
+
+        var running = FanCurveService.Running?.Name;
+        foreach (var curve in TrayChoices.FanCurves(FanProfiles.All(), FanCurveStore.Load()))
+        {
+            var active = TrayChoices.SameName(curve.Name, running);
+            menu.DropDownItems.Add(Item(Mark(active, curve.Name), () => Act(
+                $"courbe « {curve.Name} »",
+                () => FanCurveService.Start(curve),
+                $"Courbe « {curve.Name} » en place : Aria pilote les ventilateurs.")));
+        }
+        menu.DropDownItems.Add(new Forms.ToolStripSeparator());
+        var stop = Item(Mark(running is null, "Automatique (pilote NVIDIA)"), () => Act(
+            "retour au pilote",
+            FanCurveService.Stop,
+            "Ventilateurs rendus au pilote NVIDIA."));
+        stop.Enabled = running is not null;
+        menu.DropDownItems.Add(stop);
+    }
+
+    private void FillGpu(Forms.ToolStripMenuItem menu, bool free)
+    {
+        menu.Visible = _tuner is not null;
+        menu.Enabled = free;
+        menu.DropDownItems.Clear();
+        if (_tuner is not { } tuner) return;
+
+        var profiles = GpuProfiles.For(tuner.Identity).Where(p => p.Tuning is not null).ToList();
+        foreach (var profile in profiles)
+        {
+            var active = _card is { } card && card.SameTuning(profile.Tuning!);
+            var changed = profile.DriverChanged(tuner.Identity) ? " (pilote changé depuis)" : "";
+            menu.DropDownItems.Add(Item(Mark(active, profile.Name + changed), () => ApplyProfile(tuner, profile)));
+        }
+        if (profiles.Count == 0)
+            menu.DropDownItems.Add(new Forms.ToolStripLabel("Aucun profil enregistré (page Réglage GPU)") { ForeColor = MenuMuted });
+
+        menu.DropDownItems.Add(new Forms.ToolStripSeparator());
+        var factory = Item(Mark(State.Profile == GpuProfileStatus.Factory, "Revenir au réglage d'usine…"), () => RevertToFactory(tuner));
+        factory.Enabled = State.Profile is GpuProfileStatus.Applied or GpuProfileStatus.Lost;
+        menu.DropDownItems.Add(factory);
+    }
+
+    /// <summary>
+    /// Pose un profil enregistré. « Garder au démarrage » reste tel qu'il est : le menu change le réglage, pas la
+    /// façon dont il est réappliqué (comme « Charger » sur la page Réglage GPU).
+    /// </summary>
+    private void ApplyProfile(GpuTuner tuner, SavedGpuProfile profile)
+    {
+        if (profile.Tuning is not { } tuning) return;
+        if (profile.DriverChanged(tuner.Identity) && !Confirm(
+                $"Le profil « {profile.Name} » a été enregistré avec le pilote {profile.DriverVersion}, et le pilote actuel est le " +
+                $"{tuner.Identity.DriverVersion}. Un réglage stable avec un pilote ne l'est pas toujours avec un autre.\n\n" +
+                $"Appliquer quand même : {tuning.Describe()} ?"))
+            return;
+
+        var keep = GpuProfile.Load() is { } file && GpuTuningState.TryParse(file.Current, out var current) && current.AtStartup;
+        var exe = Environment.ProcessPath ?? "Aria-Cockpit.exe";
+        Act($"profil « {profile.Name} »",
+            () => GpuProfile.Apply(tuner, tuning with { AtStartup = keep }, exe),
+            $"Profil « {profile.Name} » appliqué" + (keep
+                ? ", réappliqué à chaque ouverture de session."
+                : " jusqu'au prochain redémarrage. Pour le garder : page Réglage GPU, « Garder au démarrage »."));
+    }
+
+    private void RevertToFactory(GpuTuner tuner)
+    {
+        if (!Confirm("La carte graphique retrouve ses valeurs d'usine, et la tâche de démarrage « Aria Cockpit\\Profil GPU » est " +
+                     "supprimée : ton profil ne sera plus réappliqué à l'ouverture de session.\n\nRevenir au réglage d'usine ?"))
+            return;
+        var exe = Environment.ProcessPath ?? "Aria-Cockpit.exe";
+        Act("retour au réglage d'usine", () => GpuProfile.RevertToOrigin(tuner, exe), "Carte graphique revenue à ses valeurs d'usine.");
+    }
+
+    private static bool Confirm(string text) =>
+        System.Windows.MessageBox.Show(text, "Aria Cockpit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes;
+
+    /// <summary>
+    /// Lance une action du menu hors du fil de l'interface. Une seule à la fois ; son résultat arrive par
+    /// notification, la fenêtre pouvant être fermée.
+    /// </summary>
+    private async void Act(string label, Action action, string done)
+    {
+        if (_acting || _disposed) return;
+        _acting = true;
+        try
+        {
+            await Task.Run(action);
+            Notify("Aria Cockpit", done);
+        }
+        catch (Exception e) when (e is GpuTuningException or System.IO.IOException or UnauthorizedAccessException)
+        {
+            Notify($"Aria Cockpit : {label} impossible", e.Message);
+        }
+        catch (Exception e)
+        {
+            Notify($"Aria Cockpit : {label} impossible", $"{e.Message} Détails dans {ErrorLog.Write(e)}.");
+        }
+        finally
+        {
+            _acting = false;
+            await RefreshAsync();
+        }
     }
 
     private static Forms.ToolStripMenuItem Item(string text, Action onClick)

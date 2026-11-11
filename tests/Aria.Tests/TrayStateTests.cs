@@ -86,6 +86,44 @@ public class TrayStateTests
         Assert.Equal("Ton profil GPU est appliqué, la courbe « Ma config » pilote les ventilateurs, nettoyage en cours.", state.KeepReason());
     }
 
+    // ---- Courbes proposées dans le menu ----
+
+    private static readonly IReadOnlyList<FanCurvePoint> Points = [new(45, 60), new(70, 100)];
+
+    [Fact]
+    public void MenuOffersPresetsThenSavedCurves()
+    {
+        var curves = TrayChoices.FanCurves([new SavedFanProfile("Ma config", Points, DateTime.Now)], last: null);
+
+        Assert.Equal(["Silencieux", "Équilibré", "Refroidissement max", "Ma config"], curves.Select(c => c.Name));
+    }
+
+    [Fact]
+    public void LastCurveAlreadySavedIsListedOnce()
+    {
+        var curves = TrayChoices.FanCurves([new SavedFanProfile("Ma config", Points, DateTime.Now)],
+            new FanCurveChoice("ma config", Points, Active: false));
+
+        Assert.Single(curves, c => TrayChoices.SameName(c.Name, "Ma config"));
+    }
+
+    [Fact]
+    public void UnsavedCustomCurveIsOffered()
+    {
+        var curves = TrayChoices.FanCurves([], new FanCurveChoice("Personnalisée", Points, Active: false));
+
+        Assert.Equal("Personnalisée", curves[^1].Name);
+        Assert.Equal(Points, curves[^1].Points);
+    }
+
+    [Fact]
+    public void LastPresetIsNotListedTwice()
+    {
+        var curves = TrayChoices.FanCurves([], new FanCurveChoice("Silencieux", FanCurve.Silent.Points, Active: true));
+
+        Assert.Equal(FanCurve.Presets.Count, curves.Count);
+    }
+
     // ---- Icône, infobulle, menu ----
 
     [Theory]
