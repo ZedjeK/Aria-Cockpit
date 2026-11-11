@@ -39,7 +39,7 @@ n'est jamais modifié, seulement lu et expliqué.
 
    | Fichier | Pour qui |
    |---|---|
-   | `Aria-Cockpit-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 215 Mo une fois décompressé) |
+   | `Aria-Cockpit-<version>-autonome.zip` | Tout le monde : rien à installer (≈ 247 Mo une fois décompressé) |
    | `Aria-Cockpit-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 11 Mo) |
 
    Le zip contient `Aria-Cockpit.exe` et `Aria-Bench.exe`, le banc d'essai : garde-les dans le même dossier.
