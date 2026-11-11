@@ -8,7 +8,12 @@ namespace Aria.Core.Nvidia;
 /// Vrai tant qu'Aria pilote les ventilateurs. Encore vrai au lancement suivant : Aria s'est arrêté sans rendre la main
 /// au pilote (plantage, fin de tâche), et les ventilateurs sont peut-être restés à leur dernière vitesse.
 /// </param>
-public sealed record FanCurveChoice(string Name, IReadOnlyList<FanCurvePoint> Points, bool Active)
+/// <param name="Resume">
+/// Vrai si la courbe tournait encore quand Aria s'est arrêtée (fermeture, fin de session, plantage) : avec « Démarrer
+/// avec Windows », Aria la relance à son prochain lancement. Faux dès que l'utilisateur rend la main au pilote.
+/// Absent des fichiers d'avant cette option : rien n'est relancé tant qu'une courbe n'a pas été lancée de nouveau.
+/// </param>
+public sealed record FanCurveChoice(string Name, IReadOnlyList<FanCurvePoint> Points, bool Active, bool Resume = false)
 {
     public FanCurve Curve => new(Name, Points);
 }
@@ -44,6 +49,20 @@ public static class FanCurveStore
     {
         if (Load() is { } choice && choice.Active != active) Save(choice with { Active = active });
     }
+
+    /// <summary>
+    /// La courbe ne tourne plus. <paramref name="byUser"/> : l'utilisateur a rendu la main au pilote, elle ne sera pas
+    /// relancée ; sinon (Aria se ferme, la courbe s'arrête sur une erreur) elle reste à relancer.
+    /// </summary>
+    public static void SetStopped(bool byUser)
+    {
+        if (Load() is not { } choice) return;
+        var stopped = Stopped(choice, byUser);
+        if (stopped != choice) Save(stopped);
+    }
+
+    internal static FanCurveChoice Stopped(FanCurveChoice choice, bool byUser) =>
+        choice with { Active = false, Resume = choice.Resume && !byUser };
 
     internal static string ToJson(FanCurveChoice choice) => JsonSerializer.Serialize(choice, Json);
 

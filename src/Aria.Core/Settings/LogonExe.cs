@@ -20,10 +20,12 @@ public static class LogonExe
     public static string PathFor(string sourceExe) => Path.Combine(Folder, Path.GetFileName(sourceExe));
 
     /// <summary>Tâches de démarrage d'Aria qui lancent la copie, avec leur argument.</summary>
-    private static readonly (string Name, string Argument)[] Tasks =
+    /// <remarks>LongRunning : la tâche lance un exemplaire qui reste ouvert (zone de notification), et non un passage silencieux.</remarks>
+    private static readonly (string Name, string Argument, bool LongRunning)[] Tasks =
     [
-        (StartupTask.Name, StartupTask.Argument),
-        (ChargeLimits.TaskName, ChargeLimits.Argument)
+        (StartupTask.Name, StartupTask.Argument, false),
+        (ChargeLimits.TaskName, ChargeLimits.Argument, false),
+        (Tray.TrayStartup.TaskName, Tray.TrayStartup.Argument, true)
     ];
 
     /// <summary>
@@ -60,7 +62,11 @@ public static class LogonExe
     }
 
     /// <summary>Crée (ou remplace) une tâche d'ouverture de session qui lance la copie de l'exe avec les droits administrateur.</summary>
-    internal static void CreateTask(string name, string argument, string sourceExe)
+    /// <param name="longRunning">
+    /// L'exemplaire lancé reste ouvert (zone de notification). Une tâche créée en ligne de commande est arrêtée au bout
+    /// de 3 jours et ne démarre pas sur batterie : celle-ci est décrite en XML, sans ces deux limites.
+    /// </param>
+    internal static void CreateTask(string name, string argument, string sourceExe, bool longRunning = false)
     {
         string exe;
         try
@@ -71,10 +77,73 @@ public static class LogonExe
         {
             throw new InvalidOperationException($"Copie d'Aria dans « {Folder} » impossible : {e.Message}", e);
         }
-        // 20 s après l'ouverture de session : le pilote graphique est prêt
-        var (code, output) = StartupTask.Run(
-            $"/Create /TN \"{name}\" /TR \"\\\"{exe}\\\" {argument}\" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /F");
+
+        int code;
+        string output;
+        if (longRunning)
+        {
+            using var user = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var file = Path.Combine(Path.GetTempPath(), $"aria-tache-{Guid.NewGuid():N}.xml");
+            try
+            {
+                // UTF-16 : l'encodage que schtasks attend pour un fichier de tâche
+                File.WriteAllText(file, LongRunningTaskXml(exe, argument, user.Name, user.User?.Value ?? user.Name), System.Text.Encoding.Unicode);
+                (code, output) = StartupTask.Run($"/Create /TN \"{name}\" /XML \"{file}\" /F");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                throw new InvalidOperationException($"Tâche de démarrage non créée : {e.Message}", e);
+            }
+            finally
+            {
+                try { File.Delete(file); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            }
+        }
+        else
+        {
+            // 20 s après l'ouverture de session : le pilote graphique est prêt
+            (code, output) = StartupTask.Run(
+                $"/Create /TN \"{name}\" /TR \"\\\"{exe}\\\" {argument}\" /SC ONLOGON /RL HIGHEST /DELAY 0000:20 /F");
+        }
         if (code != 0) throw new InvalidOperationException($"Tâche de démarrage refusée par Windows : {output.Trim()}");
+    }
+
+    /// <summary>
+    /// Tâche d'ouverture de session pour un exemplaire qui reste ouvert : droits administrateur, 20 s après
+    /// l'ouverture de session (pilote graphique prêt), sans durée maximale, lancée et gardée aussi sur batterie.
+    /// </summary>
+    /// <param name="account">Compte dont l'ouverture de session lance la tâche (« PC\nom »).</param>
+    /// <param name="sid">Identifiant du même compte, sous lequel la tâche tourne.</param>
+    internal static string LongRunningTaskXml(string exe, string argument, string account, string sid)
+    {
+        System.Xml.Linq.XNamespace ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
+        System.Xml.Linq.XElement E(string name, params object[] content) => new(ns + name, content);
+        var task = new System.Xml.Linq.XElement(ns + "Task", new System.Xml.Linq.XAttribute("version", "1.2"),
+            E("RegistrationInfo",
+                E("Description", "Lance Aria Cockpit dans la zone de notification à l'ouverture de session. Créée par Aria Cockpit (« Démarrer avec Windows »).")),
+            E("Triggers",
+                E("LogonTrigger", E("Enabled", "true"), E("UserId", account), E("Delay", "PT20S"))),
+            E("Principals",
+                E("Principal", new System.Xml.Linq.XAttribute("id", "Author"),
+                    E("UserId", sid), E("LogonType", "InteractiveToken"), E("RunLevel", "HighestAvailable"))),
+            E("Settings",
+                E("MultipleInstancesPolicy", "IgnoreNew"),
+                E("DisallowStartIfOnBatteries", "false"),
+                E("StopIfGoingOnBatteries", "false"),
+                E("AllowHardTerminate", "true"),
+                E("StartWhenAvailable", "false"),
+                E("RunOnlyIfNetworkAvailable", "false"),
+                E("AllowStartOnDemand", "true"),
+                E("Enabled", "true"),
+                E("Hidden", "false"),
+                E("RunOnlyIfIdle", "false"),
+                E("WakeToRun", "false"),
+                E("ExecutionTimeLimit", "PT0S"),
+                E("Priority", "7")),
+            E("Actions", new System.Xml.Linq.XAttribute("Context", "Author"),
+                E("Exec", E("Command", exe), E("Arguments", argument))));
+        return "<?xml version=\"1.0\" encoding=\"UTF-16\"?>" + Environment.NewLine + task;
     }
 
     /// <summary>Supprime la copie quand plus aucune tâche d'Aria ne la lance.</summary>
@@ -117,10 +186,10 @@ public static class LogonExe
 
         var exe = Install(currentExe);
         var moved = new List<string>();
-        foreach (var (name, argument) in existing)
+        foreach (var (name, argument, longRunning) in existing)
         {
             if (string.Equals(StartupTask.CommandOf(name), exe, StringComparison.OrdinalIgnoreCase)) continue;
-            CreateTask(name, argument, currentExe);
+            CreateTask(name, argument, currentExe, longRunning);
             moved.Add(name);
         }
         return moved.Count == 0 ? null

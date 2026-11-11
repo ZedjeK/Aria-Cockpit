@@ -56,14 +56,25 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Dernier état relevé (5 s au plus).</summary>
     public TrayState State { get; private set; } = TrayState.Empty;
 
+    /// <summary>Faux tant que le pilote graphique n'a pas répondu (lancement à l'ouverture de session) : aucune lecture de la carte.</summary>
+    private bool _driverReady;
+
+    /// <summary>« Démarrer avec Windows » est activé ; null tant que le planificateur n'a pas été interrogé.</summary>
+    private bool? _autostart;
+
     /// <param name="open">Rouvre la fenêtre.</param>
     /// <param name="openPage">Rouvre la fenêtre sur une page.</param>
     /// <param name="quit">Arrête Aria.</param>
-    public TrayIcon(Action open, Action<Type> openPage, Action quit)
+    /// <param name="waitForDriver">
+    /// Lancement à l'ouverture de session : la carte n'est lue qu'après <see cref="DriverReady"/>. Lue trop tôt, elle
+    /// passerait pour absente jusqu'à la fermeture d'Aria (l'accès au pilote n'est ouvert qu'une fois).
+    /// </param>
+    public TrayIcon(Action open, Action<Type> openPage, Action quit, bool waitForDriver = false)
     {
         _open = open;
         _openPage = openPage;
         _quit = quit;
+        _driverReady = !waitForDriver;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
         _icon = new Forms.NotifyIcon { Text = State.Summary(), Icon = IconFor(TrayIconKind.Idle, fan: false), Visible = true };
@@ -94,14 +105,24 @@ public sealed class TrayIcon : IDisposable
         if (!_disposed) _icon.ShowBalloonTip(5000, title, text, Forms.ToolTipIcon.None);
     }
 
+    /// <summary>Le pilote graphique répond (ou l'attente est terminée) : la carte peut être lue.</summary>
+    public void DriverReady()
+    {
+        if (_driverReady) return;
+        _driverReady = true;
+        _ = RefreshAsync();
+    }
+
     /// <summary>Relit l'état, hors du fil de l'interface, puis met l'icône à jour.</summary>
     public async Task RefreshAsync()
     {
-        if (_reading || _disposed) return;
+        if (_reading || _disposed || !_driverReady) return;
         _reading = true;
         try
         {
             var previous = State;
+            // Le planificateur n'est interrogé qu'une fois, puis après chaque bascule de l'option
+            _autostart ??= await Task.Run(TrayStartup.Enabled);
             var state = await Task.Run(() => Read(previous));
             if (!_disposed) Show(state);
         }
@@ -222,8 +243,38 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add(Item("Rapports", () => _openPage(typeof(ReportsPage))));
         menu.Items.Add(new Forms.ToolStripSeparator());
 
+        _autostartItem = Item(AutostartText(), ToggleAutostart);
+        menu.Items.Add(_autostartItem);
         menu.Items.Add(Item("Quitter Aria Cockpit", _quit));
         return menu;
+    }
+
+    // ---------------------------------------------------------------- Démarrer avec Windows
+
+    private Forms.ToolStripMenuItem? _autostartItem;
+
+    private string AutostartText() => Mark(_autostart == true, "Démarrer avec Windows");
+
+    /// <summary>Active ou désactive la tâche « Aria Cockpit\Zone de notification », après avoir dit ce qu'elle fait.</summary>
+    private void ToggleAutostart()
+    {
+        if (_autostart is not { } enabled) return;
+        var exe = Environment.ProcessPath ?? "Aria-Cockpit.exe";
+        if (enabled)
+        {
+            Act("arrêt du démarrage avec Windows", TrayStartup.Disable, "Aria Cockpit ne démarre plus avec Windows.", autostart: false);
+            return;
+        }
+        if (!Confirm(
+                "Aria Cockpit se lancera à chaque ouverture de session, avec les droits administrateur et sans fenêtre de " +
+                "confirmation, directement rangée dans cette icône.\n\n" +
+                "• Elle relancera la courbe de ventilation qui tournait quand elle s'est arrêtée (sauf si tu as rendu la main au pilote).\n" +
+                "• Ton profil GPU reste réappliqué par sa propre tâche, « Garder au démarrage ».\n" +
+                $"• La tâche planifiée « {TrayStartup.TaskName} » lance une copie d'Aria rangée dans « {Aria.Core.Settings.LogonExe.Folder} », " +
+                "que seuls les administrateurs peuvent modifier.\n\nDémarrer Aria Cockpit avec Windows ?"))
+            return;
+        Act("démarrage avec Windows", () => TrayStartup.Enable(exe),
+            "Aria Cockpit démarrera avec Windows, rangée dans la zone de notification.", autostart: true);
     }
 
     private static Forms.ToolStripMenuItem Submenu(string text)
@@ -251,6 +302,11 @@ public sealed class TrayIcon : IDisposable
             var free = !MeasurementGate.AssistantRunning && !_acting;
             FillFans(_fanMenu, free);
             FillGpu(_gpuMenu, free);
+            if (_autostartItem is not null)
+            {
+                _autostartItem.Text = AutostartText();
+                _autostartItem.Enabled = _autostart is not null && !_acting;
+            }
         }
         catch (Exception e)
         {
@@ -346,16 +402,18 @@ public sealed class TrayIcon : IDisposable
     /// Lance une action du menu hors du fil de l'interface. Une seule à la fois ; son résultat arrive par
     /// notification, la fenêtre pouvant être fermée.
     /// </summary>
-    private async void Act(string label, Action action, string done)
+    /// <param name="autostart">État de « Démarrer avec Windows » si l'action réussit ; null si elle n'y touche pas.</param>
+    private async void Act(string label, Action action, string done, bool? autostart = null)
     {
         if (_acting || _disposed) return;
         _acting = true;
         try
         {
             await Task.Run(action);
+            if (autostart is { } enabled) _autostart = enabled;
             Notify("Aria Cockpit", done);
         }
-        catch (Exception e) when (e is GpuTuningException or System.IO.IOException or UnauthorizedAccessException)
+        catch (Exception e) when (e is GpuTuningException or InvalidOperationException or System.IO.IOException or UnauthorizedAccessException)
         {
             Notify($"Aria Cockpit : {label} impossible", e.Message);
         }

@@ -29,10 +29,13 @@ public partial class App : Application
             return;
         }
 
-        // Déjà ouvert dans cette session : il revient au premier plan, sans seconde fenêtre
-        if (!Services.SingleInstance.Claim())
+        // Lancé par la tâche « Démarrer avec Windows » : l'icône seule, la fenêtre reste rangée jusqu'à ce qu'on l'ouvre
+        var inTray = e.Args.Contains(Aria.Core.Tray.TrayStartup.Argument, StringComparer.OrdinalIgnoreCase);
+
+        // Déjà ouvert dans cette session : il revient au premier plan, sans seconde fenêtre. Une version plus récente
+        // prend la place de l'ancienne (sinon une mise à jour rouvrirait l'ancienne, restée dans la zone de notification).
+        if (!Services.SingleInstance.Claim() && (inTray || !TakeOverOrActivate()))
         {
-            Services.SingleInstance.SignalRunning();
             Shutdown();
             return;
         }
@@ -47,12 +50,34 @@ public partial class App : Application
 
         var state = new AppState();
         var window = new MainWindow(state);
-        _tray = new Services.TrayIcon(window.BringToFront, window.OpenPage, () => Quit(window));
-        window.Tray = _tray;
-        window.Show();
-        _ = state.AnalyzeAsync();
-        // Ventilateurs laissés en manuel par un arrêt brutal d'Aria : rendus au pilote
-        _ = Task.Run(Services.FanCurveService.RecoverAfterCrash);
+        // À l'ouverture de session, le pilote graphique peut être encore en cours de chargement : l'icône attend qu'il
+        // réponde avant de lire la carte (une lecture trop tôt la ferait passer pour absente jusqu'à la fermeture d'Aria)
+        var tray = _tray = new Services.TrayIcon(window.BringToFront, window.OpenPage, () => Quit(window), waitForDriver: inTray);
+        window.Tray = tray;
+        // L'analyse du matériel part au premier affichage de la fenêtre (MainWindow) : rien à l'ouverture de session
+        if (!inTray) window.Show();
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (inTray) WaitForDriver();
+                // Ventilateurs laissés en manuel par un arrêt brutal d'Aria : rendus au pilote
+                Services.FanCurveService.RecoverAfterCrash();
+                // Avec « Démarrer avec Windows » : la courbe qui tournait à l'arrêt d'Aria repart
+                var resumed = Services.FanCurveService.ResumeAtStartup();
+                Dispatcher.InvokeAsync(() =>
+                {
+                    tray.DriverReady();
+                    if (resumed is { } r) tray.Notify(r.Failed ? "Aria Cockpit : courbe non relancée" : "Aria Cockpit", r.Text);
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex);
+                Dispatcher.InvokeAsync(tray.DriverReady);
+            }
+        });
         // Ménage du dossier des données, une fois par jour au plus
         _ = Task.Run(() =>
         {
@@ -81,6 +106,46 @@ public partial class App : Application
     }
 
     private Services.TrayIcon? _tray;
+
+    /// <summary>
+    /// Ouverture de session : attend que le pilote NVIDIA réponde, une minute au plus (comme la tâche du profil GPU).
+    /// Sans carte NVIDIA, l'attente va au bout, en arrière-plan, sans rien bloquer.
+    /// </summary>
+    private static void WaitForDriver()
+    {
+        for (var attempt = 0; attempt < 12 && GpuTuner.TryOpen() is null; attempt++) Thread.Sleep(5000);
+    }
+
+    /// <summary>
+    /// Aria tourne déjà dans la session. Vrai si ce lancement, plus récent, a pris sa place et doit continuer ;
+    /// faux s'il doit s'arrêter (la fenêtre déjà ouverte est alors revenue au premier plan).
+    /// </summary>
+    private static bool TakeOverOrActivate()
+    {
+        var running = Services.SingleInstance.RunningVersion();
+        var mine = Services.SingleInstance.OwnVersion;
+        switch (Aria.Core.Tray.TrayStartup.OnSecondLaunch(running, mine))
+        {
+            case Aria.Core.Tray.SecondLaunch.TakeOver:
+                if (Services.SingleInstance.TakeOver(Version.Parse(mine!), TimeSpan.FromSeconds(15))) return true;
+                Services.SingleInstance.SignalRunning();
+                System.Windows.MessageBox.Show(
+                    $"Aria Cockpit {running} tourne déjà et n'a pas laissé la place à la version {mine} : une opération y est en cours, " +
+                    "ou cette version-là ne sait pas le faire.\n\nQuitte-la (menu de son icône à côté de l'horloge, ou sa fenêtre), puis relance celle-ci.",
+                    "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return false;
+            case Aria.Core.Tray.SecondLaunch.Refuse:
+                Services.SingleInstance.SignalRunning();
+                System.Windows.MessageBox.Show(
+                    $"Aria Cockpit {running} tourne déjà, et la version que tu viens de lancer ({mine}) est plus ancienne.\n\n" +
+                    "Pour revenir à l'ancienne, quitte d'abord celle qui tourne (menu de son icône à côté de l'horloge).",
+                    "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                return false;
+            default:
+                Services.SingleInstance.SignalRunning();
+                return false;
+        }
+    }
 
     /// <summary>
     /// « Quitter » du menu de l'icône : arrête Aria pour de bon. Une opération en cours serait coupée au milieu :
@@ -154,7 +219,7 @@ public partial class App : Application
         // Courbe de ventilation en cours : le pilote reprend la main avant qu'Aria ne se ferme
         try
         {
-            Services.FanCurveService.Stop();
+            Services.FanCurveService.StopForExit();
         }
         catch (Exception ex)
         {
