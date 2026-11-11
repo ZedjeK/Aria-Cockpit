@@ -178,7 +178,7 @@ public sealed class TrayIcon : IDisposable
     {
         var menu = new Forms.ContextMenuStrip
         {
-            Renderer = new Forms.ToolStripProfessionalRenderer(new DarkColors()) { RoundedEdges = false },
+            Renderer = new DarkRenderer(),
             ShowImageMargin = false,
             BackColor = MenuBack,
             ForeColor = MenuText
@@ -216,22 +216,53 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Ligne d'état : du texte, pas une commande.</summary>
     private static Forms.ToolStripLabel Line(string text) => new(text) { ForeColor = MenuMuted };
 
-    /// <summary>Couleurs du menu, accordées à la fenêtre d'Aria (nuit profonde).</summary>
-    private sealed class DarkColors : Forms.ProfessionalColorTable
+    /// <summary>
+    /// Dessin du menu, accordé à la fenêtre d'Aria (nuit profonde). Tout est dessiné ici, avec les couleurs d'Aria :
+    /// le rendu standard de Windows Forms reprend les couleurs du système dans une application qui n'est pas Windows
+    /// Forms, et la surbrillance claire de Windows rendait le texte blanc illisible.
+    /// </summary>
+    private sealed class DarkRenderer : Forms.ToolStripRenderer
     {
-        public override Color ToolStripDropDownBackground => MenuBack;
-        public override Color ImageMarginGradientBegin => MenuBack;
-        public override Color ImageMarginGradientMiddle => MenuBack;
-        public override Color ImageMarginGradientEnd => MenuBack;
-        public override Color MenuBorder => TrayIcon.MenuBorder;
-        public override Color MenuItemBorder => MenuHover;
-        public override Color MenuItemSelected => MenuHover;
-        public override Color MenuItemSelectedGradientBegin => MenuHover;
-        public override Color MenuItemSelectedGradientEnd => MenuHover;
-        public override Color MenuItemPressedGradientBegin => MenuHover;
-        public override Color MenuItemPressedGradientEnd => MenuHover;
-        public override Color SeparatorDark => TrayIcon.MenuBorder;
-        public override Color SeparatorLight => MenuBack;
+        private static readonly Color Disabled = Color.FromArgb(0x5E, 0x72, 0x90);
+
+        protected override void OnRenderToolStripBackground(Forms.ToolStripRenderEventArgs e)
+        {
+            using var back = new SolidBrush(MenuBack);
+            e.Graphics.FillRectangle(back, e.AffectedBounds);
+        }
+
+        protected override void OnRenderToolStripBorder(Forms.ToolStripRenderEventArgs e)
+        {
+            using var border = new Pen(MenuBorder);
+            e.Graphics.DrawRectangle(border, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
+        }
+
+        /// <summary>Entrée survolée, ou dont le sous-menu est ouvert : bleu nuit, sur lequel le texte clair reste lisible.</summary>
+        protected override void OnRenderMenuItemBackground(Forms.ToolStripItemRenderEventArgs e)
+        {
+            var lit = e.Item.Enabled && (e.Item.Selected || e.Item.Pressed);
+            using var back = new SolidBrush(lit ? MenuHover : MenuBack);
+            e.Graphics.FillRectangle(back, new Rectangle(2, 0, e.Item.Width - 4, e.Item.Height));
+        }
+
+        protected override void OnRenderItemText(Forms.ToolStripItemTextRenderEventArgs e)
+        {
+            var color = e.Item.Enabled ? e.Item.ForeColor : Disabled;
+            Forms.TextRenderer.DrawText(e.Graphics, e.Text, e.TextFont, e.TextRectangle, color, e.TextFormat);
+        }
+
+        protected override void OnRenderArrow(Forms.ToolStripArrowRenderEventArgs e)
+        {
+            e.ArrowColor = e.Item is { Enabled: false } ? Disabled : MenuText;
+            base.OnRenderArrow(e);
+        }
+
+        protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
+        {
+            using var line = new Pen(MenuBorder);
+            var y = e.Item.Height / 2;
+            e.Graphics.DrawLine(line, 8, y, e.Item.Width - 8, y);
+        }
     }
 
     // ---------------------------------------------------------------- Dessin de l'icône
