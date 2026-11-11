@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <!-- Tableaux et liste à cocher dans la console -->
-    <PackageReference Include="Spectre.Console" Version="0.50.0" />
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 
   <ItemGroup>
