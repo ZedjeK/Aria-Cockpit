@@ -15,6 +15,7 @@ public static class SingleInstance
     private const string MutexName = @"Local\Aria-Cockpit.Instance";
 
     private static readonly uint ActivateMessage = RegisterWindowMessage("Aria-Cockpit.Activate");
+    private static readonly uint HandOffMessage = RegisterWindowMessage("Aria-Cockpit.HandOff");
 
     private static Mutex? _mutex;
 
@@ -35,14 +36,87 @@ public static class SingleInstance
         PostMessage(BroadcastHandle, ActivateMessage, IntPtr.Zero, IntPtr.Zero);
     }
 
+    /// <summary>Version de cet exe (« 0.24.0 ») ; null si illisible.</summary>
+    public static string? OwnVersion { get; } = VersionOf(Environment.ProcessPath);
+
+    private static string? VersionOf(string? exe)
+    {
+        try
+        {
+            return exe is null ? null : System.Diagnostics.FileVersionInfo.GetVersionInfo(exe).ProductVersion;
+        }
+        catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Version d'un autre Aria Cockpit de cette session Windows ; null s'il n'y en a pas ou si elle est illisible.
+    /// Sert seulement à décider quoi demander : l'exemplaire en place revérifie de son côté (<see cref="Listen"/>).
+    /// </summary>
+    public static string? RunningVersion()
+    {
+        using var me = System.Diagnostics.Process.GetCurrentProcess();
+        foreach (var other in System.Diagnostics.Process.GetProcessesByName(me.ProcessName))
+        {
+            using (other)
+            {
+                try
+                {
+                    if (other.Id == me.Id || other.SessionId != me.SessionId) continue;
+                    if (VersionOf(other.MainModule?.FileName) is { Length: > 0 } version) return version;
+                }
+                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
+                    // Processus terminé entre-temps, ou illisible : on regarde le suivant
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Demande à l'exemplaire en place, plus ancien, de s'arrêter, et attend qu'il rende la session. Vrai si ce
+    /// lancement est devenu l'exemplaire de la session ; faux si l'autre n'a pas cédé à temps.
+    /// </summary>
+    public static bool TakeOver(Version mine, TimeSpan timeout)
+    {
+        PostMessage(BroadcastHandle, HandOffMessage, new IntPtr(Pack(mine)), IntPtr.Zero);
+        var mutex = new Mutex(false, MutexName);
+        try
+        {
+            if (!mutex.WaitOne(timeout))
+            {
+                mutex.Dispose();
+                return false;
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            // L'autre exemplaire s'est arrêté sans libérer le verrou : il est à nous
+        }
+        _mutex = mutex;
+        return true;
+    }
+
+    /// <summary>Version tenant dans un paramètre de message : 10 bits par nombre (0 à 1023).</summary>
+    internal static int Pack(Version v) =>
+        (Math.Clamp(v.Major, 0, 1023) << 20) | (Math.Clamp(v.Minor, 0, 1023) << 10) | Math.Clamp(v.Build, 0, 1023);
+
+    internal static Version Unpack(int packed) => new((packed >> 20) & 1023, (packed >> 10) & 1023, packed & 1023);
+
     /// <summary>Écoute les demandes des lancements suivants.</summary>
-    public static void Listen(Window window, Action onRequest)
+    /// <param name="onRequest">Un lancement de la même version : revenir au premier plan.</param>
+    /// <param name="onHandOff">Un lancement de la version donnée demande la place : à l'exemplaire en place de céder, ou non.</param>
+    public static void Listen(Window window, Action onRequest, Action<Version> onHandOff)
     {
         var handle = new WindowInteropHelper(window).EnsureHandle();
-        HwndSource.FromHwnd(handle)!.AddHook((IntPtr _, int msg, IntPtr _, IntPtr _, ref bool handled) =>
+        HwndSource.FromHwnd(handle)!.AddHook((IntPtr _, int msg, IntPtr wParam, IntPtr _, ref bool handled) =>
         {
-            if (msg != ActivateMessage) return IntPtr.Zero;
-            onRequest();
+            if (msg == ActivateMessage) onRequest();
+            else if (msg == HandOffMessage) onHandOff(Unpack(wParam.ToInt32()));
+            else return IntPtr.Zero;
             handled = true;
             return IntPtr.Zero;
         });

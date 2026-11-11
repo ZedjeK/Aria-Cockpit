@@ -25,11 +25,13 @@ public partial class MainWindow : FluentWindow
             PageScroller.ScrollToTop();
         };
         VersionText.Text = "v" + CurrentVersionText;
-        SingleInstance.Listen(this, BringToFront);
+        SingleInstance.Listen(this, BringToFront, OnHandOff);
         Loaded += (_, _) =>
         {
             ShowCheckedPage();
             _ = CheckForUpdateAsync();
+            // Premier affichage de la fenêtre : au lancement, ou plus tard si Aria a démarré rangée avec Windows
+            _ = state.AnalyzeAsync();
         };
         // Fenêtre rangée dans la zone de notification : la page est retirée, comme quand on change d'onglet, pour que
         // sa télémétrie et ses animations s'arrêtent. Elle revient telle quelle à la réouverture.
@@ -50,6 +52,18 @@ public partial class MainWindow : FluentWindow
     public TrayIcon? Tray { get; set; }
 
     private bool _quitting;
+
+    /// <summary>
+    /// Une version plus récente d'Aria Cockpit vient d'être lancée et demande la place : celle-ci s'arrête (la
+    /// nouvelle relance la courbe de ventilation si « Démarrer avec Windows » est activé). Elle ne cède pas au milieu
+    /// d'une opération, ni à une version qui n'est pas plus récente.
+    /// </summary>
+    private void OnHandOff(Version launched)
+    {
+        if (!Version.TryParse(SingleInstance.OwnVersion, out var mine) || launched <= mine) return;
+        if (BackgroundWork.Running.Count > 0) return;
+        Quit();
+    }
 
     /// <summary>Arrête Aria pour de bon (« Quitter » du menu de l'icône), quoi qu'elle ait d'actif.</summary>
     public void Quit()

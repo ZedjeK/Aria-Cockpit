@@ -64,20 +64,23 @@ public static class FanCurveService
             _runner = null;
             Running = null;
             Last = null;
-            FanCurveStore.SetActive(false);
+            // Arrêt sur une erreur, pas par choix : la courbe reste à relancer au prochain lancement d'Aria
+            FanCurveStore.SetStopped(byUser: false);
             Failed?.Invoke(error);
             Changed?.Invoke();
         };
 
         // Noté avant de démarrer : si Aria s'arrête brutalement, le prochain lancement rendra la main au pilote
-        FanCurveStore.Save(new FanCurveChoice(curve.Name, curve.Points, Active: true));
+        // (et relancera la courbe, avec « Démarrer avec Windows »)
+        FanCurveStore.Save(new FanCurveChoice(curve.Name, curve.Points, Active: true, Resume: true));
         try
         {
             runner.Start();
         }
         catch
         {
-            FanCurveStore.SetActive(false);
+            // Refusée d'emblée par la carte : inutile de la retenter à chaque lancement
+            FanCurveStore.SetStopped(byUser: true);
             throw;
         }
         _runner = runner;
@@ -85,8 +88,16 @@ public static class FanCurveService
         Changed?.Invoke();
     }
 
-    /// <summary>Arrête la courbe et rend la main au pilote. Synchrone : appelé aussi à la fermeture d'Aria.</summary>
-    public static void Stop()
+    /// <summary>L'utilisateur rend la main au pilote : la courbe s'arrête, et ne sera pas relancée d'elle-même.</summary>
+    public static void Stop() => Stop(byUser: true);
+
+    /// <summary>
+    /// Aria se ferme : la courbe s'arrête et le pilote reprend la main, mais elle reste « à relancer » au prochain
+    /// lancement (avec « Démarrer avec Windows »). Synchrone : la fermeture attend cet arrêt.
+    /// </summary>
+    public static void StopForExit() => Stop(byUser: false);
+
+    private static void Stop(bool byUser)
     {
         if (_runner is not { } runner) return;
         _runner = null;
@@ -98,8 +109,29 @@ public static class FanCurveService
         }
         finally
         {
-            FanCurveStore.SetActive(false);
+            FanCurveStore.SetStopped(byUser);
             Changed?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Au lancement d'Aria, après <see cref="RecoverAfterCrash"/> : relance la courbe qui tournait quand Aria s'est
+    /// arrêtée, si « Démarrer avec Windows » est activé. Renvoie ce qui s'est passé, pour une notification, ou null
+    /// s'il n'y avait rien à relancer.
+    /// </summary>
+    public static (string Text, bool Failed)? ResumeAtStartup()
+    {
+        // Sans courbe à relancer, on n'interroge même pas le planificateur
+        if (FanCurveStore.Load() is not { Resume: true } saved) return null;
+        if (Aria.Core.Tray.TrayStartup.CurveToResume(saved, Aria.Core.Tray.TrayStartup.Enabled()) is not { } curve) return null;
+        try
+        {
+            Start(curve);
+            return ($"Courbe de ventilation « {curve.Name} » relancée.", false);
+        }
+        catch (GpuTuningException e)
+        {
+            return ($"Courbe de ventilation « {curve.Name} » non relancée : {e.Message}", true);
         }
     }
 }

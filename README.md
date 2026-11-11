@@ -51,7 +51,8 @@ n'est jamais modifié, seulement lu et expliqué.
 Aria Cockpit demande les **droits administrateur** : il en a besoin pour lire et modifier les réglages du système.
 Lance-le depuis ta propre session (si un autre compte administrateur valide l'élévation, les réglages personnels
 comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là). Une seule fenêtre à la fois : le relancer ramène au
-premier plan celle qui est déjà ouverte.
+premier plan celle qui est déjà ouverte (ou la remplace, si l'exe lancé est plus récent : voir « Mettre Aria Cockpit à
+jour »).
 
 ### Icône de la zone de notification
 
@@ -90,6 +91,31 @@ compte donc pas dans cette vérification.
   au pilote. Ton profil GPU, lui, reste sur la carte. Si une opération est en cours, Aria demande confirmation.
 - Fenêtre rangée, la page affichée est mise de côté : plus de télémétrie ni d'animation, seulement le relevé de
   l'icône.
+
+#### Démarrer avec Windows
+
+Dans le menu de l'icône, **« Démarrer avec Windows »** (marqué d'un « ● » quand c'est activé) lance Aria Cockpit à
+chaque ouverture de session, directement rangée dans son icône : pas de fenêtre, pas d'analyse du matériel tant que tu
+ne l'ouvres pas.
+
+- **Comment** : une tâche planifiée, « Aria Cockpit\Zone de notification », lance Aria avec les droits administrateur,
+  sans fenêtre de confirmation, 20 secondes après l'ouverture de session. Comme les autres tâches d'Aria, elle lance la
+  copie rangée dans `C:\Program Files\Aria Cockpit`, que seuls les administrateurs peuvent modifier, jamais l'exe
+  dézippé. Elle n'a pas de durée maximale et tourne aussi sur batterie. Désactiver l'option supprime la tâche.
+- **Courbe de ventilation** : avec cette option, Aria relance au lancement la courbe qui tournait quand elle s'est
+  arrêtée (fermeture, fin de session, plantage). Si tu avais rendu la main au pilote, rien n'est relancé. Une
+  notification dit ce qui a été relancé, ou pourquoi ça n'a pas pu l'être.
+- **Profil GPU** : rien ne change, il reste réappliqué par sa propre tâche (« Garder au démarrage », page Réglage GPU).
+  L'icône vérifie ensuite qu'il est bien sur la carte.
+- À l'ouverture de session, Aria attend que le pilote NVIDIA réponde (une minute au plus) avant de lire la carte.
+
+#### Mettre Aria Cockpit à jour
+
+Aria restant dans son icône, lancer l'exe d'une **version plus récente** suffit : l'ancienne s'arrête et laisse la
+place, la nouvelle met à jour la copie de `Program Files` et relance la courbe de ventilation si « Démarrer avec
+Windows » est activé. L'ancienne ne cède pas au milieu d'une opération : la nouvelle te demande alors de la quitter
+d'abord. Lancer une version **plus ancienne** que celle qui tourne ne remplace rien : un message le dit. Les versions
+jusqu'à la 0.24 ne savent pas céder la place : ferme-les avant de lancer la nouvelle.
 
 ### Diagnostic (lecture seule)
 
@@ -279,7 +305,8 @@ de NVML (cartes Maxwell, GTX 900, et plus récentes).
 - **Tant qu'Aria Cockpit est ouvert** : NVML passe les ventilateurs en manuel, c'est donc Aria qui suit la température,
   une fois par seconde, quelle que soit la page affichée, y compris fenêtre fermée : tant qu'une courbe tourne, la croix
   range Aria dans son icône de la zone de notification au lieu de l'arrêter. « Rendre la main au pilote », choisir
-  « Automatique » ou quitter Aria (menu de son icône) remet le réglage de NVIDIA. Si Aria s'arrête brutalement, les ventilateurs gardent leur dernière vitesse jusqu'au
+  « Automatique » ou quitter Aria (menu de son icône) remet le réglage de NVIDIA. Avec « Démarrer avec Windows », la
+  courbe qui tournait à l'arrêt d'Aria repart à son lancement suivant. Si Aria s'arrête brutalement, les ventilateurs gardent leur dernière vitesse jusqu'au
   lancement suivant, qui rend la main au pilote et le signale (le pilote bride de lui-même une carte qui chauffe trop).
 - **Un seul pilote à la fois** : si les ventilateurs sont déjà en manuel (MSI Afterburner, logiciel du fabricant…),
   la confirmation le signale ; fermez l'autre outil, sinon les deux se contredisent.
@@ -583,7 +610,8 @@ Version console en simulation, depuis la racine du projet :
 - `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core et des verdicts d'Aria-Bench (analyse de performance,
   recherche des paliers, origine d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc,
   contrôles de stabilité, incidents du pilote, avis de Performance, courbe de ventilation, état de l'icône et règle de
-  fermeture) ; rien n'y touche à la carte ni au système
+  fermeture, tâche « Démarrer avec Windows », reprise de la courbe, relais entre versions) ; rien n'y touche à la carte
+  ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px
