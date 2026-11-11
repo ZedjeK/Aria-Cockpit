@@ -17,12 +17,19 @@ L'exécutable n'est pas signé : Windows SmartScreen peut afficher « Windows a 
 
 ## Nouveautés de la {VERSION}
 
-- **Sécurité, à installer** : les tâches de démarrage « Profil GPU » et « Limite de charge » tournent en administrateur sans fenêtre UAC, mais lançaient l'exe là où tu l'avais dézippé (Bureau, Téléchargements…), un dossier modifiable sans droits : un programme lancé sans droits pouvait le remplacer et obtenir les droits administrateur à l'ouverture de session suivante. Elles lancent désormais une copie rangée dans `C:\Program Files\Aria Cockpit`, où seuls les administrateurs écrivent ; au premier lancement de la 0.24, les tâches existantes sont repointées vers elle. Le composant NVIDIA `nvapi64.dll` n'est plus chargé que depuis le dossier système de Windows
-- **Ce que contient chaque mise à jour Windows** : sous chaque ligne, la description de Microsoft, le nombre de failles de sécurité corrigées (CVE) et un lien vers l'article KB ou la page d'information de Microsoft
-- **Notes de version des applications** : après la recherche, Aria lit en arrière-plan les notes de version de chaque application à mettre à jour (`winget show`) et affiche un lien « Notes de version de l'éditeur », avec un aperçu du texte quand le paquet le contient. Tous les paquets n'en fournissent pas
-- **Historique de Windows Update** : les 40 dernières opérations, y compris ce que Windows fait seul en arrière-plan, avec leur résultat, la mention « depuis Aria Cockpit » pour celles lancées depuis Aria et un lien « En savoir plus ». Les définitions Defender, installées plusieurs fois par jour, sont regroupées ; les mises à jour du Microsoft Store ont un nom lisible
-- **Rapport de mises à jour** plus complet : pour chaque mise à jour installée, les failles corrigées et le lien vers l'article ou les notes de version
-- Seules les adresses web (http, https) sont ouvertes, dans le navigateur et sans les droits administrateur : un chemin local glissé dans un paquet winget est ignoré
+- **Icône dans la zone de notification** : tant qu'Aria Cockpit tourne, son icône est à côté de l'horloge. Délavée quand rien n'est actif, normale quand ton profil GPU est en place ou qu'une courbe de ventilation tourne, avec une pastille cyan quand Aria pilote les ventilateurs. L'infobulle donne l'état en une ligne, avec la température du GPU et la vitesse des ventilateurs
+- **Profil GPU vérifié sur la carte** : toutes les 5 secondes, Aria relit la limite de puissance et les décalages sur la carte. Si ton profil est enregistré mais que la carte ne l'a plus (pilote rechargé, mis à jour ou planté), l'icône prend une pastille jaune. Le plafond de fréquence n'est pas relisible par le pilote : il ne compte pas dans cette vérification
+- **Fermer la fenêtre ne coupe plus rien** : la croix range Aria dans son icône tant qu'elle a quelque chose d'actif (profil GPU en place ou perdu, courbe de ventilation, opération en cours), et une notification dit pourquoi. S'il n'y a rien d'actif, elle s'arrête comme avant. « Quitter Aria Cockpit », dans le menu de l'icône, l'arrête pour de bon
+- **Agir depuis le menu de l'icône** : lancer un préréglage ou une de tes courbes de ventilation, rendre la main au pilote, poser un de tes profils GPU ou revenir au réglage d'usine (après confirmation), sans ouvrir la fenêtre. Un profil enregistré avec un autre pilote est signalé. Depuis le menu, une courbe démarre sans fenêtre de confirmation
+- **Démarrer avec Windows** (menu de l'icône, désactivé par défaut) : Aria se lance à l'ouverture de session, rangée dans son icône, et relance la courbe de ventilation qui tournait quand elle s'est arrêtée, sauf si tu avais rendu la main au pilote. Une tâche planifiée, « Aria Cockpit\Zone de notification », lance la copie rangée dans `C:\Program Files\Aria Cockpit`, avec les droits administrateur et sans fenêtre UAC
+- **Mise à jour sans fermer l'ancienne** : Aria restant dans son icône, lancer l'exe d'une version plus récente suffit, l'ancienne s'arrête et laisse la place (sauf opération en cours). Cela vaut à partir de cette version : **ferme la 0.24 ou plus ancienne avant de lancer la {VERSION}**
+- **Identité de la famille Aria** : polices Space Grotesk et IBM Plex Mono embarquées dans l'exe (Aria ne dépend plus d'une police installée sur le PC), rouge et textes alignés sur le reste de la famille, fiche PC HTML aux mêmes couleurs
+- **Licences** : `LICENSE` et `THIRD-PARTY-NOTICES.txt` (mentions des logiciels tiers) sont joints aux deux zips
+- Dépendances à jour (CommunityToolkit.Mvvm 8.4.2, bibliothèques System 10.0.15, Spectre.Console 0.57.2 pour la version console)
+
+À savoir : l'icône utilise Windows Forms, ce qui alourdit la version autonome d'environ 32 Mo (`Aria-Cockpit.exe` passe de 142 à 174 Mo). La version légère ne change pas.
+
+Rappel de la 0.24.0 : les tâches de démarrage lancent une copie d'Aria rangée dans `C:\Program Files\Aria Cockpit`, où seuls les administrateurs écrivent, et non plus l'exe dézippé (correctif de sécurité) ; détail de chaque mise à jour Windows (description, failles corrigées, lien KB), notes de version des applications, historique de Windows Update, rapport de mises à jour plus complet.
 
 Rappel de la 0.23.0 : fonctions reprises de CTI-Cockpit (menu des catégories dans Réglages et Restauration, pare-feu et dernier correctif dans le diagnostic, vrai nom des programmes au démarrage, carte Batterie, une seule fenêtre à la fois, ménage automatique du dossier des données) et limite de charge de la batterie des portables (Dell et HP ; ASUS et Lenovo grand public en expérimental).
 
@@ -41,6 +48,7 @@ Rappel de la 0.19.x : origine aux valeurs d'usine, contrôle de l'overclock de N
 - **Réglage GPU** : limite de puissance, plafond et décalages de fréquence (NVML officiel), assistant guidé Équilibre → Économie ou Performance, contrôles de stabilité, courbe de ventilation, validation de 15 minutes, profils, rapport de fin de mode, garde-fou anti-plantage
 - **Banc d'essai Aria** : scène 3D Direct3D 12 en 1080p, 1440p ou 4K, préréglages Faible à Ultra, FPS mesurés, images de contrôle vérifiées (une erreur de calcul trahit un réglage instable) ; l'assistant s'en sert pour un verdict automatique
 - **Mises à jour** : Windows Update, applications (winget), pilote NVIDIA, BIOS, et vérification des nouvelles versions d'Aria Cockpit
+- **Zone de notification** : icône d'état, courbes de ventilation et profils GPU depuis son menu, démarrage avec Windows
 - **Nettoyage**, **Restauration** et **Rapports**
 
 Détails dans le [README]({REPO_URL}#readme).
