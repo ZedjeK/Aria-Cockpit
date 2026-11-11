@@ -28,9 +28,63 @@ public partial class MainWindow : FluentWindow
         SingleInstance.Listen(this, BringToFront);
         Loaded += (_, _) =>
         {
-            ShowPage(typeof(DashboardPage));
+            ShowCheckedPage();
             _ = CheckForUpdateAsync();
         };
+        // Fenêtre rangée dans la zone de notification : la page est retirée, comme quand on change d'onglet, pour que
+        // sa télémétrie et ses animations s'arrêtent. Elle revient telle quelle à la réouverture.
+        IsVisibleChanged += (_, e) =>
+        {
+            if (!IsLoaded) return;
+            if ((bool)e.NewValue) ShowCheckedPage();
+            else PageHost.Content = null;
+        };
+    }
+
+    /// <summary>Affiche la page de l'onglet coché : Mon PC, ou celle demandée depuis l'icône avant le premier affichage.</summary>
+    private void ShowCheckedPage() =>
+        ShowPage(Tabs.Children.OfType<System.Windows.Controls.RadioButton>().FirstOrDefault(t => t.IsChecked == true)?.Tag as Type
+                 ?? typeof(DashboardPage));
+
+    /// <summary>Icône de la zone de notification : son état décide si fermer la fenêtre range Aria ou l'arrête.</summary>
+    public TrayIcon? Tray { get; set; }
+
+    private bool _quitting;
+
+    /// <summary>Arrête Aria pour de bon (« Quitter » du menu de l'icône), quoi qu'elle ait d'actif.</summary>
+    public void Quit()
+    {
+        _quitting = true;
+        Close();
+    }
+
+    /// <summary>
+    /// Fermer la fenêtre range Aria dans la zone de notification tant qu'elle a quelque chose d'actif sur la machine
+    /// (profil GPU en place, courbe de ventilation, opération en cours) ; sinon elle s'arrête, comme avant.
+    /// </summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        if (e.Cancel || _quitting || Tray?.Current().KeepReason() is not { } reason) return;
+        e.Cancel = true;
+        Hide();
+        Tray.Notify("Aria Cockpit continue en arrière-plan",
+            $"{reason} Pour la rouvrir ou la quitter : son icône, à côté de l'horloge.");
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        Application.Current.Shutdown();
+    }
+
+    /// <summary>Depuis le menu de l'icône : rouvre la fenêtre sur une page, onglet coché.</summary>
+    public void OpenPage(Type page)
+    {
+        BringToFront();
+        if (Tabs.Children.OfType<System.Windows.Controls.RadioButton>().FirstOrDefault(t => t.Tag as Type == page) is not { } tab) return;
+        // Déjà coché : la page est affichée, ou le sera au premier affichage de la fenêtre
+        if (tab.IsChecked != true) tab.IsChecked = true;
     }
 
     private static string CurrentVersionText =>
@@ -46,8 +100,11 @@ public partial class MainWindow : FluentWindow
         UpdateBanner.Visibility = Visibility.Visible;
     }
 
-    /// <summary>Aria Cockpit relancé alors qu'il est déjà ouvert : la fenêtre existante revient au premier plan.</summary>
-    private void BringToFront()
+    /// <summary>
+    /// Aria Cockpit relancé alors qu'il est déjà ouvert, ou clic sur son icône : la fenêtre existante revient au
+    /// premier plan, même rangée dans la zone de notification.
+    /// </summary>
+    public void BringToFront()
     {
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Show();

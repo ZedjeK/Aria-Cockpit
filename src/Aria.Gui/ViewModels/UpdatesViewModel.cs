@@ -80,6 +80,9 @@ public sealed partial class UpdatesViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SearchCommand), nameof(InstallCommand), nameof(StopCommand))]
     private bool isInstalling;
 
+    /// <summary>Fermer la fenêtre pendant une installation range Aria au lieu de l'arrêter au milieu.</summary>
+    partial void OnIsInstallingChanged(bool value) => BackgroundWork.Set("installation des mises à jour", value);
+
     [ObservableProperty] private bool showResults;
 
     public ObservableCollection<SourceStatus> Sources { get; } = [];

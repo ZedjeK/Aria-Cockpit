@@ -84,6 +84,19 @@ public static class GpuProfile
     }
 
     /// <summary>
+    /// Où en est le réglage, d'après ce que la carte répond : en place, perdu (pilote rechargé), d'usine, ou posé par
+    /// un autre outil. Lecture seule, sans lancer schtasks : faite pour être répétée (icône de la zone de notification).
+    /// Lève <see cref="GpuTuningException"/> si la carte est illisible.
+    /// </summary>
+    public static (Tray.GpuProfileStatus Status, GpuTuningState Card) Status(GpuTuner tuner)
+    {
+        var saved = Load() is { } f && !f.IsForOtherGpu(tuner.Identity) && GpuTuningState.TryParse(f.Current, out var current)
+            ? current : null;
+        var card = tuner.Read(saved?.MaxClockMHz ?? 0, saved?.AtStartup ?? false);
+        return (Tray.TrayState.ProfileStatus(card, Factory(tuner.Limits, card.PowerLimitMilliwatts), saved), card);
+    }
+
+    /// <summary>
     /// Applique un réglage complet. Au premier réglage, la valeur d'origine est sauvegardée (page Restauration)
     /// et notée dans le profil. En cas de refus du pilote, l'état précédent est remis avant de signaler l'erreur.
     /// </summary>

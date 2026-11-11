@@ -42,8 +42,14 @@ public partial class App : Application
         ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.None, updateAccent: false);
         ApplicationAccentColorManager.Apply((Color)FindResource("NeonOrangeColor"), ApplicationTheme.Dark);
 
+        // Fermer la fenêtre ne suffit plus à arrêter Aria : elle peut rester dans la zone de notification
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         var state = new AppState();
-        new MainWindow(state).Show();
+        var window = new MainWindow(state);
+        _tray = new Services.TrayIcon(window.BringToFront, window.OpenPage, () => Quit(window));
+        window.Tray = _tray;
+        window.Show();
         _ = state.AnalyzeAsync();
         // Ventilateurs laissés en manuel par un arrêt brutal d'Aria : rendus au pilote
         _ = Task.Run(Services.FanCurveService.RecoverAfterCrash);
@@ -72,6 +78,23 @@ public partial class App : Application
                 ErrorLog.Write(ex);
             }
         });
+    }
+
+    private Services.TrayIcon? _tray;
+
+    /// <summary>
+    /// « Quitter » du menu de l'icône : arrête Aria pour de bon. Une opération en cours serait coupée au milieu :
+    /// on le dit avant.
+    /// </summary>
+    private static void Quit(MainWindow window)
+    {
+        var work = Services.BackgroundWork.Running;
+        if (work.Count > 0 && System.Windows.MessageBox.Show(
+                $"Une opération est en cours : {string.Join(", ", work)}.\n\nQuitter maintenant l'arrête au milieu. Quitter quand même ?",
+                "Aria Cockpit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+            return;
+        window.Quit();
     }
 
     private bool _showingError;
@@ -137,6 +160,8 @@ public partial class App : Application
         {
             ErrorLog.Write(ex);
         }
+        // Icône retirée de la zone de notification (sinon elle y reste jusqu'au passage de la souris)
+        _tray?.Dispose();
         FlushRepeats();
         base.OnExit(e);
     }
