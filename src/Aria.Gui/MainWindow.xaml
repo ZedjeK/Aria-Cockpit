@@ -99,6 +99,7 @@
           Stretch="Uniform"
           StretchDirection="DownOnly">
         <StackPanel
+          x:Name="Tabs"
           Height="65"
           Orientation="Horizontal"
           RadioButton.Checked="OnTabChecked">

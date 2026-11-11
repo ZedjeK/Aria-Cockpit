@@ -173,6 +173,8 @@ public sealed partial class CleanupViewModel : ObservableObject
         ProgressText = "Préparation…";
         ProgressValue = 0;
         IsApplying = true;
+        // Fermer la fenêtre pendant le nettoyage range Aria au lieu de l'arrêter au milieu
+        BackgroundWork.Set("nettoyage", true);
         var progress = new Progress<CleanupStep>(step =>
         {
             ProgressText = step.Text;
@@ -196,6 +198,7 @@ public sealed partial class CleanupViewModel : ObservableObject
         finally
         {
             IsApplying = false;
+            BackgroundWork.Set("nettoyage", false);
         }
     }
 

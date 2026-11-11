@@ -4,6 +4,10 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Windows Forms ne sert qu'à l'icône de la zone de notification (Services\TrayIcon.cs) -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Le DPI reste réglé par app.manifest (PerMonitorV2, indispensable au diagnostic des écrans) : Windows Forms n'a pas de fenêtre ici -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Aria.Gui</RootNamespace>
@@ -28,6 +32,12 @@
     <PackageReference Include="WPF-UI" Version="4.3.0" />
     <!-- Liaison interface ↔ logique (MVVM), bibliothèque officielle Microsoft -->
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Noms de Windows Forms (Application, Button, Color…) : jamais importés d'office, ils se confondraient avec ceux de WPF -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
 
   <ItemGroup>

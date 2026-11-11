@@ -53,6 +53,34 @@ Lance-le depuis ta propre session (si un autre compte administrateur valide l'é
 comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là). Une seule fenêtre à la fois : le relancer ramène au
 premier plan celle qui est déjà ouverte.
 
+### Icône de la zone de notification
+
+Tant qu'Aria Cockpit tourne, son icône est à côté de l'horloge (dans le petit chevron « ^ » tant que tu ne l'as pas
+épinglée). Elle dit d'un coup d'œil ce qu'Aria a d'actif sur ta machine :
+
+| Icône | Ce que ça veut dire |
+| --- | --- |
+| Délavée | Rien d'actif : carte au réglage d'usine, ventilateurs au pilote |
+| Normale | Ton profil GPU est en place, ou une courbe de ventilation tourne |
+| Pastille jaune | Ton profil GPU est enregistré, mais la carte ne l'a plus (pilote rechargé, mis à jour ou planté) |
+| Pastille cyan | Aria pilote les ventilateurs |
+
+L'état du profil est **relu sur la carte** toutes les 5 secondes (limite de puissance et décalages) : l'icône dit ce
+que la carte répond, pas ce qu'Aria croit avoir posé. Le plafond de fréquence n'est pas relisible par le pilote, il ne
+compte donc pas dans cette vérification.
+
+- **Infobulle** : l'état en une ligne, avec la température du GPU et la vitesse des ventilateurs.
+- **Clic gauche** : rouvre la fenêtre. **Clic droit** : ouvrir, l'état détaillé, aller droit à Réglage GPU, Mises à
+  jour ou Rapports, quitter.
+- **Fermer la fenêtre** range Aria dans son icône tant qu'elle a quelque chose d'actif : profil GPU en place (ou
+  perdu), courbe de ventilation en cours, ou opération en cours (application de réglages, restauration, nettoyage,
+  installation de mises à jour, assistant, analyse de performance). Une notification dit pourquoi elle reste. S'il n'y
+  a rien d'actif, la croix arrête Aria, comme avant.
+- **« Quitter Aria Cockpit »**, dans le menu de l'icône, l'arrête pour de bon : la courbe de ventilation rend la main
+  au pilote. Ton profil GPU, lui, reste sur la carte. Si une opération est en cours, Aria demande confirmation.
+- Fenêtre rangée, la page affichée est mise de côté : plus de télémétrie ni d'animation, seulement le relevé de
+  l'icône.
+
 ### Diagnostic (lecture seule)
 
 Branchement des écrans (carte graphique ou carte mère), câble et fréquence, HDR, lien PCIe et Resizable BAR de la
@@ -239,8 +267,9 @@ de NVML (cartes Maxwell, GTX 900, et plus récentes).
 - **Sécurités** : plein régime à 85 °C et plus, quelle que soit la courbe ; si la température devient illisible, le
   pilote reprend la main ; si le pilote refuse une vitesse, la courbe s'arrête et lui rend la main.
 - **Tant qu'Aria Cockpit est ouvert** : NVML passe les ventilateurs en manuel, c'est donc Aria qui suit la température,
-  une fois par seconde, quelle que soit la page affichée. « Rendre la main au pilote », choisir « Automatique » ou fermer
-  Aria remet le réglage de NVIDIA. Si Aria s'arrête brutalement, les ventilateurs gardent leur dernière vitesse jusqu'au
+  une fois par seconde, quelle que soit la page affichée, y compris fenêtre fermée : tant qu'une courbe tourne, la croix
+  range Aria dans son icône de la zone de notification au lieu de l'arrêter. « Rendre la main au pilote », choisir
+  « Automatique » ou quitter Aria (menu de son icône) remet le réglage de NVIDIA. Si Aria s'arrête brutalement, les ventilateurs gardent leur dernière vitesse jusqu'au
   lancement suivant, qui rend la main au pilote et le signale (le pilote bride de lui-même une carte qui chauffe trop).
 - **Un seul pilote à la fois** : si les ventilateurs sont déjà en manuel (MSI Afterburner, logiciel du fabricant…),
   la confirmation le signale ; fermez l'autre outil, sinon les deux se contredisent.
@@ -534,7 +563,8 @@ Version console en simulation, depuis la racine du projet :
 
 - `src/Aria.Core` : moteur (détection, diagnostic, réglages, NVIDIA, télémétrie et réglage GPU, confidentialité,
   mises à jour, nettoyage, sauvegarde, rapports), sans interface
-- `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe`
+- `src/Aria.Gui` : interface Windows 11 (WPF + WPF-UI) → `Aria-Cockpit.exe` ; l'icône de la zone de notification est
+  dans `Services/TrayIcon.cs` (Windows Forms n'y sert qu'à elle), sa logique dans `Aria.Core/Tray`
 - `src/Aria.Cli` : version console → `Aria.Cli.exe`
 - `src/Aria.Bench` : banc d'essai 3D (Direct3D 12) → `Aria-Bench.exe` ; contrôles de stabilité dans `Stability/`.
   Shaders dans `Shaders/*.hlsl`, précompilés dans `Shaders/Compiled` par `outils/compiler-shaders.py` (rendu) et
@@ -542,7 +572,8 @@ Version console en simulation, depuis la racine du projet :
   livré avec l'exe
 - `tests/Aria.Tests` : tests xUnit de la logique d'Aria.Core et des verdicts d'Aria-Bench (analyse de performance,
   recherche des paliers, origine d'usine, profil GPU, lecture de NVIDIA App sur bases factices, journal du banc,
-  contrôles de stabilité, incidents du pilote, avis de Performance, courbe de ventilation) ; rien n'y touche à la carte ni au système
+  contrôles de stabilité, incidents du pilote, avis de Performance, courbe de ventilation, état de l'icône et règle de
+  fermeture) ; rien n'y touche à la carte ni au système
 - `config/bios/*.json` : base de connaissances BIOS par marque (où trouver chaque option)
 - `config/gpus/geforce.json` : table des cartes GeForce (architecture, mémoire, bureau ou portable, RTX)
 - `src/Aria.Gui/Assets/logo.svg` : source du logo (à rendre avec Chromium) ; `Aria-Cockpit.ico` en est le rendu de 16 à 256 px

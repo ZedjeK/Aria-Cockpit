@@ -51,7 +51,12 @@ public abstract partial class ChangeViewModelBase : ObservableObject
     [ObservableProperty] private bool needsReboot;
     [ObservableProperty] private string? reportPath;
 
-    partial void OnIsApplyingChanged(bool value) => ApplyingChanged();
+    partial void OnIsApplyingChanged(bool value)
+    {
+        // Fermer la fenêtre pendant l'application range Aria au lieu de l'arrêter au milieu
+        BackgroundWork.Set(this is RestoreViewModel ? "restauration" : "application des réglages", value);
+        ApplyingChanged();
+    }
     partial void OnShowResultsChanged(bool value) => ResultsChanged();
 
     /// <summary>Pour réactiver le bouton « Appliquer » de la page.</summary>
