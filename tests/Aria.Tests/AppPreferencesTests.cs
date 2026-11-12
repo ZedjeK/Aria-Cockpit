@@ -70,6 +70,78 @@ public sealed class AppPreferencesTests : IDisposable
     [Fact]
     public void AFasterBackgroundMakesAShorterPass() =>
         Assert.True(new BackgroundSettings(Speed: BackgroundSpeed.Fast).PassDuration < new BackgroundSettings(Speed: BackgroundSpeed.Slow).PassDuration);
+    // ---- reglages.json, et la reprise de parametres.json ----
+
+    [Fact]
+    public void AnEmptyFolderGivesTheDefaultsAndCreatesNothing()
+    {
+        Directory.CreateDirectory(_root);
+
+        Assert.Equal(AppPreferences.Default, AppPreferencesStore.Load(_root));
+        Assert.Empty(Directory.GetFileSystemEntries(_root));
+    }
+
+    [Fact]
+    public void PreferencesAreSavedInReglagesJson()
+    {
+        AppPreferencesStore.Save(_root, new AppPreferences(CloseBehavior.AlwaysTray));
+
+        Assert.True(File.Exists(Path.Combine(_root, "reglages.json")));
+        Assert.False(File.Exists(Path.Combine(_root, "parametres.json")));
+        Assert.Equal(CloseBehavior.AlwaysTray, AppPreferencesStore.Load(_root).Close);
+    }
+
+    [Fact]
+    public void TheOldFileIsCopiedOnceAndLeftUntouched()
+    {
+        Directory.CreateDirectory(_root);
+        var old = Path.Combine(_root, "parametres.json");
+        const string content = "{ \"Close\": \"AlwaysQuit\", \"ReportsMonths\": 3 }";
+        File.WriteAllText(old, content);
+
+        var loaded = AppPreferencesStore.Load(_root);
+
+        Assert.Equal(CloseBehavior.AlwaysQuit, loaded.Close);
+        Assert.Equal(3, loaded.ReportsMonths);
+        Assert.Equal(content, File.ReadAllText(old));
+        Assert.Equal(content, File.ReadAllText(Path.Combine(_root, "reglages.json")));
+    }
+
+    [Fact]
+    public void SavingAfterTheCopyNeverTouchesTheOldFile()
+    {
+        Directory.CreateDirectory(_root);
+        var old = Path.Combine(_root, "parametres.json");
+        const string content = "{ \"Close\": \"AlwaysQuit\" }";
+        File.WriteAllText(old, content);
+
+        AppPreferencesStore.Save(_root, AppPreferencesStore.Load(_root) with { Close = CloseBehavior.AlwaysTray });
+
+        Assert.Equal(content, File.ReadAllText(old));
+        Assert.Equal(CloseBehavior.AlwaysTray, AppPreferencesStore.Load(_root).Close);
+    }
+
+    [Fact]
+    public void TheNewFileWinsOverTheOldOne()
+    {
+        Directory.CreateDirectory(_root);
+        File.WriteAllText(Path.Combine(_root, "parametres.json"), "{ \"Close\": \"AlwaysQuit\" }");
+        File.WriteAllText(Path.Combine(_root, "reglages.json"), "{ \"Close\": \"AlwaysTray\" }");
+
+        Assert.Equal(CloseBehavior.AlwaysTray, AppPreferencesStore.Load(_root).Close);
+        Assert.Contains("AlwaysTray", File.ReadAllText(Path.Combine(_root, "reglages.json")));
+    }
+
+    [Fact]
+    public void AnUnreadableOldFileGivesTheDefaultsAndIsKept()
+    {
+        Directory.CreateDirectory(_root);
+        var old = Path.Combine(_root, "parametres.json");
+        File.WriteAllText(old, "pas du json");
+
+        Assert.Equal(AppPreferences.Default, AppPreferencesStore.Load(_root));
+        Assert.Equal("pas du json", File.ReadAllText(old));
+    }
     // ---- Fichier ----
 
     [Fact]

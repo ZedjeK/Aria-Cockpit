@@ -42,7 +42,7 @@ dans le navigateur : l'appli ne s'y connecte pas elle-même.
 ## Écarts connus avec les règles communes
 
 - Toute l'appli tourne en administrateur, pas seulement les opérations qui l'exigent.
-- Les réglages sont dans `parametres.json`, pas dans `reglages.json` ; il n'y a pas de `journal.json`.
+- Il n'y a pas de `journal.json` : chaque opération a son rapport dans `Rapports\`.
 - L'appli écrit dans `%TEMP%`.
 - La mise à jour se limite à signaler une version et à ouvrir sa page.
 - L'argument de démarrage est `--tray`, pas `--silencieux`.

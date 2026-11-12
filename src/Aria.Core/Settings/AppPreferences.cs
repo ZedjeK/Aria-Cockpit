@@ -129,19 +129,50 @@ public sealed record AppPreferences(
     };
 }
 
-/// <summary>Paramètres enregistrés dans parametres.json, dans le dossier des données d'Aria (modifiable par les seuls administrateurs).</summary>
+/// <summary>
+/// Paramètres enregistrés dans reglages.json, dans le dossier des données d'Aria (modifiable par les seuls
+/// administrateurs). Jusqu'à la 0.26, le fichier s'appelait parametres.json : il est copié une fois sous le nouveau
+/// nom, puis laissé tel quel, pour qu'une version plus ancienne retrouve ses réglages si on y revient.
+/// </summary>
 public static class AppPreferencesStore
 {
+    /// <summary>Nom du fichier des réglages, celui du contrat des applis Aria.</summary>
+    public const string FileName = "reglages.json";
+
+    /// <summary>Nom du fichier jusqu'à la 0.26. Lu une dernière fois, jamais modifié ni supprimé.</summary>
+    public const string LegacyFileName = "parametres.json";
+
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
 
-    public static string FilePath => Path.Combine(BackupStore.DataRoot, "parametres.json");
+    public static string FilePath => Path.Combine(BackupStore.DataRoot, FileName);
 
     /// <summary>Paramètres enregistrés ; ceux par défaut si le fichier est absent, illisible ou incohérent.</summary>
-    public static AppPreferences Load()
+    public static AppPreferences Load() => Load(BackupStore.DataRoot);
+
+    /// <summary>Lève <see cref="IOException"/> ou <see cref="UnauthorizedAccessException"/> si l'écriture échoue.</summary>
+    public static void Save(AppPreferences preferences) => Save(BackupStore.DataRoot, preferences);
+
+    internal static AppPreferences Load(string folder)
     {
         try
         {
-            return File.Exists(FilePath) ? FromJson(File.ReadAllText(FilePath)) : AppPreferences.Default;
+            var file = Path.Combine(folder, FileName);
+            if (!File.Exists(file))
+            {
+                var legacy = Path.Combine(folder, LegacyFileName);
+                if (!File.Exists(legacy)) return AppPreferences.Default;
+                // Reprise de l'ancien fichier : une copie, sans jamais écraser un reglages.json apparu entre-temps.
+                // Si la copie échoue (dossier en lecture seule), l'ancien fichier est lu directement.
+                try
+                {
+                    File.Copy(legacy, file, overwrite: false);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    if (!File.Exists(file)) file = legacy;
+                }
+            }
+            return FromJson(File.ReadAllText(file));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -149,11 +180,10 @@ public static class AppPreferencesStore
         }
     }
 
-    /// <summary>Lève <see cref="IOException"/> ou <see cref="UnauthorizedAccessException"/> si l'écriture échoue.</summary>
-    public static void Save(AppPreferences preferences)
+    internal static void Save(string folder, AppPreferences preferences)
     {
-        Directory.CreateDirectory(BackupStore.DataRoot);
-        File.WriteAllText(FilePath, ToJson(preferences.Sanitized()));
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, FileName), ToJson(preferences.Sanitized()));
     }
 
     internal static string ToJson(AppPreferences preferences) => JsonSerializer.Serialize(preferences, Json);
