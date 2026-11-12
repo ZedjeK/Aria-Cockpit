@@ -12,6 +12,9 @@ public partial class MainWindow : FluentWindow
 {
     private readonly PageProvider _pages;
     private AppUpdate? _update;
+    private Version? _installed;
+    private const string SimulatedVersionArgument = "--version-simulee";
+    private readonly ViewModels.AppUpdateViewModel _updater = new();
 
     public MainWindow(AppState state)
     {
@@ -20,6 +23,7 @@ public partial class MainWindow : FluentWindow
         // Réglages du fond animé, lus une fois : la page Paramètres les met à jour ensuite
         BackdropService.Set(Aria.Core.Settings.AppPreferencesStore.Load().Background);
         InitializeComponent();
+        UpdateOverlay.DataContext = _updater;
         // Pas d'historique « Précédent » : la barre du haut est la seule navigation
         PageHost.Navigated += (_, _) =>
         {
@@ -129,9 +133,17 @@ public partial class MainWindow : FluentWindow
     private async Task CheckForUpdateAsync()
     {
         if (!AppUpdateChecker.TryParseVersion(CurrentVersionText, out var current)) return;
+        // Essai à la main : « --version-simulee 0.25.0 » fait comme si cette version était installée, pour dérouler la
+        // fenêtre de mise à jour sur la dernière release publiée sans attendre la suivante. Ne change rien d'autre :
+        // le fichier proposé reste celui de la release, contrôlé comme toujours.
+        var args = Environment.GetCommandLineArgs();
+        var at = Array.FindIndex(args, a => string.Equals(a, SimulatedVersionArgument, StringComparison.OrdinalIgnoreCase));
+        if (at >= 0 && at + 1 < args.Length && AppUpdateChecker.TryParseVersion(args[at + 1], out var simulated))
+            current = simulated;
         _update = await AppUpdateChecker.CheckAsync(current);
         if (_update is null) return;
-        UpdateText.Text = $"Aria Cockpit {_update.Latest} est disponible (version installée : {current}). Rien n'est installé automatiquement.";
+        _installed = current;
+        UpdateText.Text = $"Aria Cockpit {_update.Latest.ToString(3)} est disponible. Tu as la {current.ToString(3)}. Rien n'est téléchargé sans ton accord.";
         UpdateBanner.Visibility = Visibility.Visible;
     }
 
@@ -149,9 +161,10 @@ public partial class MainWindow : FluentWindow
         Topmost = false;
     }
 
+    /// <summary>« Voir » du bandeau : la fenêtre de mise à jour, par-dessus la page. Rien n'est téléchargé à l'ouverture.</summary>
     private void OnOpenUpdate(object sender, RoutedEventArgs e)
     {
-        if (_update is not null) Shell.OpenUnelevated(_update.PageUrl);
+        if (_update is not null && _installed is not null) _updater.Open(_update, _installed);
     }
 
     private void OnCloseUpdate(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;

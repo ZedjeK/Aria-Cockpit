@@ -503,8 +503,11 @@ les performances mesurées ne sont alors pas représentatives.
 - **Pilote NVIDIA** : comparaison avec le dernier pilote Game Ready, via le service de recherche du site
   NVIDIA (non officiel). Téléchargement par le navigateur, l'installation reste celle de NVIDIA.
 - **BIOS** : version installée et lien de recherche vers la page support ; jamais mis à jour par Aria Cockpit.
-- **Aria Cockpit lui-même** : au lancement, un bandeau signale une nouvelle version publiée sur ce dépôt, avec un lien
-  vers sa page. Rien n'est téléchargé ni installé automatiquement.
+- **Aria Cockpit lui-même** : au lancement, un bandeau signale une nouvelle version publiée sur ce dépôt. « Voir »
+  montre ce qui change et propose de la télécharger. Rien n'est téléchargé sans ton clic. Le fichier vient de la release
+  de ce dépôt, en HTTPS ; il est écrit dans `cache\`, dans le dossier des données, et n'est gardé que si sa taille et son
+  empreinte SHA-256 sont celles que GitHub annonce. Sinon il est supprimé. Aria ouvre ensuite le dossier : le
+  remplacement de l'exe reste à faire à la main.
 
 Un point de restauration Windows est créé avant chaque installation (Aria Cockpit ne désinstalle pas les mises à jour).
 Les applications à mettre à jour qui sont ouvertes sont listées avec un compte à rebours de 20 s, puis fermées
@@ -600,8 +603,11 @@ rapport) : elle peut donc elle-même être annulée.
 - **Toute l'appli demande les droits administrateur**, même pour lire. Elle en a besoin pour le registre, les services,
   le pilote NVIDIA et les tâches planifiées.
 - **L'exe n'est pas signé.** Windows SmartScreen peut afficher un avertissement au premier lancement.
-- **Les mises à jour d'Aria Cockpit ne s'installent pas seules.** L'appli signale une nouvelle version et ouvre sa page :
-  elle ne télécharge rien et ne vérifie aucune empreinte. C'est à toi de télécharger la release.
+- **Les mises à jour d'Aria Cockpit ne s'installent pas seules.** L'appli télécharge la nouvelle version à ta demande et
+  contrôle son empreinte, mais c'est à toi de remplacer l'exe.
+- **L'empreinte ne dit pas qui a publié le fichier.** Elle vient de GitHub, comme le fichier : elle prouve qu'il est
+  arrivé intact, pas que la release est bien celle de l'auteur. Cette garantie-là repose sur le compte GitHub de
+  l'auteur. Les releases de ce dépôt ne sont pas immuables à ce jour, et aucune attestation de provenance n'est jointe.
 - **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
   et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
 - **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le
