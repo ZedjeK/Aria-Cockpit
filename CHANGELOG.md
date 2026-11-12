@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Rien pour l'instant.
+
+## 0.27.0, le 13 novembre 2026
+
+Notes complètes : [docs/releases/v0.27.0.md](docs/releases/v0.27.0.md).
+
 - Fond animé : un faisceau balaie la fenêtre et allume des points tirés au hasard. Il se règle dans les Paramètres (affichage, vitesse, nombre de points) et s'arrête quand la fenêtre est rangée ou réduite.
 - Panneaux opaques, pour que le texte reste lisible au-dessus du fond.
 - Fiche projet (`docs/FICHE.md`) et section « Limites à connaître » du README.
