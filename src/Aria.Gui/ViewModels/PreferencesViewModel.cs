@@ -53,6 +53,30 @@ public sealed partial class PreferencesViewModel : ObservableObject
     public IReadOnlyList<int> BackgroundCounts { get; } =
         Enumerable.Range(BackgroundSettings.MinPoints, BackgroundSettings.MaxPoints - BackgroundSettings.MinPoints + 1).ToArray();
 
+    // ---- Mises à jour d'Aria Cockpit ----
+    [ObservableProperty] private bool checkUpdates = true;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasUpdatesNote))] private string updatesNote = "";
+    [ObservableProperty] private bool updatesNoteIsError;
+    public bool HasUpdatesNote => UpdatesNote.Length > 0;
+
+    /// <summary>Recherche, version trouvée et version gardée : le même exemplaire que le bandeau de la fenêtre.</summary>
+    public AppUpdateViewModel Updates => AppUpdateViewModel.Shared;
+
+    partial void OnCheckUpdatesChanged(bool value)
+    {
+        if (_loading) return;
+        if (!TrySave(_saved with { CheckUpdates = value }, out var error))
+        {
+            UpdatesNote = $"Réglage non enregistré : {error}";
+            UpdatesNoteIsError = true;
+            return;
+        }
+        UpdatesNoteIsError = false;
+        UpdatesNote = value
+            ? "Aria cherchera une nouvelle version à son prochain lancement."
+            : "Aria ne contactera plus GitHub au lancement. La recherche se fait avec le bouton ci-dessous.";
+    }
+
     // ---- Données ----
     public string DataPath => BackupStore.DataRoot;
     [ObservableProperty] private string dataSizeText = "calcul…";
@@ -91,6 +115,7 @@ public sealed partial class PreferencesViewModel : ObservableObject
             CloseTray = _saved.Close == CloseBehavior.AlwaysTray;
             CloseQuit = _saved.Close == CloseBehavior.AlwaysQuit;
             NotifyOnHide = _saved.NotifyOnHide;
+            CheckUpdates = _saved.CheckUpdates;
             ShowBackground(_saved.Background);
             ShowRetention(_saved);
 
@@ -109,6 +134,7 @@ public sealed partial class PreferencesViewModel : ObservableObject
         FanResumeText = curve is { Resume: true }
             ? $"Courbe à relancer au prochain lancement : « {curve.Name} »."
             : "Aucune courbe à relancer : le pilote NVIDIA a la main, ou aucune courbe n'a tourné depuis cette version.";
+        await Updates.RefreshKeptAsync();
         await MeasureAsync();
     }
 

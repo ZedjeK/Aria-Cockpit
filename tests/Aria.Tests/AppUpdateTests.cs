@@ -269,6 +269,25 @@ public sealed class AppUpdateTests : IDisposable
     public void TheFileGoesToTheCacheUnderARecognisableName() =>
         Assert.Equal("maj-Aria-Cockpit-0.27.0-leger.zip", Path.GetFileName(AppUpdatePackage.FileFor(_root, AssetFor([1]))));
 
+    // ----- Réglage « chercher au lancement » -----
+
+    [Fact]
+    public void LookingForUpdatesAtStartupIsOnUntilTurnedOff()
+    {
+        Assert.True(Aria.Core.Settings.AppPreferences.Default.CheckUpdates);
+        // Fichier d'une version qui ne connaissait pas le réglage
+        Assert.True(Aria.Core.Settings.AppPreferencesStore.FromJson("""{ "NotifyOnHide": false }""").CheckUpdates);
+    }
+
+    [Fact]
+    public void TurningTheStartupSearchOffSurvivesTheFile()
+    {
+        var json = Aria.Core.Settings.AppPreferencesStore.ToJson(new Aria.Core.Settings.AppPreferences { CheckUpdates = false });
+
+        Assert.Contains("\"chercherMisesAJour\": false", json);
+        Assert.False(Aria.Core.Settings.AppPreferencesStore.FromJson(json).CheckUpdates);
+    }
+
     private sealed class Collect(List<long> seen) : IProgress<long>
     {
         public void Report(long value) => seen.Add(value);

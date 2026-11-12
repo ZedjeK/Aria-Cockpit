@@ -118,6 +118,61 @@
       </StackPanel>
     </ContentControl>
 
+    <!-- ===== Mises à jour d'Aria Cockpit ===== -->
+    <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,14" Style="{StaticResource HudCode}" Text="MISES À JOUR D'ARIA COCKPIT" />
+        <CheckBox Content="Chercher une nouvelle version au lancement" IsChecked="{Binding CheckUpdates}" />
+        <TextBlock Style="{StaticResource Help}" Text="Une seule requête, vers GitHub. Décochée : plus aucune connexion pour ça, tu cherches à la main. Rien n'est jamais téléchargé ni installé sans ton clic." />
+        <TextBlock
+          Style="{StaticResource Note}"
+          Tag="{Binding UpdatesNoteIsError}"
+          Text="{Binding UpdatesNote}"
+          Visibility="{Binding HasUpdatesNote, Converter={StaticResource BoolToVisibility}}" />
+
+        <Grid Margin="0,16,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Margin="0,3" Text="Version installée" />
+          <TextBlock Grid.Row="0" Grid.Column="1" Margin="24,3,0,3" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Updates.InstalledVersionText, Mode=OneWay}" />
+          <TextBlock Grid.Row="1" Margin="0,3" Text="Dernière recherche" />
+          <TextBlock Grid.Row="1" Grid.Column="1" Margin="24,3,0,3" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Updates.LastCheckText}" TextWrapping="Wrap" />
+          <TextBlock Grid.Row="2" Margin="0,3" Text="Version gardée" />
+          <TextBlock Grid.Row="2" Grid.Column="1" Margin="24,3,0,3" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Updates.KeptText}" TextWrapping="Wrap" />
+        </Grid>
+
+        <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+          <Button Command="{Binding Updates.CheckNowCommand}" Content="CHERCHER MAINTENANT" Style="{StaticResource HudButtonGhost}" ToolTip="Demande à GitHub la dernière version publiée. Rien n'est téléchargé." />
+          <Button
+            Margin="10,0,0,0"
+            Command="{Binding Updates.OpenAvailableCommand}"
+            Content="{Binding Updates.AvailableLabel}"
+            Style="{StaticResource HudButton}"
+            Visibility="{Binding Updates.HasUpdate, Converter={StaticResource BoolToVisibility}}" />
+          <Button
+            Margin="10,0,0,0"
+            Command="{Binding Updates.RestoreCommand}"
+            Content="{Binding Updates.RestoreLabel}"
+            IsEnabled="{Binding Updates.HasKept}"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="Remet la version gardée à la place de celle-ci, après confirmation, puis relance Aria Cockpit." />
+        </StackPanel>
+        <TextBlock Style="{StaticResource Help}" Text="Une seule version est gardée : la précédente, dans les sauvegardes. Y revenir garde à son tour celle que tu quittes." />
+        <TextBlock
+          Style="{StaticResource Note}"
+          Tag="True"
+          Text="{Binding Updates.RestoreNote}"
+          Visibility="{Binding Updates.HasRestoreNote, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </ContentControl>
+
     <!-- ===== Données ===== -->
     <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
       <StackPanel>

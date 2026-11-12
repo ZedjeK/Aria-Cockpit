@@ -29,6 +29,26 @@ public static class SingleInstance
         return false;
     }
 
+    /// <summary>
+    /// Rend la place d'exemplaire de la session, juste avant de lancer une autre version qui la prendra (mise à jour,
+    /// ou retour à la version gardée, qu'un lancement ordinaire refuserait parce qu'elle est plus ancienne).
+    /// À appeler sur le fil qui a appelé <see cref="Claim"/>.
+    /// </summary>
+    public static void Release()
+    {
+        if (_mutex is null) return;
+        try
+        {
+            _mutex.ReleaseMutex();
+        }
+        catch (ApplicationException)
+        {
+            // Pas tenu par ce fil : le fermer suffit à le rendre
+        }
+        _mutex.Dispose();
+        _mutex = null;
+    }
+
     /// <summary>Demande à l'exemplaire ouvert de revenir au premier plan.</summary>
     public static void SignalRunning()
     {

@@ -506,8 +506,11 @@ les performances mesurées ne sont alors pas représentatives.
 - **Aria Cockpit lui-même** : au lancement, un bandeau signale une nouvelle version publiée sur ce dépôt. « Voir »
   montre ce qui change et propose de la télécharger. Rien n'est téléchargé sans ton clic. Le fichier vient de la release
   de ce dépôt, en HTTPS ; il est écrit dans `cache\`, dans le dossier des données, et n'est gardé que si sa taille et son
-  empreinte SHA-256 sont celles que GitHub annonce. Sinon il est supprimé. Aria ouvre ensuite le dossier : le
-  remplacement de l'exe reste à faire à la main.
+  empreinte SHA-256 sont celles que GitHub annonce. Sinon il est supprimé.
+  Un second clic, « Installer et relancer », met la version en cours de côté dans `Sauvegardes\versions`, remplace
+  `Aria-Cockpit.exe` et `Aria-Bench.exe` à l'endroit où tu les as dézippés, puis relance Aria. Si une étape échoue, tout
+  est remis comme avant. Une seule version est gardée, la précédente : « Revenir à la version gardée », dans Paramètres,
+  la remet en place et garde à son tour celle que tu quittes. La recherche au lancement se décoche dans Paramètres.
 
 Un point de restauration Windows est créé avant chaque installation (Aria Cockpit ne désinstalle pas les mises à jour).
 Les applications à mettre à jour qui sont ouvertes sont listées avec un compte à rebours de 20 s, puis fermées
@@ -603,15 +606,21 @@ rapport) : elle peut donc elle-même être annulée.
 - **Toute l'appli demande les droits administrateur**, même pour lire. Elle en a besoin pour le registre, les services,
   le pilote NVIDIA et les tâches planifiées.
 - **L'exe n'est pas signé.** Windows SmartScreen peut afficher un avertissement au premier lancement.
-- **Les mises à jour d'Aria Cockpit ne s'installent pas seules.** L'appli télécharge la nouvelle version à ta demande et
-  contrôle son empreinte, mais c'est à toi de remplacer l'exe.
+- **Les mises à jour d'Aria Cockpit ne s'installent jamais seules.** Il faut un clic pour télécharger, un second pour
+  installer. Lancée par le démarrage automatique, Aria tourne depuis sa copie de `Program Files` et ne se remplace pas :
+  ouvre-la depuis ton exe pour la mettre à jour.
+- **Revenir à une version d'avant la 0.27 laisse un fichier derrière.** Ces versions ne savent pas effacer
+  `Aria-Cockpit.exe.ancien`, laissé à côté de l'exe par le remplacement : il part à la mise à jour suivante, ou à la main.
+- **La relance d'une mise à jour arrête la courbe de ventilation.** Le pilote NVIDIA reprend la main ; la courbe ne
+  repart seule que si « Démarrer avec Windows » est activé.
 - **L'empreinte ne dit pas qui a publié le fichier.** Elle vient de GitHub, comme le fichier : elle prouve qu'il est
   arrivé intact, pas que la release est bien celle de l'auteur. Cette garantie-là repose sur le compte GitHub de
   l'auteur. Les releases de ce dépôt ne sont pas immuables à ce jour, et aucune attestation de provenance n'est jointe.
 - **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
   et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
 - **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le
-  démarrage avec Windows, et des tâches planifiées. Ses fichiers de travail restent dans son dossier, sous `cache\`.
+  démarrage avec Windows, des tâches planifiées, et ses propres exes quand tu installes une mise à jour. Ses fichiers de
+  travail restent dans son dossier, sous `cache\`.
 - **La table des cartes NVIDIA vient d'un dépôt tiers**, lu en ligne. Si la lecture échoue, l'appli utilise la copie
   qu'elle embarque, qui peut être plus ancienne.
 - **Le BIOS n'est jamais modifié**, seulement lu et expliqué.

@@ -22,6 +22,7 @@ jour quand l'appli change.
 ## Écritures hors du dossier de données
 
 - `C:\Program Files\Aria Cockpit` : une copie de l'exe, que lancent les tâches planifiées.
+- Le dossier où l'exe a été dézippé : `Aria-Cockpit.exe`, `Aria-Bench.exe` et les deux fichiers de licence, remplacés lors d'une mise à jour ou d'un retour à la version gardée, sur clic. La version remplacée est copiée avant dans `Sauvegardes\versions`.
 - Tâches planifiées : jusqu'à trois, créées et supprimées à la demande.
 - Registre de la machine et de l'utilisateur : les réglages que l'appli applique, après sauvegarde.
 - Services Windows : type de démarrage de services existants, après sauvegarde. Aucun service n'est créé.
@@ -30,7 +31,7 @@ jour quand l'appli change.
 
 ## Connexions sortantes
 
-- `api.github.com` : dernière version publiée d'Aria Cockpit, au lancement.
+- `api.github.com` : dernière version publiée d'Aria Cockpit, au lancement. Se décoche dans Paramètres.
 - `github.com`, puis `release-assets.githubusercontent.com` vers lequel GitHub redirige : téléchargement de la nouvelle version, seulement à la demande. Aucun autre hôte n'est suivi.
 - `gfwsl.geforce.com` : dernière version du pilote NVIDIA.
 - `raw.githubusercontent.com` : table des cartes NVIDIA, tenue par un dépôt tiers (`ZenitH-AT/nvidia-data`). Une copie est embarquée si la lecture échoue.
@@ -42,5 +43,5 @@ dans le navigateur : l'appli ne s'y connecte pas elle-même.
 ## Écarts connus avec les règles communes
 
 - Toute l'appli tourne en administrateur, pas seulement les opérations qui l'exigent.
-- La mise à jour télécharge la nouvelle version et contrôle son empreinte, mais ne remplace pas l'exe et ne garde pas l'ancienne version : c'est encore fait à la main.
+- Lancée par une tâche de démarrage, l'appli tourne depuis sa copie de `Program Files` et ne se met pas à jour elle-même : il faut l'ouvrir depuis l'exe dézippé.
 - L'argument de démarrage est `--tray`, pas `--silencieux`.

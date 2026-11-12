@@ -115,6 +115,13 @@ public sealed record AppPreferences(
     [JsonPropertyName("fond")]
     public BackgroundSettings Background { get; init; } = BackgroundSettings.Default;
 
+    /// <summary>
+    /// Chercher une nouvelle version d'Aria Cockpit au lancement (une requête vers GitHub). Décoché : plus aucune
+    /// connexion pour ça, la recherche se fait à la main depuis la page Paramètres.
+    /// </summary>
+    [JsonPropertyName("chercherMisesAJour")]
+    public bool CheckUpdates { get; init; } = true;
+
     public RetentionSettings Retention => new(ReportsMonths, BackupsMonths, KeepBackups);
 
     /// <summary>Valeurs ramenées dans les bornes : un fichier modifié à la main ne peut pas demander « 0 mois ».</summary>
