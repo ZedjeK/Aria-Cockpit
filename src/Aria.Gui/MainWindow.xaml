@@ -180,6 +180,9 @@
       </Grid>
     </Border>
 
+    <!-- ===== Fond animé : le balayage, sous les pages seulement, jamais sous la barre du haut ===== -->
+    <fx:SweepBackdrop Grid.Row="2" />
+
     <!--
       Hôte des pages : un cadre sans barre de navigation, dans un défilement vertical commun à toutes les pages.
       La barre du haut choisit la page affichée.

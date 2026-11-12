@@ -33,7 +33,7 @@
 
   <StackPanel MaxWidth="1100" Margin="36,24,36,36">
     <!-- En-tête -->
-    <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="08 · DÉMARRAGE · FENÊTRE · DONNÉES" />
+    <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="08 · DÉMARRAGE · FENÊTRE · FOND · DONNÉES" />
     <TextBlock Style="{StaticResource NeonTitle}" Text="PARAMÈTRES" />
     <TextBlock
       Margin="0,4,0,0"
@@ -89,6 +89,32 @@
           Style="{StaticResource Note}"
           Text="{Binding WindowNote}"
           Visibility="{Binding HasWindowNote, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </ContentControl>
+
+    <!-- ===== Fond animé ===== -->
+    <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,14" Style="{StaticResource HudCode}" Text="FOND ANIMÉ" />
+        <CheckBox Content="Afficher le fond animé" IsChecked="{Binding BackgroundActive}" />
+        <TextBlock Style="{StaticResource Help}" Text="Un faisceau balaie la fenêtre et allume des points tirés au hasard à chaque passage. Il se met en pause quand la fenêtre est rangée ou réduite, et disparaît si Windows demande moins d'animations." />
+        <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+          <TextBlock VerticalAlignment="Center" Text="Vitesse" />
+          <ComboBox Width="140" Margin="14,0,0,0" IsEnabled="{Binding BackgroundActive}" SelectedIndex="{Binding BackgroundSpeedIndex}">
+            <ComboBoxItem Content="Lente" />
+            <ComboBoxItem Content="Normale" />
+            <ComboBoxItem Content="Rapide" />
+          </ComboBox>
+          <TextBlock Margin="28,0,0,0" VerticalAlignment="Center" Text="Points : de" />
+          <ComboBox Width="80" Margin="14,0,0,0" IsEnabled="{Binding BackgroundActive}" ItemsSource="{Binding BackgroundCounts}" SelectedItem="{Binding BackgroundMinimum}" />
+          <TextBlock Margin="14,0,0,0" VerticalAlignment="Center" Text="à" />
+          <ComboBox Width="80" Margin="14,0,0,0" IsEnabled="{Binding BackgroundActive}" ItemsSource="{Binding BackgroundCounts}" SelectedItem="{Binding BackgroundMaximum}" />
+        </StackPanel>
+        <TextBlock
+          Style="{StaticResource Note}"
+          Tag="{Binding BackgroundNoteIsError}"
+          Text="{Binding BackgroundNote}"
+          Visibility="{Binding HasBackgroundNote, Converter={StaticResource BoolToVisibility}}" />
       </StackPanel>
     </ContentControl>
 
