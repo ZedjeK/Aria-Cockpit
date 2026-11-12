@@ -11,10 +11,7 @@ namespace Aria.Gui;
 public partial class MainWindow : FluentWindow
 {
     private readonly PageProvider _pages;
-    private AppUpdate? _update;
-    private Version? _installed;
-    private const string SimulatedVersionArgument = "--version-simulee";
-    private readonly ViewModels.AppUpdateViewModel _updater = new();
+    private readonly ViewModels.AppUpdateViewModel _updater = ViewModels.AppUpdateViewModel.Shared;
 
     public MainWindow(AppState state)
     {
@@ -24,6 +21,12 @@ public partial class MainWindow : FluentWindow
         BackdropService.Set(Aria.Core.Settings.AppPreferencesStore.Load().Background);
         InitializeComponent();
         UpdateOverlay.DataContext = _updater;
+        _updater.RelaunchRequested += OnRelaunch;
+        // Une recherche, au lancement ou depuis Paramètres, vient de trouver une version : le bandeau la signale
+        _updater.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ViewModels.AppUpdateViewModel.Available)) ShowUpdateBanner();
+        };
         // Pas d'historique « Précédent » : la barre du haut est la seule navigation
         PageHost.Navigated += (_, _) =>
         {
@@ -129,22 +132,64 @@ public partial class MainWindow : FluentWindow
     private static string CurrentVersionText =>
         Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
 
-    /// <summary>Au lancement : une version plus récente sur GitHub ? Si oui, bandeau discret. Rien n'est téléchargé.</summary>
+    /// <summary>
+    /// Au lancement : dit ce qui vient d'être installé si Aria a été relancée par une mise à jour, puis cherche une
+    /// version plus récente sur GitHub, sauf si la recherche au lancement est décochée dans Paramètres. Rien n'est
+    /// téléchargé.
+    /// </summary>
     private async Task CheckForUpdateAsync()
     {
-        if (!AppUpdateChecker.TryParseVersion(CurrentVersionText, out var current)) return;
-        // Essai à la main : « --version-simulee 0.25.0 » fait comme si cette version était installée, pour dérouler la
-        // fenêtre de mise à jour sur la dernière release publiée sans attendre la suivante. Ne change rien d'autre :
-        // le fichier proposé reste celui de la release, contrôlé comme toujours.
-        var args = Environment.GetCommandLineArgs();
-        var at = Array.FindIndex(args, a => string.Equals(a, SimulatedVersionArgument, StringComparison.OrdinalIgnoreCase));
-        if (at >= 0 && at + 1 < args.Length && AppUpdateChecker.TryParseVersion(args[at + 1], out var simulated))
-            current = simulated;
-        _update = await AppUpdateChecker.CheckAsync(current);
-        if (_update is null) return;
-        _installed = current;
-        UpdateText.Text = $"Aria Cockpit {_update.Latest.ToString(3)} est disponible. Tu as la {current.ToString(3)}. Rien n'est téléchargé sans ton accord.";
+        if (await Task.Run(AppUpdateInstaller.TakeDoneMarker) is { } done)
+        {
+            UpdateLabel.Text = "MISE À JOUR FAITE";
+            UpdateText.Text = $"Aria Cockpit {done.To.ToString(3)} est en place. La {done.From.ToString(3)} est gardée : tu peux y revenir depuis Paramètres.";
+            UpdateButton.Visibility = Visibility.Collapsed;
+            UpdateBanner.Visibility = Visibility.Visible;
+        }
+        var preferences = await Task.Run(Aria.Core.Settings.AppPreferencesStore.Load);
+        if (preferences.CheckUpdates) await _updater.CheckAsync();
+    }
+
+    private void ShowUpdateBanner()
+    {
+        if (_updater.Available is not { } update) return;
+        UpdateLabel.Text = "MISE À JOUR DISPONIBLE";
+        UpdateText.Text = $"Aria Cockpit {update.Latest.ToString(3)} est disponible. Tu as la {_updater.CheckedVersionText}. Rien n'est téléchargé sans ton accord.";
+        UpdateButton.Visibility = Visibility.Visible;
         UpdateBanner.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>
+    /// Les fichiers d'une autre version viennent d'être mis en place (mise à jour, ou retour à la version gardée) :
+    /// lance l'exe et arrête cet exemplaire. La place d'exemplaire unique est rendue d'abord, pour que la version
+    /// lancée la prenne même si elle n'est pas plus récente.
+    /// </summary>
+    private void OnRelaunch(string exe)
+    {
+        // La courbe de ventilation est rendue au pilote avant le lancement, et non à la fermeture : sinon l'arrêt de
+        // cet exemplaire pourrait couper la courbe que la version lancée vient de relancer.
+        try
+        {
+            FanCurveService.StopForExit();
+        }
+        catch (Exception e)
+        {
+            ErrorLog.Write(e);
+        }
+        SingleInstance.Release();
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = false });
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException or System.IO.IOException)
+        {
+            SingleInstance.Claim();
+            System.Windows.MessageBox.Show(
+                $"Les fichiers sont en place, mais Aria Cockpit n'a pas pu se relancer : {e.Message}\n\nQuitte-la, puis relance-la à la main.",
+                "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+        Quit();
     }
 
     /// <summary>
@@ -164,7 +209,7 @@ public partial class MainWindow : FluentWindow
     /// <summary>« Voir » du bandeau : la fenêtre de mise à jour, par-dessus la page. Rien n'est téléchargé à l'ouverture.</summary>
     private void OnOpenUpdate(object sender, RoutedEventArgs e)
     {
-        if (_update is not null && _installed is not null) _updater.Open(_update, _installed);
+        _updater.OpenAvailableCommand.Execute(null);
     }
 
     private void OnCloseUpdate(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;

@@ -108,7 +108,8 @@
                 <TextBlock Margin="0,0,0,6" Style="{StaticResource TechLabel}" Text="CE QUI VA SE PASSER" />
                 <TextBlock Style="{StaticResource Line}" Text="1. Le fichier est téléchargé dans le dossier d'Aria (cache), pas dans le dossier temporaire de Windows." />
                 <TextBlock Style="{StaticResource Line}" Text="2. Son empreinte SHA-256 est comparée à celle de la release. Si elle diffère, le fichier est supprimé." />
-                <TextBlock Style="{StaticResource Line}" Text="3. Aria t'ouvre le dossier. Tu remplaces l'exe toi-même : cette version ne le fait pas encore à ta place." />
+                <TextBlock Style="{StaticResource Line}" Text="3. Sur un second clic, la version actuelle est mise de côté dans les sauvegardes et la nouvelle prend sa place." />
+                <TextBlock Style="{StaticResource Line}" Text="4. Aria Cockpit se relance. Tes réglages et tes sauvegardes ne bougent pas." />
               </StackPanel>
 
               <TextBlock
@@ -141,9 +142,41 @@
               <TextBlock Margin="0,14,0,0" Style="{StaticResource TechLabel}" Text="EMPREINTE SHA-256, IDENTIQUE À CELLE DE LA RELEASE" />
               <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource Hash}" Text="{Binding ActualHash}" />
               <TextBlock Style="{StaticResource Muted}" Text="L'empreinte prouve que le fichier est arrivé intact. Elle ne prouve pas qui l'a publié." />
-              <TextBlock Margin="0,6,0,6" Style="{StaticResource TechLabel}" Text="POUR L'INSTALLER" />
-              <TextBlock Style="{StaticResource Line}" Text="Quitte Aria Cockpit (menu de son icône), dézippe le fichier, puis remplace Aria-Cockpit.exe et Aria-Bench.exe par les nouveaux. Tes réglages et tes sauvegardes ne bougent pas." />
-              <TextBlock Style="{StaticResource Muted}" Text="Garde l'ancien exe de côté tant que tu n'as pas essayé le nouveau. Le fichier reste une semaine dans le cache." />
+              <StackPanel Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Margin="0,6,0,6" Style="{StaticResource TechLabel}" Text="CE QUE FAIT « INSTALLER ET RELANCER »" />
+                <TextBlock Style="{StaticResource Line}" Text="La version actuelle est mise de côté, la nouvelle prend sa place, puis Aria Cockpit se relance. Tes réglages et tes sauvegardes ne bougent pas." />
+                <TextBlock Margin="0,0,0,2" Style="{StaticResource TechLabel}" Text="VERSION GARDÉE DANS" />
+                <TextBlock
+                  Margin="0,2,0,10"
+                  FontFamily="{StaticResource MonoFont}"
+                  FontSize="13"
+                  Text="{Binding KeepText}" />
+                <TextBlock Style="{StaticResource Muted}" Text="La relance arrête la courbe de ventilation : le pilote NVIDIA reprend la main. Elle repart seule si « Démarrer avec Windows » est activé. Une seule version est gardée, la précédente ; tu y reviens depuis Paramètres." />
+              </StackPanel>
+              <StackPanel Visibility="{Binding CannotInstall, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Margin="0,6,0,6" Style="{StaticResource TechLabel}" Text="INSTALLATION À LA MAIN" />
+                <TextBlock Style="{StaticResource Line}" Text="{Binding InstallBlockedText}" />
+                <TextBlock Style="{StaticResource Muted}" Text="Sinon : quitte Aria Cockpit, dézippe le fichier, puis remplace Aria-Cockpit.exe et Aria-Bench.exe par les nouveaux. Le fichier reste une semaine dans le cache." />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- 3 bis. Installation -->
+            <StackPanel Visibility="{Binding IsInstalling, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock FontSize="20" Style="{StaticResource NeonTitle}" Text="Installation en cours" />
+              <ProgressBar Height="8" Margin="0,16,0,10" IsIndeterminate="True" />
+              <TextBlock Style="{StaticResource Muted}" Text="La version actuelle est mise de côté, puis remplacée. Aria Cockpit se relance toute seule juste après." />
+            </StackPanel>
+
+            <!-- 3 ter. Installation refusée ou échouée -->
+            <StackPanel Visibility="{Binding IsInstallFailed, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock
+                FontSize="20"
+                Foreground="{StaticResource NeonRedBrush}"
+                Style="{StaticResource NeonTitle}"
+                Text="La nouvelle version n'a pas été installée"
+                TextWrapping="Wrap" />
+              <TextBlock Margin="0,12,0,8" Style="{StaticResource Line}" Text="{Binding ErrorText}" />
+              <TextBlock Style="{StaticResource Muted}" Text="Tu restes sur la version actuelle. Le fichier téléchargé est toujours dans le cache." />
             </StackPanel>
 
             <!-- 4. Empreinte différente -->
@@ -198,7 +231,18 @@
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibility}}">
               <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
-              <Button MinWidth="190" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButton}" />
+              <Button Margin="0,0,10,0" MinWidth="170" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButtonGhost}" />
+              <Button
+                MinWidth="220"
+                Command="{Binding InstallCommand}"
+                Content="INSTALLER ET RELANCER"
+                Style="{StaticResource HudButton}"
+                Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsInstallFailed, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="170" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButtonGhost}" />
+              <Button MinWidth="140" Command="{Binding InstallCommand}" Content="RÉESSAYER" Style="{StaticResource HudButton}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsMismatch, Converter={StaticResource BoolToVisibility}}">
               <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />

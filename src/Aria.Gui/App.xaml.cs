@@ -103,6 +103,20 @@ public partial class App : Application
                 ErrorLog.Write(ex);
             }
         });
+        // Restes d'une mise à jour : l'ancien exe renommé « .ancien » et les dossiers de décompression. Un peu après le
+        // lancement, le temps que la version remplacée ait fini de s'arrêter et lâche son fichier.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10));
+                Aria.Core.Updates.AppUpdateInstaller.CleanUp(Environment.ProcessPath);
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex);
+            }
+        });
     }
 
     private Services.TrayIcon? _tray;
