@@ -571,7 +571,7 @@ GPU, Équilibre, profils, courbes de ventilation) ne sont jamais touchés. Le r�
 ### Paramètres
 
 La roue crantée, à droite de « Rapports », ouvre les paramètres de l'application elle-même (enregistrés dans
-`parametres.json`, dans le dossier des données). Tant que tu n'y touches pas, Aria se comporte comme avant.
+`reglages.json`, dans le dossier des données ; jusqu'à la 0.26 il s'appelait `parametres.json`, qui est repris une fois puis laissé tel quel). Tant que tu n'y touches pas, Aria se comporte comme avant.
 
 - **Démarrage** : « Démarrer Aria Cockpit avec Windows » (la même option que dans le menu de l'icône), avec la courbe
   de ventilation qui sera relancée et l'état de la tâche du profil GPU.
