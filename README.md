@@ -290,6 +290,14 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
   incidents regroupés par nature (pour un seul problème, le pilote écrit souvent 5 à 7 lignes dans la même seconde). Un
   accès mémoire invalide (l'« illegal memory access » d'une IA locale sous CUDA) vient le plus souvent d'un cœur qui
   calcule faux, pas de la mémoire : le conseil est de revenir d'origine, puis de refaire l'assistant avec le banc d'essai.
+- **Incidents commentés et rapport à envoyer** : la carte « Incidents du pilote » liste ceux des 30 derniers jours
+  (les 5 plus récents d'emblée), avec leurs lignes brutes du journal. Le journal de Windows ne dit pas ce que tu faisais :
+  un champ « Ce que je faisais » le note pour chaque incident (jeu, IA locale, repos…), enregistré dans
+  `incidents-notes.json`. « Copier le rapport » met dans le presse-papiers un rapport en Markdown, prêt à coller dans une
+  IA ou dans un message : carte, pilote, réglage en place et valeurs d'usine, résultat d'Équilibre, profils, historique
+  des réglages (sans les répétitions, les 40 derniers), puis chaque incident avec le réglage en place à ce moment-là, ton
+  commentaire et ses lignes. « Enregistrer le rapport » l'écrit dans `Rapports\incidents_<date>.md`. Le rapport ne
+  contient ni le nom du PC, ni celui de l'utilisateur, ni le numéro de la carte.
 
 ### Ventilateur
 

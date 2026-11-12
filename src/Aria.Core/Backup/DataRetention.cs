@@ -36,8 +36,8 @@ public static partial class DataRetention
     /// <summary>Journaux tournants : au-delà de 1 Mo, renommés en « nom-precedent.log » (qui remplace l'archive précédente).</summary>
     internal static readonly string[] Logs = ["erreurs.log", "gpu-profile.log", "limite-charge.log"];
 
-    /// <summary>Rapports (réglages, restaurations, mises à jour, nettoyages, réglage GPU) et fiches PC.</summary>
-    [GeneratedRegex(@"^(rapport|mises-a-jour|nettoyage|reglage-gpu|fiche-pc)_(?<date>\d{4}-\d{2}-\d{2}_\d{6})\.(txt|html)$", RegexOptions.IgnoreCase)]
+    /// <summary>Rapports (réglages, restaurations, mises à jour, nettoyages, réglage GPU, incidents du pilote) et fiches PC.</summary>
+    [GeneratedRegex(@"^(rapport|mises-a-jour|nettoyage|reglage-gpu|fiche-pc|incidents)_(?<date>\d{4}-\d{2}-\d{2}_\d{6})\.(txt|html|md)$", RegexOptions.IgnoreCase)]
     private static partial Regex ReportName();
 
     [GeneratedRegex(@"^sauvegarde_(?<date>\d{4}-\d{2}-\d{2}_\d{6})\.json$", RegexOptions.IgnoreCase)]

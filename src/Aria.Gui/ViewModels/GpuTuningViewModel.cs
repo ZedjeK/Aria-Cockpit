@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Aria.Core.Nvidia;
@@ -97,6 +98,24 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private string otherGpuText = "";
     [ObservableProperty] private bool hasOtherGpu;
 
+    // ---- Incidents du pilote, commentés ----
+    /// <summary>Période affichée et couverte par le rapport d'incidents.</summary>
+    public const int IncidentDays = 30;
+
+    public ObservableCollection<IncidentRow> Incidents { get; } = [];
+    [ObservableProperty] private bool hasIncidents;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasIncidentNote))] private string incidentNote = "";
+    [ObservableProperty] private bool incidentNoteIsError;
+    [ObservableProperty] private bool canOpenIncidentReport;
+    private string? _incidentReportPath;
+
+    /// <summary>Incidents affichés d'emblée ; les plus anciens se déplient à la demande (le rapport les contient tous).</summary>
+    public const int IncidentsShown = 5;
+    [ObservableProperty] private bool hasOlderIncidents;
+    [ObservableProperty] private string olderIncidentsText = "";
+
+    public bool HasIncidentNote => IncidentNote.Length > 0;
+
     // ---- Profils enregistrés ----
     public ObservableCollection<GpuProfileRow> Profiles { get; } = [];
     [ObservableProperty] private bool hasProfiles;
@@ -157,14 +176,16 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     private async Task RefreshAsync(bool resetSliders)
     {
         var tuner = _tuner!;
-        var (state, origin, saved, crashes, taskCommand) = await Task.Run(() =>
+        var (state, origin, saved, crashes, taskCommand, recent, notes) = await Task.Run(() =>
         {
             var s = GpuProfile.ReadCurrent(tuner);
             var file = GpuProfile.Load();
             var crashList = file is null ? [] : DriverIncidents.Since(file.AppliedAt);
             var command = s.AtStartup ? StartupTask.Command() : null;
-            return (s, GpuProfile.OriginFor(tuner), file, crashList, command);
+            return (s, GpuProfile.OriginFor(tuner), file, crashList, command,
+                DriverIncidents.DetailedSince(DateTime.Now.AddDays(-IncidentDays)), IncidentNotes.Load());
         });
+        ShowIncidents(recent, notes);
 
         // Réglage enregistré pour une autre carte (carte changée) : rien n'est réappliqué, on le signale
         HasOtherGpu = saved?.IsForOtherGpu(tuner.Identity) == true;
@@ -440,7 +461,173 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
     private static string Cap(GpuTuningState s) => s.MaxClockMHz == 0 ? "Aucun" : $"{s.MaxClockMHz} MHz";
 
+    // ---------------------------------------------------------------- Incidents du pilote
+
+    /// <summary>
+    /// Liste des incidents des 30 derniers jours, les plus récents d'abord. Elle n'est refaite que si les incidents
+    /// ont changé : un commentaire en cours de frappe n'est pas effacé par un rafraîchissement de la page.
+    /// </summary>
+    private void ShowIncidents(IReadOnlyList<DriverIncidentDetail> incidents, IReadOnlyDictionary<string, string> notes)
+    {
+        var ordered = incidents.OrderByDescending(d => d.Incident.At).ToList();
+        if (!ordered.Select(d => d.Incident.At).SequenceEqual(Incidents.Select(r => r.Detail.Incident.At)))
+        {
+            Incidents.Clear();
+            foreach (var detail in ordered)
+                Incidents.Add(new IncidentRow(detail, notes.GetValueOrDefault(IncidentNotes.Key(detail.Incident.At), ""), SaveIncidentNote)
+                {
+                    IsShown = Incidents.Count < IncidentsShown
+                });
+            var older = Incidents.Count - IncidentsShown;
+            HasOlderIncidents = older > 0;
+            OlderIncidentsText = older > 1 ? $"VOIR LES {older} PLUS ANCIENS" : "VOIR LE PLUS ANCIEN";
+        }
+        HasIncidents = Incidents.Count > 0;
+    }
+
+    [RelayCommand]
+    private void ShowOlderIncidents()
+    {
+        foreach (var row in Incidents) row.IsShown = true;
+        HasOlderIncidents = false;
+    }
+
+    /// <summary>Commentaire d'un incident : enregistré dès que le champ perd le focus.</summary>
+    private void SaveIncidentNote(IncidentRow row)
+    {
+        try
+        {
+            IncidentNotes.Set(row.Detail.Incident.At, row.Note);
+            ShowIncident("Commentaire enregistré.", error: false);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ShowIncident($"Commentaire non enregistré : {e.Message}", error: true);
+        }
+    }
+
+    /// <summary>Rapport des incidents, en Markdown : la carte, les réglages, chaque incident avec son commentaire.</summary>
+    private async Task<string> BuildIncidentReportAsync()
+    {
+        var tuner = _tuner!;
+        var incidents = Incidents.Select(r => r.Detail).ToList();
+        var notes = Incidents.Where(r => r.Note.Trim().Length > 0)
+            .ToDictionary(r => IncidentNotes.Key(r.Detail.Incident.At), r => r.Note.Trim());
+        var profiles = Profiles.Select(p => (p.Profile.Name, p.Tuning)).ToList();
+        var balanced = HasBalanced ? Assistant.RecordText : null;
+        var fan = FanCurveService.Running?.Name;
+        var current = Current;
+        var version = System.Reflection.Assembly.GetEntryAssembly()?
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?";
+        return await Task.Run(() =>
+        {
+            var logPath = Path.Combine(Aria.Core.Backup.BackupStore.DataRoot, "gpu-profile.log");
+            string[] log;
+            try
+            {
+                log = File.Exists(logPath) ? File.ReadAllLines(logPath) : [];
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                log = [];
+            }
+            return IncidentReport.Build(new IncidentReportInput(
+                DateTime.Now, version, tuner.Identity.Name, tuner.Identity.DriverVersion,
+                System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+                current, GpuProfile.OriginFor(tuner), GpuProfile.Load()?.AppliedAt,
+                balanced, fan, profiles, log, incidents, notes, IncidentDays));
+        });
+    }
+
+    [RelayCommand]
+    private async Task CopyIncidentReport()
+    {
+        if (_tuner is null) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(await BuildIncidentReportAsync());
+            ShowIncident("Rapport copié : colle-le dans une IA, ou dans un message. Il ne contient ni le nom du PC, ni le tien, ni le numéro de la carte.", error: false);
+        }
+        catch (Exception e) when (e is System.Runtime.InteropServices.ExternalException or IOException)
+        {
+            ShowIncident($"Rapport non copié : {e.Message}", error: true);
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveIncidentReport()
+    {
+        if (_tuner is null) return;
+        try
+        {
+            var text = await BuildIncidentReportAsync();
+            var folder = Path.Combine(Aria.Core.Backup.BackupStore.DataRoot, "Rapports");
+            var path = Path.Combine(folder, $"incidents_{DateTime.Now:yyyy-MM-dd_HHmmss}.md");
+            await Task.Run(() =>
+            {
+                Directory.CreateDirectory(folder);
+                File.WriteAllText(path, text);
+            });
+            _incidentReportPath = path;
+            CanOpenIncidentReport = true;
+            ShowIncident($"Rapport enregistré : {path}", error: false);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ShowIncident($"Rapport non enregistré : {e.Message}", error: true);
+        }
+    }
+
+    [RelayCommand]
+    private void OpenIncidentReport()
+    {
+        try
+        {
+            if (_incidentReportPath is { } path && File.Exists(path)) Shell.OpenFile(path);
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            ShowIncident($"Rapport non ouvert : {e.Message}", error: true);
+        }
+    }
+
+    private void ShowIncident(string text, bool error)
+    {
+        IncidentNote = text;
+        IncidentNoteIsError = error;
+    }
+
     private static string ExePath() => Environment.ProcessPath ?? "Aria-Cockpit.exe";
+}
+
+/// <summary>
+/// Un incident du pilote dans la carte « Incidents du pilote » : quand, de quelle nature, ses lignes brutes, et ce que
+/// l'utilisateur faisait à ce moment-là (le journal de Windows ne le dit pas).
+/// </summary>
+public sealed partial class IncidentRow(DriverIncidentDetail detail, string note, Action<IncidentRow> save) : ObservableObject
+{
+    private static readonly System.Globalization.CultureInfo French = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+
+    public DriverIncidentDetail Detail { get; } = detail;
+
+    /// <summary>« mercredi 11/11 à 21:46 ».</summary>
+    public string When { get; } = detail.Incident.At.ToString("dddd dd/MM 'à' HH:mm", French);
+
+    /// <summary>« erreur du pilote · 2 lignes ».</summary>
+    public string What { get; } =
+        $"{DriverIncidents.Describe(detail.Incident.Kind)} · {detail.Lines.Count} ligne{(detail.Lines.Count > 1 ? "s" : "")}";
+
+    /// <summary>Lignes du journal Système, résumées.</summary>
+    public IReadOnlyList<string> Lines { get; } =
+        detail.Lines.Select(l => $"{l.At:HH:mm:ss}  {l.Provider} {l.Id}  {IncidentReport.Compact(l.Data)}").ToList();
+
+    /// <summary>Affiché dans la liste (les plus anciens sont repliés tant qu'on ne les demande pas).</summary>
+    [ObservableProperty] private bool isShown = true;
+
+    /// <summary>Ce que l'utilisateur faisait ; enregistré quand le champ perd le focus.</summary>
+    [ObservableProperty] private string note = note;
+
+    partial void OnNoteChanged(string value) => save(this);
 }
 
 /// <summary>Ligne de la carte MES PROFILS : le profil, s'il est sur la carte, et le résultat du dernier clic sur cette ligne.</summary>
