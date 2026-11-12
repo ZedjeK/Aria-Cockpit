@@ -7,3 +7,6 @@ publish/
 .vs/
 .vscode/
 *.swp
+
+# Sorties de build.ps1
+/.work/
