@@ -13,4 +13,5 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 - Les fichiers de travail (banc d'essai, lecture de NVIDIA App, création de tâche) vont dans `cache\`, dans le dossier des données, et plus dans le dossier temporaire de Windows.
 - Mise à jour d'Aria Cockpit : le bandeau ouvre une fenêtre qui montre ce qui change, télécharge la nouvelle version sur demande et contrôle sa taille et son empreinte SHA-256. Un fichier différent de celui de la release est supprimé.
 - « Installer et relancer » met la version en cours de côté dans `Sauvegardes\versions`, remplace les exes et relance Aria. Si une étape échoue, tout est remis comme avant. Une seule version est gardée, la précédente.
+- Release : un tag `vX.Y.Z` poussé déclenche les tests, la fabrication des deux zips et leur attestation de provenance, puis une release en brouillon, à relire et à publier à la main. Les notes de chaque version sont dans `docs/releases/`. `tools\empaqueter.ps1` fabrique les mêmes zips sur son PC.
 - Paramètres, carte « Mises à jour d'Aria Cockpit » : décocher la recherche au lancement, chercher à la main, revenir à la version gardée.

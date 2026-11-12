@@ -615,7 +615,9 @@ rapport) : elle peut donc elle-même être annulée.
   repart seule que si « Démarrer avec Windows » est activé.
 - **L'empreinte ne dit pas qui a publié le fichier.** Elle vient de GitHub, comme le fichier : elle prouve qu'il est
   arrivé intact, pas que la release est bien celle de l'auteur. Cette garantie-là repose sur le compte GitHub de
-  l'auteur. Les releases de ce dépôt ne sont pas immuables à ce jour, et aucune attestation de provenance n'est jointe.
+  l'auteur. À partir de la version qui suit la 0.26.0, le workflow de release joint à chaque zip une attestation de
+  provenance, vérifiable avec `gh attestation verify` : l'appli, elle, ne la contrôle pas. Les releases de ce dépôt ne
+  sont pas immuables à ce jour.
 - **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
   et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
 - **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le
