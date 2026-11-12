@@ -42,6 +42,17 @@ public sealed partial class PreferencesViewModel : ObservableObject
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasWindowNote))] private string windowNote = "";
     public bool HasWindowNote => WindowNote.Length > 0;
 
+    // ---- Fond animé ----
+    [ObservableProperty] private bool backgroundActive = true;
+    [ObservableProperty] private int backgroundSpeedIndex = 1;
+    [ObservableProperty] private int backgroundMinimum = BackgroundSettings.Default.Minimum;
+    [ObservableProperty] private int backgroundMaximum = BackgroundSettings.Default.Maximum;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasBackgroundNote))] private string backgroundNote = "";
+    [ObservableProperty] private bool backgroundNoteIsError;
+    public bool HasBackgroundNote => BackgroundNote.Length > 0;
+    public IReadOnlyList<int> BackgroundCounts { get; } =
+        Enumerable.Range(BackgroundSettings.MinPoints, BackgroundSettings.MaxPoints - BackgroundSettings.MinPoints + 1).ToArray();
+
     // ---- Données ----
     public string DataPath => BackupStore.DataRoot;
     [ObservableProperty] private string dataSizeText = "calcul…";
@@ -80,6 +91,7 @@ public sealed partial class PreferencesViewModel : ObservableObject
             CloseTray = _saved.Close == CloseBehavior.AlwaysTray;
             CloseQuit = _saved.Close == CloseBehavior.AlwaysQuit;
             NotifyOnHide = _saved.NotifyOnHide;
+            ShowBackground(_saved.Background);
             ShowRetention(_saved);
 
             StartWithWindows = AutostartService.Enabled ?? await AutostartService.RefreshAsync();
@@ -180,6 +192,47 @@ public sealed partial class PreferencesViewModel : ObservableObject
             CloseBehavior.AlwaysTray => "Enregistré. La croix range toujours Aria dans son icône ; « Quitter » est dans le menu de l'icône.",
             _ => "Enregistré."
         };
+    }
+
+    // ---------------------------------------------------------------- Fond animé
+
+    partial void OnBackgroundActiveChanged(bool value) => SaveBackground();
+    partial void OnBackgroundSpeedIndexChanged(int value) => SaveBackground();
+    partial void OnBackgroundMinimumChanged(int value) => SaveBackground();
+    partial void OnBackgroundMaximumChanged(int value) => SaveBackground();
+
+    private void ShowBackground(BackgroundSettings background)
+    {
+        BackgroundActive = background.Active;
+        BackgroundSpeedIndex = (int)background.Speed;
+        BackgroundMinimum = background.Minimum;
+        BackgroundMaximum = background.Maximum;
+    }
+
+    /// <summary>Un réglage du fond vient de changer : enregistré et appliqué tout de suite, sans bouton.</summary>
+    private void SaveBackground()
+    {
+        if (_loading) return;
+        var speed = Enum.IsDefined((BackgroundSpeed)BackgroundSpeedIndex) ? (BackgroundSpeed)BackgroundSpeedIndex : BackgroundSpeed.Normal;
+        var wanted = new BackgroundSettings(BackgroundActive, speed, BackgroundMinimum, BackgroundMaximum).Sanitized();
+        if (!TrySave(_saved with { Background = wanted }, out var error))
+        {
+            BackgroundNote = $"Réglage non enregistré : {error}";
+            BackgroundNoteIsError = true;
+            return;
+        }
+        BackdropService.Set(wanted);
+        BackgroundNoteIsError = false;
+        BackgroundNote = wanted.Active
+            ? $"Enregistré. De {wanted.Minimum} à {wanted.Maximum} points par passage."
+            : "Enregistré. Le fond animé est coupé.";
+        // Bornes saisies à l'envers : les listes reprennent l'ordre enregistré
+        if (wanted.Minimum != BackgroundMinimum || wanted.Maximum != BackgroundMaximum)
+        {
+            _loading = true;
+            ShowBackground(wanted);
+            _loading = false;
+        }
     }
 
     private bool TrySave(AppPreferences preferences, out string error)

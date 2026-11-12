@@ -11,13 +11,16 @@
   <Color x:Key="NeonCyanColor">#FF7DF9FF</Color>
   <Color x:Key="NeonBlueColor">#FF5C8BFF</Color>
   <Color x:Key="NeonRedColor">#FFFF5C7A</Color>
+  <!-- Ambre (avertissement doux) et ligne (séparateurs), les deux couleurs de la palette Aria qui manquaient -->
+  <Color x:Key="NeonAmberColor">#FFFFD166</Color>
+  <Color x:Key="LineColor">#FF1A2D4D</Color>
   <!-- « Positif / conforme » : cyan glacé, comme le reste de la palette -->
   <Color x:Key="NeonTealColor">#FF7DF9FF</Color>
   <!-- Succès (« appliqué », « installé ») : cyan glacé, comme « conforme » -->
   <Color x:Key="NeonGreenColor">#FF7DF9FF</Color>
   <Color x:Key="DeepSpaceColor">#FF030812</Color>
-  <Color x:Key="PanelColor">#B30A1428</Color>
-  <Color x:Key="PanelHoverColor">#D90F1C36</Color>
+  <Color x:Key="PanelColor">#FF06101F</Color>
+  <Color x:Key="PanelHoverColor">#FF0B1A30</Color>
 
   <SolidColorBrush x:Key="NeonOrangeBrush" Color="{StaticResource NeonOrangeColor}" />
   <SolidColorBrush x:Key="NeonCyanBrush" Color="{StaticResource NeonCyanColor}" />
@@ -30,6 +33,8 @@
   <SolidColorBrush x:Key="NeonWhiteBrush" Color="#FFEFFFFF" />
   <SolidColorBrush x:Key="NeonMutedBrush" Color="#FF93A8C8" />
   <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
+  <SolidColorBrush x:Key="NeonAmberBrush" Color="{StaticResource NeonAmberColor}" />
+  <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}" />
 
   <!-- Couleurs des pastilles de diagnostic -->
   <SolidColorBrush x:Key="SeverityCriticalBrush" Color="{StaticResource NeonRedColor}" />
@@ -314,7 +319,7 @@
     <Setter Property="Padding" Value="20,16" />
     <Setter Property="Focusable" Value="False" />
     <Setter Property="Foreground" Value="{StaticResource NeonTextBrush}" />
-    <Setter Property="Background" Value="#B3050E20" />
+    <Setter Property="Background" Value="{StaticResource PanelBrush}" />
     <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
     <Setter Property="Template">
       <Setter.Value>

@@ -14,6 +14,62 @@ public sealed class AppPreferencesTests : IDisposable
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
     }
 
+    // ---- Fond animé ----
+
+    [Fact]
+    public void TheBackgroundIsOnByDefaultWithTwoToFivePoints()
+    {
+        var background = AppPreferences.Default.Background;
+
+        Assert.True(background.Active);
+        Assert.Equal(BackgroundSpeed.Normal, background.Speed);
+        Assert.Equal(2, background.Minimum);
+        Assert.Equal(5, background.Maximum);
+    }
+
+    [Fact]
+    public void TheFileNamesTheBackgroundAsTheAriaContractDoes()
+    {
+        var json = AppPreferencesStore.ToJson(new AppPreferences { Background = new BackgroundSettings(false, BackgroundSpeed.Fast, 3, 8) });
+
+        Assert.Contains("\"fond\"", json);
+        Assert.Contains("\"actif\": false", json);
+        Assert.Contains("\"vitesse\": \"rapide\"", json);
+        Assert.Contains("\"minimum\": 3", json);
+        Assert.Contains("\"maximum\": 8", json);
+    }
+
+    [Fact]
+    public void TheBackgroundSurvivesTheFile()
+    {
+        var saved = new AppPreferences { Background = new BackgroundSettings(false, BackgroundSpeed.Slow, 4, 9) };
+
+        Assert.Equal(saved, AppPreferencesStore.FromJson(AppPreferencesStore.ToJson(saved)));
+    }
+
+    [Fact]
+    public void AFileFromBeforeTheBackgroundGetsTheDefaultOne() =>
+        Assert.Equal(BackgroundSettings.Default, AppPreferencesStore.FromJson("{ \"NotifyOnHide\": false }").Background);
+
+    [Theory]
+    [InlineData("{ \"fond\": null }")]
+    [InlineData("{ \"fond\": { \"vitesse\": \"éclair\" } }")]
+    [InlineData("{ \"fond\": { \"vitesse\": 3 } }")]
+    public void AnUnreadableBackgroundFallsBackToTheDefaults(string json) =>
+        Assert.Equal(BackgroundSettings.Default, AppPreferencesStore.FromJson(json).Background);
+
+    [Fact]
+    public void BackgroundBoundsAreClampedAndPutBackInOrder()
+    {
+        var loaded = AppPreferencesStore.FromJson("{ \"fond\": { \"minimum\": 40, \"maximum\": -2 } }").Background;
+
+        Assert.Equal(BackgroundSettings.MinPoints, loaded.Minimum);
+        Assert.Equal(BackgroundSettings.MaxPoints, loaded.Maximum);
+    }
+
+    [Fact]
+    public void AFasterBackgroundMakesAShorterPass() =>
+        Assert.True(new BackgroundSettings(Speed: BackgroundSpeed.Fast).PassDuration < new BackgroundSettings(Speed: BackgroundSpeed.Slow).PassDuration);
     // ---- Fichier ----
 
     [Fact]

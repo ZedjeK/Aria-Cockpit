@@ -17,6 +17,8 @@ public partial class MainWindow : FluentWindow
     {
         DataContext = state;
         _pages = new PageProvider(state);
+        // Réglages du fond animé, lus une fois : la page Paramètres les met à jour ensuite
+        BackdropService.Set(Aria.Core.Settings.AppPreferencesStore.Load().Background);
         InitializeComponent();
         // Pas d'historique « Précédent » : la barre du haut est la seule navigation
         PageHost.Navigated += (_, _) =>
