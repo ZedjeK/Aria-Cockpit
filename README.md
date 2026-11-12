@@ -279,9 +279,12 @@ atteinte avec moins de tension, donc moins de watts, de chaleur et de bruit.
 - **Réglage d'Équilibre** : remet le résultat d'Équilibre dans les curseurs (Appliquer le pose ensuite). À la fin
   d'Économie ou de Performance, « Revenir à Équilibre » le pose directement, même après un redémarrage entre les deux.
 - **Mes profils** : enregistre le réglage des curseurs sous un nom (« Jeu », « Silence »…), ou un résultat de l'assistant
-  avec « Enregistrer comme profil » (nom proposé « Équilibre du 30/10 », avec ses FPS au banc et sa validation). « Charger »
-  le remet dans les curseurs sans rien appliquer ; la case « Garder au démarrage » reste celle des curseurs. Seuls les
-  profils de la carte en place sont affichés, et un profil enregistré sous un autre pilote est signalé : à revalider.
+  avec « Enregistrer comme profil » (nom proposé « Équilibre du 30/10 », avec ses FPS au banc et sa validation).
+  « Appliquer » pose le profil sur la carte, après la confirmation habituelle (avant → après), sans changer « Garder au
+  démarrage ». « Modifier » l'affiche dans les curseurs sans rien poser, pour le retoucher. Le profil que la carte a en
+  ce moment porte le repère « EN PLACE », et son nom s'affiche dans le bloc « En place ». Le résultat de chaque clic
+  s'affiche sur la ligne du profil. Seuls les profils de la carte en place sont listés, et un profil enregistré sous un
+  autre pilote est signalé : à revalider.
 - **Garde-fou** : si Windows note un plantage du pilote NVIDIA depuis le réglage, un bandeau rouge le signale, avec les
   incidents regroupés par nature (pour un seul problème, le pilote écrit souvent 5 à 7 lignes dans la même seconde). Un
   accès mémoire invalide (l'« illegal memory access » d'une IA locale sous CUDA) vient le plus souvent d'un cœur qui
@@ -297,9 +300,11 @@ de NVML (cartes Maxwell, GTX 900, et plus récentes).
 - **Sous le premier point, le pilote garde la main** : les ventilateurs peuvent toujours s'arrêter au repos. Entre les
   points, la vitesse suit la température : elle monte aussitôt, et ne redescend que 3 °C plus bas, de 2 % par seconde au
   plus, pour éviter le va-et-vient. La vitesse ne descend jamais sous le minimum que la carte accepte (souvent 30 %).
-- **Mes courbes** : enregistre les points affichés sous un nom (« Nuit », « Jeu »…). « Charger » remet une courbe dans
-  « Personnalisée » sans rien appliquer ; une fois appliquée, elle garde son nom dans « En place ». Les courbes valent pour
-  toutes les cartes (`ventilateur-profils.json`).
+- **Mes courbes** : enregistre les points affichés sous un nom (« Nuit », « Jeu »…). « Appliquer » fait tourner la
+  courbe, après confirmation ; « Modifier » l'affiche dans « Personnalisée » sans rien poser, pour en changer les points.
+  La courbe qui tourne porte le repère « EN PLACE » (même nom et mêmes points : une courbe retouchée sans être
+  réenregistrée ne l'a plus), et le résultat de chaque clic s'affiche sur sa ligne. Les courbes valent pour toutes les
+  cartes (`ventilateur-profils.json`).
 - **Sécurités** : plein régime à 85 °C et plus, quelle que soit la courbe ; si la température devient illisible, le
   pilote reprend la main ; si le pilote refuse une vitesse, la courbe s'arrête et lui rend la main.
 - **Tant qu'Aria Cockpit est ouvert** : NVML passe les ventilateurs en manuel, c'est donc Aria qui suit la température,

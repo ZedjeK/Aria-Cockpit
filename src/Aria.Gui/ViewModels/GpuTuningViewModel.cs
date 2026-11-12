@@ -43,6 +43,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
             RevertCommand.NotifyCanExecuteChanged();
             ResetSlidersCommand.NotifyCanExecuteChanged();
             LoadBalancedCommand.NotifyCanExecuteChanged();
+            ApplyProfileCommand.NotifyCanExecuteChanged();
             LoadProfileCommand.NotifyCanExecuteChanged();
         };
         Assistant.SaveProfileRequested += async (state, name, note) => await SaveProfileAsync(state, name, note);
@@ -54,7 +55,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     /// <summary>Le pilote NVIDIA a changé depuis Équilibre : son résultat reste chargeable, mais le refaire est conseillé.</summary>
     public bool BalancedDriverChanged => HasBalanced && Assistant.DriverChanged;
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand), nameof(LoadProfileCommand), nameof(SaveProfileCommand))] private bool isAvailable;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand), nameof(ApplyProfileCommand), nameof(LoadProfileCommand), nameof(SaveProfileCommand))] private bool isAvailable;
     [ObservableProperty] private bool capSupported = true;
     [ObservableProperty] private bool powerSupported = true;
     [ObservableProperty] private bool coreOffsetSupported = true;
@@ -62,7 +63,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     [ObservableProperty] private string capNote = "";
     [ObservableProperty] private string powerNote = "";
     [ObservableProperty] private bool isUnavailable;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand), nameof(LoadProfileCommand), nameof(SaveProfileCommand))] private bool isBusy;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(RevertCommand), nameof(ResetSlidersCommand), nameof(LoadBalancedCommand), nameof(ApplyProfileCommand), nameof(LoadProfileCommand), nameof(SaveProfileCommand))] private bool isBusy;
 
     // ---- Curseurs ----
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(PowerText), nameof(HasChanges))] private double powerWatts;
@@ -78,6 +79,9 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     // ---- État ----
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasChanges))] private GpuTuningState? current;
     [ObservableProperty] private string currentText = "";
+    /// <summary>Nom du profil enregistré qui est sur la carte (« Mon réglage équilibré ») ; vide si le réglage en place n'en est pas un.</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasCurrentProfile))] private string currentProfile = "";
+    public bool HasCurrentProfile => CurrentProfile.Length > 0;
     [ObservableProperty] private string originText = "";
     [ObservableProperty] private bool hasOrigin;
     [ObservableProperty] private string message = "";
@@ -172,6 +176,7 @@ public sealed partial class GpuTuningViewModel : ObservableObject
 
         Current = state;
         CurrentText = state.Describe();
+        MarkInPlace();
         HasOrigin = origin is not null;
         OriginText = origin?.Describe() ?? "";
         if (resetSliders) LoadSliders(state);
@@ -293,6 +298,19 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         foreach (var p in profiles)
             Profiles.Add(new GpuProfileRow(p, p.Tuning!.Describe(), p.Details, p.DriverChanged(t.Identity)));
         HasProfiles = Profiles.Count > 0;
+        MarkInPlace();
+    }
+
+    /// <summary>Repère « EN PLACE » : sur le profil enregistré que la carte a en ce moment, s'il y en a un.</summary>
+    private void MarkInPlace()
+    {
+        foreach (var row in Profiles) row.IsActive = Current is { } card && row.Profile.Tuning is { } tuning && card.SameTuning(tuning);
+        CurrentProfile = Profiles.FirstOrDefault(r => r.IsActive)?.Profile.Name ?? "";
+    }
+
+    private void ClearNotes()
+    {
+        foreach (var row in Profiles) row.Say("");
     }
 
     private bool CanSaveProfile() => IsAvailable && !IsBusy && ProfileName.Trim().Length > 0;
@@ -331,13 +349,37 @@ public sealed partial class GpuTuningViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>Charge un profil dans les curseurs, sans rien appliquer (case « Garder au démarrage » laissée telle quelle).</summary>
+    /// <summary>
+    /// « Appliquer » d'un profil enregistré : il est posé sur la carte tel quel, après la confirmation habituelle
+    /// (avant → après, avertissements). « Garder au démarrage » reste comme il est.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private async Task ApplyProfile(GpuProfileRow row)
+    {
+        if (row.Profile.Tuning is not { } tuning || Current is not { } before) return;
+        ClearNotes();
+        if (before.SameTuning(tuning))
+        {
+            row.Say("Déjà en place sur la carte.");
+            return;
+        }
+        HasMessage = false;
+        MessageIsError = false;
+        LoadSliders(tuning with { AtStartup = before.AtStartup });
+        await Apply();
+        if (Current is { } now && now.SameTuning(tuning)) row.Say("En place sur la carte.");
+        else if (MessageIsError) row.Say(Message, error: true);
+        else row.Say("Rien n'a été appliqué. Le profil est seulement affiché dans les curseurs.");
+    }
+
+    /// <summary>« Modifier » : charge un profil dans les curseurs, sans rien poser (case « Garder au démarrage » laissée telle quelle).</summary>
     [RelayCommand(CanExecute = nameof(CanAct))]
     private void LoadProfile(GpuProfileRow row)
     {
         if (row.Profile.Tuning is not { } s) return;
+        ClearNotes();
         LoadSliders(s with { AtStartup = AtStartup });
-        Show($"Profil « {row.Profile.Name} » chargé dans les curseurs : Appliquer le pose sur la carte.", error: false);
+        row.Say("Affiché dans les curseurs : ajuste-les, puis « Appliquer » sous les curseurs. Rien n'est posé pour l'instant.");
     }
 
     [RelayCommand]
@@ -401,6 +443,26 @@ public sealed partial class GpuTuningViewModel : ObservableObject
     private static string ExePath() => Environment.ProcessPath ?? "Aria-Cockpit.exe";
 }
 
-/// <summary>Ligne de la carte MES PROFILS.</summary>
-/// <param name="DriverChanged">Le pilote a changé depuis l'enregistrement : le profil reste chargeable, mais à revérifier.</param>
-public sealed record GpuProfileRow(SavedGpuProfile Profile, string Tuning, string Details, bool DriverChanged);
+/// <summary>Ligne de la carte MES PROFILS : le profil, s'il est sur la carte, et le résultat du dernier clic sur cette ligne.</summary>
+/// <param name="driverChanged">Le pilote a changé depuis l'enregistrement : le profil reste applicable, mais à revérifier.</param>
+public sealed partial class GpuProfileRow(SavedGpuProfile profile, string tuning, string details, bool driverChanged) : ObservableObject
+{
+    public SavedGpuProfile Profile { get; } = profile;
+    public string Tuning { get; } = tuning;
+    public string Details { get; } = details;
+    public bool DriverChanged { get; } = driverChanged;
+
+    /// <summary>C'est ce réglage que la carte a en ce moment.</summary>
+    [ObservableProperty] private bool isActive;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNote))] private string note = "";
+    [ObservableProperty] private bool noteIsError;
+    public bool HasNote => Note.Length > 0;
+
+    /// <summary>Résultat affiché sur la ligne, là où l'on vient de cliquer.</summary>
+    public void Say(string text, bool error = false)
+    {
+        Note = text;
+        NoteIsError = error;
+    }
+}
