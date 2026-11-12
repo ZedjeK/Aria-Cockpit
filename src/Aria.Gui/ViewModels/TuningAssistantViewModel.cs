@@ -77,10 +77,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private static readonly BenchResult NoRender = new("terminé", [], [], []);
     /// <summary>Contrôles ajoutés aux 15 minutes de validation (calcul, et mémoire si elle est poussée).</summary>
     public static readonly TimeSpan ValidationCheckDuration = TimeSpan.FromMinutes(2);
-    private static string CheckOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-calcul.json");
-    private static string MemoryOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-memoire.json");
+    private static string CheckOutput => Aria.Core.Backup.DataCache.PathFor("controle-calcul.json");
+    private static string MemoryOutput => Aria.Core.Backup.DataCache.PathFor("controle-memoire.json");
     /// <summary>Journal du dernier palier mémoire stable : le suivant doit aller plus vite que lui.</summary>
-    private static string MemoryPrevious => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "controle-memoire-precedent.json");
+    private static string MemoryPrevious => Aria.Core.Backup.DataCache.PathFor("controle-memoire-precedent.json");
     /// <summary>Résultat du palier précédent, rappelé pendant la mesure suivante (verdict automatique).</summary>
     private string _previousStep = "";
     /// <summary>Mode demandé, mis en attente par le contrôle avant mesure.</summary>
@@ -104,7 +104,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>Rapport du dernier passage (page Rapports, bouton « Voir le rapport »).</summary>
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasReport))] private string? reportPath;
     public bool HasReport => ReportPath is not null;
-    private static string BenchOutput => Path.Combine(Path.GetTempPath(), "Aria-Cockpit", "banc-assistant.json");
+    private static string BenchOutput => Aria.Core.Backup.DataCache.PathFor("banc-assistant.json");
 
     /// <summary>
     /// Aria-Bench.exe est livré à côté d'Aria Cockpit. L'assistant ne mesure qu'avec lui (scène, définition et verdicts

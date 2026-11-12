@@ -49,17 +49,18 @@ public static class NvidiaAppTuning
     }
 
     /// <summary>
-    /// Lit l'état de l'overclock. La base est copiée dans le dossier temporaire puis ouverte en lecture seule :
+    /// Lit l'état de l'overclock. La base est copiée dans le cache du dossier des données puis ouverte en lecture seule :
     /// le fichier de NVIDIA n'est jamais touché et son service n'est pas gêné.
     /// </summary>
     /// <param name="database">Autre base à lire (tests) ; par défaut celle de NVIDIA App.</param>
-    public static NvidiaAppTuningState Read(string? database = null)
+    /// <param name="workFolder">Dossier de la copie de travail (tests) ; par défaut le cache du dossier des données.</param>
+    public static NvidiaAppTuningState Read(string? database = null, string? workFolder = null)
     {
         database ??= DefaultDatabase;
         if (!OperatingSystem.IsWindows() || !File.Exists(database)) return NvidiaAppTuningState.NotInstalled;
 
         // Nom unique : l'assistant et le diagnostic peuvent lire en même temps
-        var copy = Path.Combine(Path.GetTempPath(), $"aria-nvtopps-{Guid.NewGuid():N}.db3");
+        var copy = Aria.Core.Backup.DataCache.PathFor(workFolder ?? Aria.Core.Backup.DataCache.Folder, $"aria-nvtopps-{Guid.NewGuid():N}.db3");
         try
         {
             File.Copy(database, copy, overwrite: true);

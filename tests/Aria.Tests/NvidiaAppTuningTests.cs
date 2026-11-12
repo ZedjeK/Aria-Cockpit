@@ -41,7 +41,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
     [Fact]
     public void EverythingOffIsInactive()
     {
-        var state = NvidiaAppTuning.Read(Database());
+        var state = NvidiaAppTuning.Read(Database(), _folder);
 
         Assert.True(state.Installed);
         Assert.False(state.Active);
@@ -52,13 +52,13 @@ public sealed class NvidiaAppTuningTests : IDisposable
     [Fact]
     public void EmptyTablesAreInactive()
     {
-        Assert.False(NvidiaAppTuning.Read(Database(backgroundScan: null, autoOc: null)).Active);
+        Assert.False(NvidiaAppTuning.Read(Database(backgroundScan: null, autoOc: null), _folder).Active);
     }
 
     [Fact]
     public void AutomaticOverclockIsDetected()
     {
-        var state = NvidiaAppTuning.Read(Database(autoOc: 1));
+        var state = NvidiaAppTuning.Read(Database(autoOc: 1), _folder);
 
         Assert.True(state.Active);
         Assert.True(state.AutoOc);
@@ -68,7 +68,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
     [Fact]
     public void BackgroundScanIsDetected()
     {
-        var state = NvidiaAppTuning.Read(Database(backgroundScan: 1));
+        var state = NvidiaAppTuning.Read(Database(backgroundScan: 1), _folder);
 
         Assert.True(state.Active);
         Assert.True(state.BackgroundScan);
@@ -82,7 +82,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
             new(Time: 1, Stable: 1, AutoPersist: 1, Mhz: 60),
             new(Time: 3, Stable: 1, AutoPersist: 1, Mhz: 95),
             new(Time: 2, Stable: 1, AutoPersist: 1, Mhz: 80)
-        ]));
+        ]), _folder);
 
         Assert.True(state.Active);
         Assert.Equal(95, state.SavedCurveMHz);
@@ -96,7 +96,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
         [
             new(Time: 1, Stable: 0, AutoPersist: 1, Mhz: 120),
             new(Time: 2, Stable: 1, AutoPersist: 0, Mhz: 90)
-        ]));
+        ]), _folder);
 
         Assert.False(state.Active);
         Assert.Null(state.SavedCurveMHz);
@@ -105,7 +105,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
     [Fact]
     public void MissingDatabaseMeansNotInstalled()
     {
-        Assert.Equal(NvidiaAppTuningState.NotInstalled, NvidiaAppTuning.Read(Path.Combine(_folder, "absente.db3")));
+        Assert.Equal(NvidiaAppTuningState.NotInstalled, NvidiaAppTuning.Read(Path.Combine(_folder, "absente.db3"), _folder));
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
         var path = Path.Combine(_folder, "corrompue.db3");
         File.WriteAllText(path, "pas une base");
 
-        var state = NvidiaAppTuning.Read(path);
+        var state = NvidiaAppTuning.Read(path, _folder);
 
         Assert.False(state.Active);
         Assert.NotNull(state.Unreadable);
@@ -130,7 +130,7 @@ public sealed class NvidiaAppTuningTests : IDisposable
             Execute(db, "CREATE TABLE autreChose (x INTEGER)");
         }
 
-        var state = NvidiaAppTuning.Read(path);
+        var state = NvidiaAppTuning.Read(path, _folder);
 
         Assert.False(state.Active);
         Assert.Contains("ocScannerSettings", state.Unreadable);
@@ -140,10 +140,10 @@ public sealed class NvidiaAppTuningTests : IDisposable
     public void ReadingLeavesNoTemporaryCopyAndNoLockOnTheSource()
     {
         var path = Database(autoOc: 1);
-        int Copies() => Directory.GetFiles(Path.GetTempPath(), "aria-nvtopps-*.db3").Length;
+        int Copies() => Directory.GetFiles(_folder, "aria-nvtopps-*.db3").Length;
         var before = Copies();
 
-        NvidiaAppTuning.Read(path);
+        NvidiaAppTuning.Read(path, _folder);
 
         Assert.Equal(before, Copies());
         File.Delete(path);   // échouerait si un descripteur restait ouvert

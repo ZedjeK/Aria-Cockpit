@@ -605,7 +605,7 @@ rapport) : elle peut donc elle-même être annulée.
 - **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
   et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
 - **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le
-  démarrage avec Windows, des tâches planifiées, et quelques fichiers de travail dans le dossier temporaire de Windows.
+  démarrage avec Windows, et des tâches planifiées. Ses fichiers de travail restent dans son dossier, sous `cache\`.
 - **La table des cartes NVIDIA vient d'un dépôt tiers**, lu en ligne. Si la lecture échoue, l'appli utilise la copie
   qu'elle embarque, qui peut être plus ancienne.
 - **Le BIOS n'est jamais modifié**, seulement lu et expliqué.
