@@ -587,33 +587,67 @@
               <ItemsControl Focusable="False" ItemsSource="{Binding Profiles}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
+                    <!-- Une courbe enregistrée : « Appliquer » la pose telle quelle, « Modifier » l'affiche dans les points sans rien poser -->
                     <Border Padding="0,8" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1">
-                      <Grid>
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*" />
-                          <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                          <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Name}" TextWrapping="Wrap" />
-                          <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Summary}" TextWrapping="Wrap" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
-                          <Button
-                            Padding="16,0"
-                            Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                            CommandParameter="{Binding}"
-                            Content="CHARGER"
-                            Style="{StaticResource HudButtonGhost}"
-                            ToolTip="Met cette courbe dans « Personnalisée » ; Appliquer la pose ensuite" />
-                          <Button
-                            Margin="8,0,0,0"
-                            Padding="16,0"
-                            Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                            CommandParameter="{Binding}"
-                            Content="SUPPRIMER"
-                            Style="{StaticResource HudButtonGhost}" />
-                        </StackPanel>
-                      </Grid>
+                      <StackPanel>
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+                          <StackPanel VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Name}" TextWrapping="Wrap" />
+                              <Border Style="{StaticResource InPlaceBadge}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Style="{StaticResource InPlaceBadgeText}" Text="EN PLACE" />
+                              </Border>
+                            </StackPanel>
+                            <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Summary}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                            <Button
+                              Padding="16,0"
+                              Command="{Binding DataContext.ApplyProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              CommandParameter="{Binding}"
+                              Content="APPLIQUER"
+                              Style="{StaticResource HudButton}"
+                              ToolTip="Fait tourner cette courbe, après confirmation" />
+                            <Button
+                              Margin="8,0,0,0"
+                              Padding="16,0"
+                              Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              CommandParameter="{Binding}"
+                              Content="MODIFIER"
+                              Style="{StaticResource HudButtonGhost}"
+                              ToolTip="Affiche cette courbe dans les points, sans rien poser, pour la retoucher" />
+                            <Button
+                              Margin="8,0,0,0"
+                              Padding="16,0"
+                              Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                              CommandParameter="{Binding}"
+                              Content="SUPPRIMER"
+                              Style="{StaticResource HudButtonGhost}" />
+                          </StackPanel>
+                        </Grid>
+                        <!-- Résultat du dernier clic, sur la ligne même -->
+                        <TextBlock
+                          Margin="0,6,0,0"
+                          FontSize="12.5"
+                          Text="{Binding Note}"
+                          TextWrapping="Wrap"
+                          Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="Foreground" Value="{StaticResource NeonTealBrush}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding NoteIsError}" Value="True">
+                                  <Setter Property="Foreground" Value="{StaticResource NeonRedBrush}" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
+                      </StackPanel>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -672,6 +706,16 @@
           <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
             <StackPanel>
               <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource TechLabel}" Text="EN PLACE" />
+              <!-- Nom du profil enregistré, quand le réglage en place en est un -->
+              <TextBlock
+                Margin="0,4,0,0"
+                FontFamily="{StaticResource TechFont}"
+                FontSize="15"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource NeonWhiteBrush}"
+                Text="{Binding CurrentProfile, StringFormat='Profil « {0} »'}"
+                TextWrapping="Wrap"
+                Visibility="{Binding HasCurrentProfile, Converter={StaticResource BoolToVisibility}}" />
               <TextBlock Margin="0,4,0,0" Text="{Binding CurrentText}" TextWrapping="Wrap" />
               <StackPanel Visibility="{Binding HasOrigin, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Margin="0,12,0,0" Style="{StaticResource TechLabel}" Text="ORIGINE (VALEURS D'USINE)" />
@@ -696,7 +740,13 @@
                   <DataTemplate>
                     <Border Padding="0,8" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1">
                       <StackPanel>
-                        <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Profile.Name}" TextWrapping="Wrap" />
+                        <!-- Un profil enregistré : « Appliquer » le pose sur la carte, « Modifier » l'affiche dans les curseurs sans rien poser -->
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding Profile.Name}" TextWrapping="Wrap" />
+                          <Border Style="{StaticResource InPlaceBadge}" Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource InPlaceBadgeText}" Text="EN PLACE" />
+                          </Border>
+                        </StackPanel>
                         <TextBlock Margin="0,2,0,0" Text="{Binding Tuning}" TextWrapping="Wrap" />
                         <TextBlock Margin="0,2,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding Details}" TextWrapping="Wrap" />
                         <TextBlock
@@ -706,22 +756,48 @@
                           Text="Pilote changé depuis : à revalider avant de le garder."
                           TextWrapping="Wrap"
                           Visibility="{Binding DriverChanged, Converter={StaticResource BoolToVisibility}}" />
-                        <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                        <WrapPanel Margin="0,6,0,0">
                           <Button
+                            Margin="0,0,8,6"
+                            Padding="16,0"
+                            Command="{Binding DataContext.ApplyProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                            CommandParameter="{Binding}"
+                            Content="APPLIQUER"
+                            Style="{StaticResource HudButton}"
+                            ToolTip="Pose ce profil sur la carte, après confirmation (avant → après)" />
+                          <Button
+                            Margin="0,0,8,6"
                             Padding="16,0"
                             Command="{Binding DataContext.LoadProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                             CommandParameter="{Binding}"
-                            Content="CHARGER"
+                            Content="MODIFIER"
                             Style="{StaticResource HudButtonGhost}"
-                            ToolTip="Met ce profil dans les curseurs ; Appliquer le pose ensuite" />
+                            ToolTip="Affiche ce profil dans les curseurs, sans rien poser, pour le retoucher" />
                           <Button
-                            Margin="8,0,0,0"
+                            Margin="0,0,0,6"
                             Padding="16,0"
                             Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                             CommandParameter="{Binding}"
                             Content="SUPPRIMER"
                             Style="{StaticResource HudButtonGhost}" />
-                        </StackPanel>
+                        </WrapPanel>
+                        <!-- Résultat du dernier clic, sur la ligne même -->
+                        <TextBlock
+                          FontSize="12.5"
+                          Text="{Binding Note}"
+                          TextWrapping="Wrap"
+                          Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibility}}">
+                          <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                              <Setter Property="Foreground" Value="{StaticResource NeonTealBrush}" />
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding NoteIsError}" Value="True">
+                                  <Setter Property="Foreground" Value="{StaticResource NeonRedBrush}" />
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </TextBlock.Style>
+                        </TextBlock>
                       </StackPanel>
                     </Border>
                   </DataTemplate>

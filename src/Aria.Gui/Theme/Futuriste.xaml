@@ -249,6 +249,21 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <!-- Repère « EN PLACE » : sur le profil GPU ou la courbe de ventilation actuellement sur la carte -->
+  <Style x:Key="InPlaceBadge" TargetType="Border">
+    <Setter Property="Margin" Value="10,0,0,0" />
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource NeonTealBrush}" />
+    <Setter Property="Background" Value="#1A7DF9FF" />
+  </Style>
+  <Style x:Key="InPlaceBadgeText" BasedOn="{StaticResource TechLabel}" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Foreground" Value="{StaticResource NeonTealBrush}" />
+  </Style>
+
   <!-- Étiquettes (« REDÉMARRAGE », « CONFORT »…) : orange pour un redémarrage, rouge pour une prudence, cyan glacé pour du positif, bleu roi sinon.
        DataContext : un Badge (propriété Kind). -->
   <Style x:Key="BadgeBorder" TargetType="Border">

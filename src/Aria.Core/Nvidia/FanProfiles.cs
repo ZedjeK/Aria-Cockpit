@@ -3,10 +3,19 @@ using Aria.Core.Backup;
 
 namespace Aria.Core.Nvidia;
 
-/// <summary>Courbe de ventilation enregistrée sous un nom : on la recharge dans la carte Ventilateur, elle n'est jamais appliquée seule.</summary>
+/// <summary>Courbe de ventilation enregistrée sous un nom (« Mes courbes ») : on l'applique telle quelle, ou on la recharge dans les points pour la modifier.</summary>
 public sealed record SavedFanProfile(string Name, IReadOnlyList<FanCurvePoint> Points, DateTime At)
 {
     public FanCurve Curve => new(Name, Points);
+
+    /// <summary>
+    /// C'est cette courbe qui tourne : même nom et mêmes points. Une courbe du même nom dont un point a été changé
+    /// depuis n'est plus celle-ci.
+    /// </summary>
+    public bool IsRunning(FanCurve? running) =>
+        running is not null
+        && string.Equals(Name.Trim(), running.Name.Trim(), StringComparison.CurrentCultureIgnoreCase)
+        && Points.SequenceEqual(running.Points);
 
     /// <summary>« 45 °C 35 % · 60 °C 50 % · 70 °C 65 % ».</summary>
     public string Summary => string.Join(" · ", Points.Select(p => $"{p.TemperatureC} °C {p.Percent} %"));

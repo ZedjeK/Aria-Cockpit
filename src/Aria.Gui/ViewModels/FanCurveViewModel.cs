@@ -18,6 +18,28 @@ public sealed partial class FanPointRow(FanCurvePoint point) : ObservableObject
     public FanCurvePoint ToPoint() => new(TemperatureC, Percent);
 }
 
+/// <summary>Ligne de « Mes courbes » : la courbe, si c'est elle qui tourne, et le résultat du dernier clic sur cette ligne.</summary>
+public sealed partial class FanProfileRow(SavedFanProfile profile) : ObservableObject
+{
+    public SavedFanProfile Profile { get; } = profile;
+    public string Name => Profile.Name;
+    public string Summary => Profile.Summary;
+
+    /// <summary>C'est cette courbe qu'Aria fait tourner.</summary>
+    [ObservableProperty] private bool isActive;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNote))] private string note = "";
+    [ObservableProperty] private bool noteIsError;
+    public bool HasNote => Note.Length > 0;
+
+    /// <summary>Résultat affiché sur la ligne, là où l'on vient de cliquer.</summary>
+    public void Say(string text, bool error = false)
+    {
+        Note = text;
+        NoteIsError = error;
+    }
+}
+
 /// <summary>
 /// Carte « Ventilateur » de Réglage GPU : un préréglage ou une courbe personnalisée, que la courbe fait tourner
 /// tant qu'Aria est ouvert (<see cref="FanCurveService"/>). Rien n'est appliqué sans confirmation.
@@ -44,19 +66,19 @@ public sealed partial class FanCurveViewModel : ObservableObject
     public ObservableCollection<FanPointRow> Points { get; } = [];
 
     /// <summary>Courbes enregistrées (« Mes courbes »).</summary>
-    public ObservableCollection<SavedFanProfile> Profiles { get; } = [];
+    public ObservableCollection<FanProfileRow> Profiles { get; } = [];
     [ObservableProperty] private bool hasProfiles;
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(SaveProfileCommand))] private string profileName = "";
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowsPoints))] [NotifyCanExecuteChangedFor(nameof(SaveProfileCommand))] private string selected = AutoChoice;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isAvailable;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(ApplyProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isAvailable;
     [ObservableProperty] private bool isUnavailable;
     [ObservableProperty] private string rangeText = "";
     [ObservableProperty] private string statusText = "Pilote NVIDIA (automatique)";
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(StopCommand))] private bool isRunning;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasMessage))] private string message = "";
     [ObservableProperty] private bool messageIsError;
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isBusy;
+    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ApplyCommand), nameof(StopCommand), nameof(SaveProfileCommand), nameof(ApplyProfileCommand), nameof(LoadProfileCommand), nameof(DeleteProfileCommand))] private bool isBusy;
 
     public bool ShowsPoints => Selected != AutoChoice;
     public bool HasMessage => Message.Length > 0;
@@ -125,8 +147,21 @@ public sealed partial class FanCurveViewModel : ObservableObject
     {
         var list = await Task.Run(FanProfiles.All);
         Profiles.Clear();
-        foreach (var profile in list) Profiles.Add(profile);
+        foreach (var profile in list) Profiles.Add(new FanProfileRow(profile));
         HasProfiles = Profiles.Count > 0;
+        MarkRunning();
+    }
+
+    /// <summary>Repère « EN PLACE » : sur la courbe enregistrée qui tourne, s'il y en a une.</summary>
+    private void MarkRunning()
+    {
+        var running = FanCurveService.Running;
+        foreach (var row in Profiles) row.IsActive = row.Profile.IsRunning(running);
+    }
+
+    private void ClearNotes()
+    {
+        foreach (var row in Profiles) row.Say("");
     }
 
     partial void OnSelectedChanged(string value)
@@ -166,12 +201,22 @@ public sealed partial class FanCurveViewModel : ObservableObject
     private bool CanStop() => CanAct() && IsRunning;
 
     [RelayCommand(CanExecute = nameof(CanAct))]
-    private async Task Apply()
+    private Task Apply()
+    {
+        ClearNotes();
+        return ApplySelectedAsync();
+    }
+
+    /// <summary>
+    /// Pose la courbe affichée, après confirmation. Vrai : elle est en place ; faux : refusée (le message dit
+    /// pourquoi) ; null : l'utilisateur a annulé.
+    /// </summary>
+    private async Task<bool?> ApplySelectedAsync()
     {
         if (Selected == AutoChoice)
         {
             await Stop();
-            return;
+            return true;
         }
 
         // Une courbe chargée depuis « Mes courbes » garde son nom tant qu'on n'y touche pas
@@ -180,7 +225,7 @@ public sealed partial class FanCurveViewModel : ObservableObject
         if (curve.Check() is { } error)
         {
             Show(error, error: true);
-            return;
+            return false;
         }
 
         var fans = FanCurveService.Device!;
@@ -204,10 +249,10 @@ public sealed partial class FanCurveViewModel : ObservableObject
                 ConfirmText: "Appliquer",
                 Rows: rows,
                 Warnings: warnings,
-                Note: "« Rendre la main au pilote », ou la fermeture d'Aria, remet le réglage automatique de NVIDIA.")))
-            return;
+                Note: "« Rendre la main au pilote », ou quitter Aria, remet le réglage automatique de NVIDIA.")))
+            return null;
 
-        await RunAsync(() => FanCurveService.Start(curve), $"Courbe « {curve.Name} » en place.");
+        return await RunAsync(() => FanCurveService.Start(curve), $"Courbe « {curve.Name} » en place.");
     }
 
     [RelayCommand(CanExecute = nameof(CanStop))]
@@ -246,9 +291,37 @@ public sealed partial class FanCurveViewModel : ObservableObject
         await LoadProfilesAsync();
     }
 
-    /// <summary>Met la courbe dans « Personnalisée » ; Appliquer la pose ensuite.</summary>
+    /// <summary>« Appliquer » d'une courbe enregistrée : elle est posée telle quelle, après la confirmation habituelle.</summary>
     [RelayCommand(CanExecute = nameof(CanAct))]
-    private void LoadProfile(SavedFanProfile profile)
+    private async Task ApplyProfile(FanProfileRow row)
+    {
+        ClearNotes();
+        Edit(row.Profile);
+        switch (await ApplySelectedAsync())
+        {
+            case true:
+                row.Say("En place : Aria pilote les ventilateurs avec cette courbe.");
+                break;
+            case false:
+                row.Say(Message, error: true);
+                break;
+            default:
+                row.Say("Rien n'a été appliqué. La courbe est seulement affichée dans les points, plus haut.");
+                break;
+        }
+    }
+
+    /// <summary>« Modifier » : met la courbe dans « Personnalisée » sans rien poser, pour en changer les points.</summary>
+    [RelayCommand(CanExecute = nameof(CanAct))]
+    private void LoadProfile(FanProfileRow row)
+    {
+        ClearNotes();
+        Edit(row.Profile);
+        row.Say("Affichée dans les points, plus haut : change-les, puis « Appliquer » sous la courbe. Rien n'est posé pour l'instant.");
+    }
+
+    /// <summary>Affiche une courbe enregistrée dans « Personnalisée », sous son nom.</summary>
+    private void Edit(SavedFanProfile profile)
     {
         _custom = profile.Points;
         _filling = true;
@@ -256,12 +329,12 @@ public sealed partial class FanCurveViewModel : ObservableObject
         _filling = false;
         Fill(profile.Points);
         _customName = profile.Name;
-        Show($"Courbe « {profile.Name} » chargée : Appliquer la met en place.", error: false);
     }
 
     [RelayCommand(CanExecute = nameof(CanAct))]
-    private async Task DeleteProfile(SavedFanProfile profile)
+    private async Task DeleteProfile(FanProfileRow row)
     {
+        var profile = row.Profile;
         if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
                 Title: "Supprimer la courbe",
                 ConfirmText: "Supprimer",
@@ -297,6 +370,7 @@ public sealed partial class FanCurveViewModel : ObservableObject
 
     private void RefreshStatus()
     {
+        MarkRunning();
         IsRunning = FanCurveService.Running is not null;
         StatusText = FanCurveService.Running is not { } curve ? "Pilote NVIDIA (automatique)"
             : FanCurveService.Last is not { } s ? $"« {curve.Name} » · démarrage…"
