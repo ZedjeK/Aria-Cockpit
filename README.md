@@ -616,8 +616,9 @@ rapport) : elle peut donc elle-même être annulée.
 - **L'empreinte ne dit pas qui a publié le fichier.** Elle vient de GitHub, comme le fichier : elle prouve qu'il est
   arrivé intact, pas que la release est bien celle de l'auteur. Cette garantie-là repose sur le compte GitHub de
   l'auteur. À partir de la version qui suit la 0.26.0, le workflow de release joint à chaque zip une attestation de
-  provenance, vérifiable avec `gh attestation verify` : l'appli, elle, ne la contrôle pas. Les releases de ce dépôt ne
-  sont pas immuables à ce jour.
+  provenance, vérifiable avec `gh attestation verify` : l'appli, elle, ne la contrôle pas. Les releases de ce dépôt sont
+  immuables depuis le 13 novembre 2026 : une fois publiée, une release ne change plus de fichiers et son tag ne bouge
+  plus. Celles publiées avant, jusqu'à la 0.26.0 comprise, ne le sont pas.
 - **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
   et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
 - **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le

@@ -31,6 +31,13 @@ Dans l'ordre :
 4. Relire le brouillon, puis le publier. C'est la publication qui prévient les utilisateurs : l'appli lit la dernière
    release publiée, jamais un brouillon.
 
+Deux verrous à connaître avant de pousser un tag ou de publier :
+
+- Les tags `v*` ne se suppriment pas et ne se déplacent pas. Un tag poussé par erreur, ou dont le workflow a échoué,
+  est perdu : on corrige par une PR, puis on sort le numéro suivant.
+- Les releases sont immuables. Une fois publiée, une release ne change plus de fichiers ; seuls son titre et ses notes
+  restent modifiables. Tout se relit donc sur le brouillon.
+
 Vérifier la provenance d'un zip téléchargé :
 
 ```powershell
