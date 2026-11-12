@@ -21,7 +21,21 @@ public static class ReportFile
         var now = DateTime.Now;
         var path = Path.Combine(Folder, $"rapport_{now:yyyy-MM-dd_HHmmss}.txt");
 
-        using var w = new StreamWriter(path);
+        using (var w = new StreamWriter(path)) Write(w, now, mode, hw, findings, bios, results, notes);
+        OperationJournal.Record(path);
+        return path;
+    }
+
+    private static void Write(
+        TextWriter w,
+        DateTime now,
+        RunMode mode,
+        HardwareProfile hw,
+        IReadOnlyList<DiagnosticFinding>? findings,
+        BiosGuide bios,
+        IReadOnlyList<SettingResult> results,
+        IEnumerable<string> notes)
+    {
         w.WriteLine($"Aria Cockpit — rapport du {now:dd/MM/yyyy à HH:mm:ss} — {Environment.MachineName}");
         w.WriteLine($"Mode : {mode switch { RunMode.Simulate => "simulation (rien n'a été modifié)", RunMode.Restore => "restauration", _ => "optimisation" }}");
 
@@ -36,7 +50,6 @@ public static class ReportFile
             w.WriteLine("== NOTES ==");
             foreach (var n in noteList) w.WriteLine($"  {n}");
         }
-        return path;
     }
 
     public static void PrintResults(IReadOnlyList<SettingResult> results, TextWriter w)

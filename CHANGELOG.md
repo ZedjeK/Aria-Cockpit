@@ -9,3 +9,4 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 - Panneaux opaques, pour que le texte reste lisible au-dessus du fond.
 - Fiche projet (`docs/FICHE.md`) et section « Limites à connaître » du README.
 - Les réglages de l'appli sont dans `reglages.json`. L'ancien `parametres.json` est copié une fois, puis laissé tel quel.
+- `journal.json` garde les 500 dernières opérations : date, type, bilan et rapport correspondant. Les rapports restent où ils sont.
