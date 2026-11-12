@@ -59,8 +59,6 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Faux tant que le pilote graphique n'a pas répondu (lancement à l'ouverture de session) : aucune lecture de la carte.</summary>
     private bool _driverReady;
 
-    /// <summary>« Démarrer avec Windows » est activé ; null tant que le planificateur n'a pas été interrogé.</summary>
-    private bool? _autostart;
 
     /// <param name="open">Rouvre la fenêtre.</param>
     /// <param name="openPage">Rouvre la fenêtre sur une page.</param>
@@ -121,8 +119,8 @@ public sealed class TrayIcon : IDisposable
         try
         {
             var previous = State;
-            // Le planificateur n'est interrogé qu'une fois, puis après chaque bascule de l'option
-            _autostart ??= await Task.Run(TrayStartup.Enabled);
+            // Le planificateur n'est interrogé qu'une fois ; ensuite l'état suit les bascules (menu ou page Paramètres)
+            if (AutostartService.Enabled is null) await AutostartService.RefreshAsync();
             var state = await Task.Run(() => Read(previous));
             if (!_disposed) Show(state);
         }
@@ -253,16 +251,15 @@ public sealed class TrayIcon : IDisposable
 
     private Forms.ToolStripMenuItem? _autostartItem;
 
-    private string AutostartText() => Mark(_autostart == true, "Démarrer avec Windows");
+    private string AutostartText() => Mark(AutostartService.Enabled == true, "Démarrer avec Windows");
 
     /// <summary>Active ou désactive la tâche « Aria Cockpit\Zone de notification », après avoir dit ce qu'elle fait.</summary>
     private void ToggleAutostart()
     {
-        if (_autostart is not { } enabled) return;
-        var exe = Environment.ProcessPath ?? "Aria-Cockpit.exe";
+        if (AutostartService.Enabled is not { } enabled) return;
         if (enabled)
         {
-            Act("arrêt du démarrage avec Windows", TrayStartup.Disable, "Aria Cockpit ne démarre plus avec Windows.", autostart: false);
+            Act("arrêt du démarrage avec Windows", () => AutostartService.Set(false), "Aria Cockpit ne démarre plus avec Windows.");
             return;
         }
         if (!Confirm(
@@ -273,8 +270,8 @@ public sealed class TrayIcon : IDisposable
                 $"• La tâche planifiée « {TrayStartup.TaskName} » lance une copie d'Aria rangée dans « {Aria.Core.Settings.LogonExe.Folder} », " +
                 "que seuls les administrateurs peuvent modifier.\n\nDémarrer Aria Cockpit avec Windows ?"))
             return;
-        Act("démarrage avec Windows", () => TrayStartup.Enable(exe),
-            "Aria Cockpit démarrera avec Windows, rangée dans la zone de notification.", autostart: true);
+        Act("démarrage avec Windows", () => AutostartService.Set(true),
+            "Aria Cockpit démarrera avec Windows, rangée dans la zone de notification.");
     }
 
     private static Forms.ToolStripMenuItem Submenu(string text)
@@ -305,7 +302,7 @@ public sealed class TrayIcon : IDisposable
             if (_autostartItem is not null)
             {
                 _autostartItem.Text = AutostartText();
-                _autostartItem.Enabled = _autostart is not null && !_acting;
+                _autostartItem.Enabled = AutostartService.Enabled is not null && !_acting;
             }
         }
         catch (Exception e)
@@ -402,15 +399,13 @@ public sealed class TrayIcon : IDisposable
     /// Lance une action du menu hors du fil de l'interface. Une seule à la fois ; son résultat arrive par
     /// notification, la fenêtre pouvant être fermée.
     /// </summary>
-    /// <param name="autostart">État de « Démarrer avec Windows » si l'action réussit ; null si elle n'y touche pas.</param>
-    private async void Act(string label, Action action, string done, bool? autostart = null)
+    private async void Act(string label, Action action, string done)
     {
         if (_acting || _disposed) return;
         _acting = true;
         try
         {
             await Task.Run(action);
-            if (autostart is { } enabled) _autostart = enabled;
             Notify("Aria Cockpit", done);
         }
         catch (Exception e) when (e is GpuTuningException or InvalidOperationException or System.IO.IOException or UnauthorizedAccessException)

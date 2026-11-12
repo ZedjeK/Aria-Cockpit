@@ -22,6 +22,7 @@ public sealed class PageProvider(AppState state) : INavigationViewPageProvider
             nameof(CleanupPage) => new CleanupPage(new CleanupViewModel()),
             nameof(RestorePage) => new RestorePage(new RestoreViewModel(state)),
             nameof(ReportsPage) => new ReportsPage(new ReportsViewModel(state)),
+            nameof(PreferencesPage) => new PreferencesPage(new PreferencesViewModel()),
             _ => null
         };
 

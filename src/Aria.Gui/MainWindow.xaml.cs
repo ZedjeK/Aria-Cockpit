@@ -79,10 +79,29 @@ public partial class MainWindow : FluentWindow
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         base.OnClosing(e);
-        if (e.Cancel || _quitting || Tray?.Current().KeepReason() is not { } reason) return;
+        if (e.Cancel || _quitting || Tray is not { } tray) return;
+
+        // Ce que fait la croix se choisit dans les Paramètres ; par défaut : ranger si quelque chose est actif
+        var preferences = Aria.Core.Settings.AppPreferencesStore.Load();
+        var state = tray.Current();
+        switch (state.OnClose(preferences.Close))
+        {
+            case Aria.Core.Tray.CloseAction.Quit:
+                return;
+            case Aria.Core.Tray.CloseAction.AskThenQuit:
+                // « Toujours quitter » ne coupe pas une opération au milieu sans le dire
+                if (System.Windows.MessageBox.Show(
+                        $"Une opération est en cours : {string.Join(", ", state.Work)}.\n\nQuitter maintenant l'arrête au milieu. Quitter quand même ?",
+                        "Aria Cockpit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning,
+                        System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+                    e.Cancel = true;
+                return;
+        }
         e.Cancel = true;
         Hide();
-        Tray.Notify("Aria Cockpit continue en arrière-plan",
+        if (!preferences.NotifyOnHide) return;
+        var reason = state.KeepReason() ?? "Tu as choisi de toujours la ranger dans son icône.";
+        tray.Notify("Aria Cockpit continue en arrière-plan",
             $"{reason} Pour la rouvrir ou la quitter : son icône, à côté de l'horloge.");
     }
 

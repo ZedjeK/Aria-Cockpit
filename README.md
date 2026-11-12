@@ -28,6 +28,7 @@
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
 | **Rapports** | Tous les rapports (réglages, restaurations, mises à jour, nettoyages, fiches PC) avec leur bilan et un aperçu |
+| **Paramètres** (roue crantée) | Ce qui règle Aria Cockpit elle-même : démarrage avec Windows, ce que fait la croix de la fenêtre, dossier des données et durées de conservation |
 
 **Rien n'est modifié sans ton accord.** Chaque changement est récapitulé avant d'être appliqué. Aria Cockpit sauvegarde
 d'abord les valeurs d'origine et crée un point de restauration Windows : tout se restaure en quelques clics. Le BIOS
@@ -83,7 +84,7 @@ compte donc pas dans cette vérification.
   jaune).
 - Le résultat de chaque action arrive par une notification Windows. Une seule action à la fois, et aucune pendant que
   l'assistant de Réglage GPU fait ses mesures.
-- **Fermer la fenêtre** range Aria dans son icône tant qu'elle a quelque chose d'actif : profil GPU en place (ou
+- **Fermer la fenêtre** (réglage d'origine, modifiable dans Paramètres) range Aria dans son icône tant qu'elle a quelque chose d'actif : profil GPU en place (ou
   perdu), courbe de ventilation en cours, ou opération en cours (application de réglages, restauration, nettoyage,
   installation de mises à jour, assistant, analyse de performance). Une notification dit pourquoi elle reste. S'il n'y
   a rien d'actif, la croix arrête Aria, comme avant.
@@ -94,7 +95,7 @@ compte donc pas dans cette vérification.
 
 #### Démarrer avec Windows
 
-Dans le menu de l'icône, **« Démarrer avec Windows »** (marqué d'un « ● » quand c'est activé) lance Aria Cockpit à
+Dans la page Paramètres (roue crantée) ou dans le menu de l'icône, **« Démarrer avec Windows »** lance Aria Cockpit à
 chaque ouverture de session, directement rangée dans son icône : pas de fenêtre, pas d'analyse du matériel tant que tu
 ne l'ouvres pas.
 
@@ -551,13 +552,32 @@ ne s'en sert.
 
 | Élément | Règle |
 |---|---|
-| Rapports, fiches PC et rapports de réglage GPU | supprimés au-delà de 6 mois |
-| Sauvegardes | supprimées au-delà de 12 mois, sauf les 10 plus récentes, toujours gardées quel que soit leur âge |
+| Rapports, fiches PC et rapports de réglage GPU | supprimés au-delà de 6 mois (réglable) |
+| Sauvegardes | supprimées au-delà de 12 mois, sauf les 10 plus récentes, toujours gardées quel que soit leur âge (réglables) |
 | `erreurs.log`, `gpu-profile.log` et `limite-charge.log` | au-delà de 1 Mo, archivés dans `nom-precedent.log` (qui remplace l'archive précédente) |
 
 Seuls les fichiers créés par Aria Cockpit sont concernés, reconnus à leur nom ; leur âge se lit dans ce nom
 (`rapport_2026-10-26_211350.txt`). Un fichier ajouté à la main n'est jamais supprimé, et les réglages en place (réglage
 GPU, Équilibre, profils, courbes de ventilation) ne sont jamais touchés. Le résultat du ménage est noté dans `erreurs.log`.
+
+### Paramètres
+
+La roue crantée, à droite de « Rapports », ouvre les paramètres de l'application elle-même (enregistrés dans
+`parametres.json`, dans le dossier des données). Tant que tu n'y touches pas, Aria se comporte comme avant.
+
+- **Démarrage** : « Démarrer Aria Cockpit avec Windows » (la même option que dans le menu de l'icône), avec la courbe
+  de ventilation qui sera relancée et l'état de la tâche du profil GPU.
+- **Fenêtre et icône** : ce que fait la croix. « Ranger seulement si quelque chose est actif » (réglage d'origine),
+  « toujours ranger » ou « toujours arrêter ». Avec « toujours arrêter », une courbe de ventilation en cours rend la
+  main au pilote à la fermeture, et une opération en cours demande confirmation. La notification affichée quand la
+  fenêtre se range peut être coupée.
+- **Données** : chemin du dossier, sa taille, le nombre de rapports et de sauvegardes, et un bouton pour l'ouvrir. Son
+  emplacement ne se change pas : seuls les administrateurs peuvent y écrire, ce qui empêche un programme sans droits d'y
+  glisser un réglage que les tâches de démarrage appliqueraient.
+- **Durées de conservation** : nombre de mois pour les rapports et pour les sauvegardes, et nombre de sauvegardes
+  toujours gardées. « Enregistrer » ne supprime rien : si les nouvelles durées font disparaître des fichiers, Aria dit
+  combien avant d'enregistrer, et le ménage quotidien s'en charge ensuite. « Faire le ménage maintenant » les applique
+  tout de suite, après confirmation.
 
 Jusqu'à la 0.21, les données étaient dans `C:\ProgramData\AriaCockpit` (avant encore `C:\ProgramData\Aria`, 0.13 et
 0.14, ou `C:\ProgramData\PCTune`, 0.12 et avant) : ce dossier est déplacé automatiquement au premier lancement, les
