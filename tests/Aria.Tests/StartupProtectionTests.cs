@@ -99,7 +99,7 @@ public class StartupProtectionTests
         var finding = StartupCheck.Evaluate(entries)!;
 
         Assert.Equal(Severity.Info, finding.Severity);
-        Assert.Equal("Réglages → Démarrage : 5 programmes à revoir, désactivation réversible.", finding.Advice);
+        Assert.Equal("Optimisation → Démarrage : 5 programmes à revoir, désactivation réversible.", finding.Advice);
     }
 
     [Fact]

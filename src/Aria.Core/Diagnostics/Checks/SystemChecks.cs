@@ -92,8 +92,8 @@ internal static class GameLibraries
 
 /// <summary>
 /// Programmes lancés au démarrage de Windows (information). Distingue ceux qui peuvent être désactivés (proposés
-/// dans Réglages → Démarrage) de ceux qui sont toujours gardés (sécurité de Windows, pilotes), pour que le nombre et
-/// le conseil correspondent à ce que la page Réglages propose vraiment. Repris de CTI-Cockpit.
+/// dans Optimisation → Démarrage) de ceux qui sont toujours gardés (sécurité de Windows, pilotes), pour que le nombre et
+/// le conseil correspondent à ce que la page Optimisation propose vraiment. Repris de CTI-Cockpit.
 /// </summary>
 public sealed class StartupCheck : IDiagnosticCheck
 {
@@ -132,7 +132,7 @@ public sealed class StartupCheck : IDiagnosticCheck
 
         var review = optional.Count >= ReviewThreshold;
         return new("startup", title, review ? Severity.Info : Severity.Ok, detail,
-            review ? $"Réglages → Démarrage : {optional.Count} programmes à revoir, désactivation réversible." : null);
+            review ? $"Optimisation → Démarrage : {optional.Count} programmes à revoir, désactivation réversible." : null);
     }
 
     private static string Programs(int count) => count == 1 ? "1 programme" : $"{count} programmes";

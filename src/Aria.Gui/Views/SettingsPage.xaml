@@ -5,7 +5,7 @@
   xmlns:fx="clr-namespace:Aria.Gui.Effects"
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
   xmlns:views="clr-namespace:Aria.Gui.Views"
-  Title="Réglages"
+  Title="Optimisation"
   Foreground="{StaticResource NeonTextBrush}"
   ScrollViewer.CanContentScroll="False">
   <!-- CanContentScroll=False : la page gère son propre défilement, pour garder la barre d'action fixe en bas -->
@@ -45,7 +45,7 @@
           <Grid>
             <StackPanel>
               <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="02 · WINDOWS · NVIDIA · CONFIDENTIALITÉ" />
-              <TextBlock Style="{StaticResource NeonTitle}" Text="RÉGLAGES" />
+              <TextBlock Style="{StaticResource NeonTitle}" Text="OPTIMISATION" />
               <TextBlock
                 Margin="0,4,0,0"
                 Foreground="{StaticResource NeonMutedBrush}"

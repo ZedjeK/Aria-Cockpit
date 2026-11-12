@@ -15,6 +15,6 @@ public partial class RestorePage : Page
         InitializeComponent();
     }
 
-    /// <summary>À chaque affichage : la liste reflète les sauvegardes créées entre-temps (page Réglages).</summary>
+    /// <summary>À chaque affichage : la liste reflète les sauvegardes créées entre-temps (page Optimisation).</summary>
     private void OnLoaded(object sender, RoutedEventArgs e) => _viewModel.Reload();
 }

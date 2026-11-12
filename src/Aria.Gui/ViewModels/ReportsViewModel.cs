@@ -98,7 +98,7 @@ public sealed partial class ReportsViewModel : ObservableObject
         info.Path,
         info.Kind switch
         {
-            ReportKind.Settings => new Badge("RÉGLAGES", BadgeKind.Reboot),       // orange
+            ReportKind.Settings => new Badge("OPTIMISATION", BadgeKind.Reboot),       // orange
             ReportKind.Restore => new Badge("RESTAURATION", BadgeKind.Good),      // turquoise
             ReportKind.Updates => new Badge("MISES À JOUR", BadgeKind.Info),      // cyan
             ReportKind.PcSheet => new Badge("FICHE PC", BadgeKind.Info),          // cyan

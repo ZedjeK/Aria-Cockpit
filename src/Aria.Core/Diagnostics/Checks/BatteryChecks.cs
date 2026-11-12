@@ -34,7 +34,7 @@ public sealed class BatteryChargeCheck : IDiagnosticCheck
 
         return new("battery.chargelimit", "Batterie chargée jusqu'à 100 %", Severity.Info,
             $"Mode de charge : {LowerFirst(limit.Display)} ({limit.VendorName}). {Why}",
-            "Réglages → Batterie : limite de charge" + (limit.Experimental ? " (expérimental sur ce fabricant)." : "."));
+            "Optimisation → Batterie : limite de charge" + (limit.Experimental ? " (expérimental sur ce fabricant)." : "."));
     }
 
     /// <summary>« Gérée par HP » → « gérée par HP » : seule la première lettre change (les noms de marque restent).</summary>

@@ -234,7 +234,7 @@ public class ChargeLimitTests
         Assert.Equal(Severity.Info, finding.Severity);
         Assert.Equal("Batterie chargée jusqu'à 100 %", finding.Title);
         Assert.Contains("gérée par HP", finding.Detail);   // marque gardée en majuscules
-        Assert.Contains("Réglages → Batterie", finding.Advice);
+        Assert.Contains("Optimisation → Batterie", finding.Advice);
     }
 
     [Fact]
