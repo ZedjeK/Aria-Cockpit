@@ -27,7 +27,6 @@ jour quand l'appli change.
 - Services Windows : type de démarrage de services existants, après sauvegarde. Aucun service n'est créé.
 - Point de restauration Windows : créé avant les changements.
 - Fichiers supprimés par le nettoyage : fichiers temporaires et caches, après confirmation.
-- `%TEMP%` : sorties du banc d'essai, copie de la base de NVIDIA App, fichier de tâche supprimé aussitôt.
 
 ## Connexions sortantes
 
@@ -42,6 +41,5 @@ dans le navigateur : l'appli ne s'y connecte pas elle-même.
 ## Écarts connus avec les règles communes
 
 - Toute l'appli tourne en administrateur, pas seulement les opérations qui l'exigent.
-- L'appli écrit dans `%TEMP%`.
 - La mise à jour se limite à signaler une version et à ouvrir sa page.
 - L'argument de démarrage est `--tray`, pas `--silencieux`.

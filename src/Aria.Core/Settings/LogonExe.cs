@@ -83,7 +83,7 @@ public static class LogonExe
         if (longRunning)
         {
             using var user = System.Security.Principal.WindowsIdentity.GetCurrent();
-            var file = Path.Combine(Path.GetTempPath(), $"aria-tache-{Guid.NewGuid():N}.xml");
+            var file = Aria.Core.Backup.DataCache.PathFor($"aria-tache-{Guid.NewGuid():N}.xml");
             try
             {
                 // UTF-16 : l'encodage que schtasks attend pour un fichier de tâche

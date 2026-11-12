@@ -119,6 +119,8 @@ public static partial class DataRetention
         var backups = expiredBackups.Count(path => Delete(path, problems));
 
         var rotated = Logs.Where(log => RotateLog(root, log, problems)).ToList();
+        // Fichiers de travail du cache : rien à en dire dans le résumé
+        DataCache.Sweep(Path.Combine(root, DataCache.FolderName), DataCache.MaxAge, now);
 
         File.WriteAllText(lastRun, now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
