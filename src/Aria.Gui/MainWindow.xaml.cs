@@ -145,7 +145,7 @@ public partial class MainWindow : FluentWindow
 
     /// <summary>
     /// Affiche une page. Une page qui gère elle-même son défilement (ScrollViewer.CanContentScroll posé
-    /// explicitement, comme Réglages avec sa barre d'action fixée en bas) reçoit la hauteur de la fenêtre ;
+    /// explicitement, comme Optimisation avec sa barre d'action fixée en bas) reçoit la hauteur de la fenêtre ;
     /// les autres défilent dans le défilement commun.
     /// </summary>
     private void ShowPage(Type pageType)

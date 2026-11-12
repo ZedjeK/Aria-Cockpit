@@ -5,7 +5,7 @@ namespace Aria.Core.Nvidia;
 
 /// <summary>
 /// Le réglage GPU vu par la page Restauration : une seule valeur (limite, plafond, décalages, démarrage),
-/// restaurée d'un bloc. Il se règle dans l'onglet Réglage GPU, jamais depuis la liste de Réglages :
+/// restaurée d'un bloc. Il se règle dans l'onglet Réglage GPU, jamais depuis la liste d'Optimisation :
 /// il est donc toujours « non applicable » et masqué du plan, mais restaurable (la restauration ignore l'applicabilité).
 /// </summary>
 public sealed class GpuTuningSetting(string exePath) : SettingBase

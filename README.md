@@ -21,7 +21,7 @@
 | **Mon PC** | Un cockpit : composants détectés de part et d'autre (et la batterie sur un portable : charge, secteur, santé, cycles, limite de charge), jauge de conformité au centre. Diagnostic complet, guide BIOS selon la marque de la carte mère, fiche PC en HTML |
 | **Télémétrie GPU** | Sur Mon PC, la carte NVIDIA en direct : température, charge, mémoire vidéo, fréquence, consommation, ventilateur. Une lecture par seconde, seulement quand la page est affichée |
 | **Analyse de performance** | Tu joues, Aria Cockpit enregistre (le chrono ne démarre que quand ton jeu tourne vraiment), puis il dit ce qui limite : température, puissance, processeur, mémoire vidéo, limiteur d'images. Il repère aussi un plantage du pilote ou du jeu, et compare avec l'analyse précédente |
-| **Réglages** | Windows, limite de charge de la batterie (portables Dell, HP, ASUS, Lenovo), NVIDIA, confidentialité, programmes au démarrage, applications préinstallées, une catégorie par entrée du menu de gauche : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
+| **Optimisation** | Windows, limite de charge de la batterie (portables Dell, HP, ASUS, Lenovo), NVIDIA, confidentialité, programmes au démarrage, applications préinstallées, une catégorie par entrée du menu de gauche : valeur actuelle → valeur proposée, liste à cocher, puis résultat |
 | **Réglage GPU** | Limite de puissance, plafond et décalages de fréquence par l'interface officielle du pilote NVIDIA. Un assistant guidé (Équilibre, puis Économie ou Performance) cherche le meilleur réglage palier par palier, sur le banc d'essai Aria, avec des contrôles de calcul et de mémoire vidéo ; courbe de ventilation ; un garde-fou signale les plantages du pilote |
 | **Banc d'essai Aria** | Une scène 3D maison (Direct3D 12) en 1080p, 1440p ou 4K, de Faible à Ultra : FPS, 1 % les plus bas, saccades, et des images de contrôle vérifiées au pixel près pour repérer un réglage instable même sans plantage |
 | **Mises à jour** | Windows Update, applications (winget), pilote NVIDIA et BIOS. Au lancement, Aria Cockpit te prévient aussi quand une nouvelle version est publiée |
@@ -147,7 +147,7 @@ rapport donne un verdict et un « Que faire ? » pour chaque constat. Le bouton 
 l'analyse précédente pour comparer. Les artefacts visuels et les saccades ne sont pas détectables de cette façon :
 pour eux, tes yeux restent le meilleur juge.
 
-## Réglages
+## Optimisation
 
 Les catégories sont listées dans un menu à gauche, toujours dans le même ordre (Windows, Batterie, NVIDIA,
 Confidentialité, Démarrage, Applications), avec le nombre de lignes cochées ; seules celles qui ont quelque chose à

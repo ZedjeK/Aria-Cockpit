@@ -189,7 +189,7 @@ public static class HtmlReport
 
     internal static string KindLabel(ReportKind kind) => kind switch
     {
-        ReportKind.Settings => "RÉGLAGES",
+        ReportKind.Settings => "OPTIMISATION",
         ReportKind.Restore => "RESTAURATION",
         ReportKind.Updates => "MISES À JOUR",
         ReportKind.PcSheet => "FICHE PC",

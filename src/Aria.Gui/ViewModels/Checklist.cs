@@ -11,7 +11,7 @@ public enum BadgeKind { Reboot, Comfort, Caution, Info, Good }
 public sealed record Badge(string Text, BadgeKind Kind);
 
 /// <summary>
-/// Une ligne de liste à cocher, réutilisée par les pages Réglages, Mises à jour, Nettoyage et Restauration.
+/// Une ligne de liste à cocher, réutilisée par les pages Optimisation, Mises à jour, Nettoyage et Restauration.
 /// <see cref="Payload"/> contient l'objet métier (un réglage, une mise à jour…).
 /// </summary>
 public sealed partial class CheckItem(

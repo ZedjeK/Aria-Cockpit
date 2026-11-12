@@ -1,4 +1,4 @@
-<!-- Liste à cocher néon, partagée par les pages Réglages, Mises à jour et Restauration. DataContext : liste de CheckGroup. -->
+<!-- Liste à cocher néon, partagée par les pages Optimisation, Mises à jour et Restauration. DataContext : liste de CheckGroup. -->
 <UserControl
   x:Class="Aria.Gui.Views.ChecklistView"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"

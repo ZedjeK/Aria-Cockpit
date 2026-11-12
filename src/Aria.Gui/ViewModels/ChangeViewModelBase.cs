@@ -18,7 +18,7 @@ public sealed record ResultRow(string Name, string Before, string After, string 
     public bool HasError => !string.IsNullOrWhiteSpace(Error);
 }
 
-/// <summary>Textes propres à chaque page (Réglages ou Restauration).</summary>
+/// <summary>Textes propres à chaque page (Optimisation ou Restauration).</summary>
 public sealed record ChangeTexts(
     string ConfirmTitle,
     string ConfirmVerb,

@@ -1,5 +1,5 @@
 <!--
-  Liste à cocher par catégorie, pour les pages Réglages et Restauration. DataContext : liste de CheckGroup.
+  Liste à cocher par catégorie, pour les pages Optimisation et Restauration. DataContext : liste de CheckGroup.
   À gauche, le menu des catégories avec le nombre de lignes cochées ; à droite, les lignes de la catégorie choisie.
   La première catégorie est choisie d'office (IsSynchronizedWithCurrentItem), y compris après une analyse.
   Repris de CTI-Cockpit, habillé néon.
@@ -120,7 +120,7 @@
       <ContentControl.Resources>
         <DataTemplate DataType="{x:Type vm:CheckGroup}">
           <StackPanel>
-            <!-- Ce que contient la catégorie (page Réglages) -->
+            <!-- Ce que contient la catégorie (page Optimisation) -->
             <StackPanel Margin="4,0,0,14" Visibility="{Binding HasDescription, Converter={StaticResource BoolToVisibility}}">
               <TextBlock
                 FontFamily="{StaticResource TechFont}"

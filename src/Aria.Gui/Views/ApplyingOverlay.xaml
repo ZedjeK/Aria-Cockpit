@@ -1,4 +1,4 @@
-<!-- Voile affiché pendant l'application des réglages (Réglages et Restauration). DataContext : un ChangeViewModelBase. -->
+<!-- Voile affiché pendant l'application des réglages (Optimisation et Restauration). DataContext : un ChangeViewModelBase. -->
 <UserControl
   x:Class="Aria.Gui.Views.ApplyingOverlay"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"

@@ -1,4 +1,4 @@
-<!-- Écran de résultat après application, partagé par les pages Réglages et Restauration. DataContext : un ChangeViewModelBase. -->
+<!-- Écran de résultat après application, partagé par les pages Optimisation et Restauration. DataContext : un ChangeViewModelBase. -->
 <UserControl
   x:Class="Aria.Gui.Views.ChangeResultView"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
