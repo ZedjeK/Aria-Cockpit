@@ -595,6 +595,23 @@ continue d'utiliser l'ancien.
 Une restauration suit le même parcours qu'une application (nouvelle sauvegarde, point de restauration, vérification,
 rapport) : elle peut donc elle-même être annulée.
 
+## Limites à connaître
+
+- **Toute l'appli demande les droits administrateur**, même pour lire. Elle en a besoin pour le registre, les services,
+  le pilote NVIDIA et les tâches planifiées.
+- **L'exe n'est pas signé.** Windows SmartScreen peut afficher un avertissement au premier lancement.
+- **Les mises à jour d'Aria Cockpit ne s'installent pas seules.** L'appli signale une nouvelle version et ouvre sa page :
+  elle ne télécharge rien et ne vérifie aucune empreinte. C'est à toi de télécharger la release.
+- **Le nettoyage supprime pour de bon.** Les fichiers temporaires et les caches effacés ne passent pas par la corbeille,
+  et la page Restauration ne les ramène pas : elle restaure les réglages, pas les fichiers.
+- **L'appli écrit en dehors de son dossier de données** : une copie de l'exe dans `C:\Program Files\Aria Cockpit` pour le
+  démarrage avec Windows, des tâches planifiées, et quelques fichiers de travail dans le dossier temporaire de Windows.
+- **La table des cartes NVIDIA vient d'un dépôt tiers**, lu en ligne. Si la lecture échoue, l'appli utilise la copie
+  qu'elle embarque, qui peut être plus ancienne.
+- **Le BIOS n'est jamais modifié**, seulement lu et expliqué.
+
+Projet personnel, sans audit de sécurité indépendant. La liste complète de ce que l'appli écrit et des adresses qu'elle
+contacte est dans [docs/FICHE.md](docs/FICHE.md).
 ## Version console
 
     Aria.Cli                        Diagnostic, état actuel, liste à cocher, application des choix validés
