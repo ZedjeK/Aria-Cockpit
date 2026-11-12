@@ -9,8 +9,8 @@ public static class CleanupReport
     {
         Directory.CreateDirectory(ReportFile.Folder);
         var path = Path.Combine(ReportFile.Folder, $"{ReportIndex.CleanupPrefix}{at:yyyy-MM-dd_HHmmss}.txt");
-        using var writer = new StreamWriter(path);
-        Write(writer, results, at);
+        using (var writer = new StreamWriter(path)) Write(writer, results, at);
+        OperationJournal.Record(path);
         return path;
     }
 

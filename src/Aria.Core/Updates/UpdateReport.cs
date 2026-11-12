@@ -10,8 +10,8 @@ public static class UpdateReport
         Directory.CreateDirectory(ReportFile.Folder);
         var now = DateTime.Now;
         var path = Path.Combine(ReportFile.Folder, $"mises-a-jour_{now:yyyy-MM-dd_HHmmss}.txt");
-        using var writer = new StreamWriter(path);
-        Write(writer, outcome, notSelected, nvidia, now);
+        using (var writer = new StreamWriter(path)) Write(writer, outcome, notSelected, nvidia, now);
+        OperationJournal.Record(path);
         return path;
     }
 

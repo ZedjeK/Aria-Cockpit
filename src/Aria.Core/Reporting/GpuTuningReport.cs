@@ -68,8 +68,8 @@ public static class GpuTuningReport
     {
         Directory.CreateDirectory(ReportFile.Folder);
         var path = Path.Combine(ReportFile.Folder, $"{FilePrefix}{run.Ended:yyyy-MM-dd_HHmmss}.txt");
-        using var w = new StreamWriter(path);
-        Write(run, Environment.MachineName, w);
+        using (var w = new StreamWriter(path)) Write(run, Environment.MachineName, w);
+        OperationJournal.Record(path);
         return path;
     }
 
