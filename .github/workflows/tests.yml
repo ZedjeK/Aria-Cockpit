@@ -36,4 +36,4 @@ jobs:
           "Cartes graphiques : $((Get-CimInstance Win32_VideoController).Name -join ', ')"
 
       - name: Lancer les tests
-        run: dotnet test tests/Aria.Tests -c Release --logger "console;verbosity=normal"
+        run: ./tools/tester.ps1
