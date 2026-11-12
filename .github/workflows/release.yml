@@ -1,79 +1,127 @@
-# Publication d'une version d'Aria Cockpit, déclenchée à la main :
-# Actions → Release → Run workflow → numéro de version (identique à Directory.Build.props).
-# Compile Aria Cockpit et son banc d'essai Aria-Bench (versions autonome et légère), les zippe avec LICENSE et
-# THIRD-PARTY-NOTICES.txt, calcule les empreintes
-# SHA-256 et crée la release « v<version> » avec les notes de .github/release-notes.md.
-
+# Release : pousser un tag « vX.Y.Z » teste, compile les deux variantes (autonome et légère), en fait les zips et leurs
+# empreintes, atteste leur provenance, puis crée la release en BROUILLON. Tu relis les notes et tu publies : publier
+# est le geste qui prévient les utilisateurs (l'appli lit la dernière release publiée), aucun workflow ne le fait à ta
+# place.
+#
+#     git tag -a v1.2.3 -m "Version 1.2.3"; git push origin v1.2.3
+#
+# Avant de pousser le tag, trois choses doivent être fusionnées dans main :
+#   - la version, dans Directory.Build.props (celle qu'affiche tools/version.ps1) ;
+#   - les notes, dans docs/releases/<tag>.md ;
+#   - le code, bien sûr : un tag posé sur une branche non fusionnée est refusé.
+#
+# Deux jobs : « build » ne fait que lire (tests, exes, zips, empreintes) ; « publication » est le seul dont le jeton
+# peut écrire, et il n'exécute aucun code du dépôt.
+#
+# Essai à blanc : Actions → Release → Run workflow lance le job « build » seul. Les zips sont fabriqués et gardés
+# 7 jours comme artefact du run ; aucun tag, aucune release.
 name: Release
 
 on:
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version à publier (ex. 0.12.1), identique à Directory.Build.props"
-        required: true
-        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+defaults:
+  run:
+    shell: pwsh
 
 jobs:
-  release:
+  build:
     runs-on: windows-latest
-    env:
-      VERSION: ${{ inputs.version }}
-      GH_TOKEN: ${{ github.token }}
-    defaults:
-      run:
-        shell: pwsh
-
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # tout l'historique : il faut pouvoir situer le tag par rapport à la branche par défaut
+
+      - name: Le tag est sur la branche par défaut
+        if: github.ref_type == 'tag'
+        env:
+          BRANCHE: ${{ github.event.repository.default_branch }}
+        run: |
+          git merge-base --is-ancestor $env:GITHUB_SHA "origin/$env:BRANCHE"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Le tag $env:GITHUB_REF_NAME pointe sur un commit qui n'est pas dans $env:BRANCHE : aucune release."
+          }
+
+      - name: Le tag est celui de la version, et ses notes sont prêtes
+        if: github.ref_type == 'tag'
+        run: |
+          $version = "$(./tools/version.ps1 | Select-Object -Last 1)".Trim()
+          if ("v$version" -cne $env:GITHUB_REF_NAME) {
+            throw "Le tag $env:GITHUB_REF_NAME ne correspond pas à la version $version donnée par tools/version.ps1."
+          }
+          $notes = "docs/releases/v$version.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) {
+            throw "Notes de version absentes : $notes. Elles se fusionnent dans main avant de pousser le tag."
+          }
+          if ((Get-Content -LiteralPath $notes -Raw -Encoding utf8) -match '\{VERSION\}|\{REPO_URL\}') {
+            throw "$notes contient encore un marqueur du modèle ({VERSION} ou {REPO_URL})."
+          }
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: 10.0.x
 
-      - name: Vérifier la version
-        run: |
-          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') { throw "Version invalide : '$env:VERSION' (attendu : 1.2.3)" }
-          $props = [xml](Get-Content Directory.Build.props -Raw)
-          $declared = ($props.Project.PropertyGroup | ForEach-Object { $_.Version } | Where-Object { $_ }) | Select-Object -First 1
-          if ($declared -ne $env:VERSION) { throw "Directory.Build.props indique $declared, pas $env:VERSION : mets-le à jour avant de publier." }
-          gh release view "v$env:VERSION" 2>$null
-          if ($LASTEXITCODE -eq 0) { throw "La release v$env:VERSION existe déjà." }
-          $global:LASTEXITCODE = 0
+      - name: Tests
+        run: ./tools/tester.ps1
 
-      - name: Compiler la version autonome
-        run: |
-          dotnet publish src/Aria.Gui -c Release -o out-full
-          dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=true -o out-full
+      - name: Zips et empreintes des deux variantes
+        run: ./tools/empaqueter.ps1
 
-      - name: Compiler la version légère
-        run: |
-          dotnet publish src/Aria.Gui -c Release -p:SelfContained=false -o out-light
-          dotnet publish src/Aria.Bench -c Release -r win-x64 -p:SelfContained=false -o out-light
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            .work/release/*.zip
+            .work/release/*.zip.sha256
+          include-hidden-files: true # .work commence par un point : sans cette ligne, l'action ignorerait les zips
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Préparer les fichiers
-        run: |
-          New-Item -ItemType Directory -Force assets | Out-Null
-          $full  = "assets/Aria-Cockpit-$env:VERSION-autonome.zip"
-          $light = "assets/Aria-Cockpit-$env:VERSION-leger.zip"
-          # Licence d'Aria Cockpit et mentions des logiciels tiers (paquets NuGet, runtime .NET) dans les deux zips
-          $licences = 'LICENSE', 'THIRD-PARTY-NOTICES.txt'
-          Compress-Archive -Path (@('out-full/Aria-Cockpit.exe', 'out-full/Aria-Bench.exe') + $licences)   -DestinationPath $full
-          Compress-Archive -Path (@('out-light/Aria-Cockpit.exe', 'out-light/Aria-Bench.exe') + $licences) -DestinationPath $light
+  publication:
+    needs: build
+    # Seulement sur un tag poussé : l'essai à blanc s'arrête après « build »
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      # Seulement pour lire les notes de version : aucun code du dépôt n'est exécuté dans ce job.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-          $sums = foreach ($zip in $full, $light) {
-            $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $(Split-Path $zip -Leaf)"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+
+      - name: Attestation de provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: release/*.zip
+
+      - name: Release en brouillon
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart("v")
+          $fichiers = @(
+            "release/Aria-Cockpit-$version-autonome.zip", "release/Aria-Cockpit-$version-autonome.zip.sha256",
+            "release/Aria-Cockpit-$version-leger.zip", "release/Aria-Cockpit-$version-leger.zip.sha256"
+          )
+          foreach ($f in $fichiers) {
+            if (-not (Test-Path -LiteralPath $f -PathType Leaf)) { throw "Fichier attendu absent : $f" }
           }
-          $notes = (Get-Content .github/release-notes.md -Raw -Encoding utf8).Replace('{VERSION}', $env:VERSION).Replace('{REPO_URL}', "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY")
-          $notes += "`n## Empreintes SHA-256`n`n" + '```' + "`n" + ($sums -join "`n") + "`n" + '```' + "`n"
-          Set-Content notes.md $notes -Encoding utf8NoBOM -NoNewline
-          Get-Content notes.md
-
-      - name: Publier la release
-        run: gh release create "v$env:VERSION" (Get-ChildItem assets/*.zip).FullName --title "Aria Cockpit $env:VERSION" --notes-file notes.md --target $env:GITHUB_SHA
+          gh release create $env:GITHUB_REF_NAME @fichiers --draft --verify-tag --title "Aria Cockpit $version" --notes-file "docs/releases/$env:GITHUB_REF_NAME.md"
+          if ($LASTEXITCODE -ne 0) { throw "La release en brouillon n'a pas pu être créée." }
