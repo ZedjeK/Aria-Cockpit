@@ -166,9 +166,9 @@
           MinHeight="32"
           Padding="20,0"
           Click="OnOpenUpdate"
-          Content="VOIR LA RELEASE"
+          Content="VOIR"
           Style="{StaticResource HudButton}"
-          ToolTip="Ouvre la page de la nouvelle version sur GitHub, dans votre navigateur" />
+          ToolTip="Montre ce qui change et propose de télécharger la nouvelle version. Rien n'est téléchargé à l'ouverture." />
         <ui:Button
           Grid.Column="3"
           Margin="10,0,0,0"
@@ -234,6 +234,12 @@
           Text="LECTURE SEULE · AUCUNE MODIFICATION" />
       </StackPanel>
     </Grid>
+
+    <!-- ===== Mise à jour d'Aria Cockpit : proposition, téléchargement, contrôle de l'empreinte ===== -->
+    <views:AppUpdateOverlay
+      x:Name="UpdateOverlay"
+      Grid.Row="2"
+      Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
     <!-- ===== Confirmations, intégrées à la fenêtre (barre de titre laissée libre) ===== -->
     <views:DialogOverlay

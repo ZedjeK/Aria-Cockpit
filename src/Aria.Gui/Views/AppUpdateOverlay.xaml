@@ -1,0 +1,218 @@
+<!-- Mise à jour d'Aria Cockpit, intégrée à la fenêtre : voile sombre + panneau néon. DataContext : AppUpdateViewModel. -->
+<UserControl
+  x:Class="Aria.Gui.Views.AppUpdateOverlay"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Focusable="False"
+  KeyboardNavigation.TabNavigation="Cycle"
+  PreviewKeyDown="OnPreviewKeyDown">
+  <UserControl.Resources>
+    <Style x:Key="Line" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style x:Key="Muted" BasedOn="{StaticResource Line}" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="{StaticResource NeonMutedBrush}" />
+    </Style>
+    <Style x:Key="Hash" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,4,0,10" />
+    </Style>
+  </UserControl.Resources>
+
+  <!-- Le voile capte les clics : rien n'est cliquable derrière -->
+  <Grid Background="#D9030812">
+    <ContentControl
+      MinWidth="460"
+      MaxWidth="680"
+      Margin="40"
+      Padding="0"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center"
+      Style="{StaticResource NeonPanel}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- En-tête : les deux versions -->
+        <Border Padding="24,20,24,14" BorderBrush="{StaticResource NeonLineBrush}" BorderThickness="0,0,0,1">
+          <StackPanel>
+            <TextBlock Style="{StaticResource HudCode}" Text="MISE À JOUR D'ARIA COCKPIT" />
+            <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+              <TextBlock
+                FontFamily="{StaticResource MonoFont}"
+                FontSize="22"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="{Binding InstalledVersion}" />
+              <TextBlock
+                Margin="14,0"
+                FontSize="22"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="→" />
+              <TextBlock
+                FontFamily="{StaticResource MonoFont}"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource NeonCyanBrush}"
+                Text="{Binding LatestVersion}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <ScrollViewer
+          Grid.Row="1"
+          MaxHeight="460"
+          Padding="24,16,24,8"
+          VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+
+            <!-- 1. Proposition -->
+            <StackPanel Visibility="{Binding IsOffer, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock FontSize="20" Style="{StaticResource NeonTitle}" Text="Une nouvelle version est disponible" TextWrapping="Wrap" />
+              <StackPanel Margin="0,14,0,0" Visibility="{Binding HasNotes, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Margin="0,0,0,6" Style="{StaticResource TechLabel}" Text="CE QUI CHANGE" />
+                <ItemsControl ItemsSource="{Binding Notes}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="18" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Foreground="{StaticResource NeonCyanBrush}" Text="•" />
+                        <TextBlock Grid.Column="1" FontSize="14" Text="{Binding}" TextWrapping="Wrap" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Margin="0,6,0,0" Style="{StaticResource Muted}" Text="Texte repris des notes de la release." />
+              </StackPanel>
+
+              <StackPanel Margin="0,10,0,0" Visibility="{Binding CanDownload, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Margin="0,0,0,6" Style="{StaticResource TechLabel}" Text="FICHIER" />
+                <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="13" Text="{Binding FileText}" TextWrapping="Wrap" />
+                <TextBlock
+                  Margin="0,2,0,12"
+                  FontFamily="{StaticResource MonoFont}"
+                  FontSize="13"
+                  Foreground="{StaticResource NeonMutedBrush}"
+                  Text="{Binding SourceText}" />
+                <TextBlock Margin="0,0,0,6" Style="{StaticResource TechLabel}" Text="CE QUI VA SE PASSER" />
+                <TextBlock Style="{StaticResource Line}" Text="1. Le fichier est téléchargé dans le dossier d'Aria (cache), pas dans le dossier temporaire de Windows." />
+                <TextBlock Style="{StaticResource Line}" Text="2. Son empreinte SHA-256 est comparée à celle de la release. Si elle diffère, le fichier est supprimé." />
+                <TextBlock Style="{StaticResource Line}" Text="3. Aria t'ouvre le dossier. Tu remplaces l'exe toi-même : cette version ne le fait pas encore à ta place." />
+              </StackPanel>
+
+              <TextBlock
+                Margin="0,10,0,0"
+                Style="{StaticResource Line}"
+                Text="GitHub ne donne pas d'empreinte pour le fichier de cette version : Aria ne pourrait pas le contrôler, donc elle ne le télécharge pas. Tu peux le prendre sur la page de la release."
+                Visibility="{Binding CannotDownload, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+
+            <!-- 2. Téléchargement -->
+            <StackPanel Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock FontSize="20" Style="{StaticResource NeonTitle}" Text="Téléchargement en cours" />
+              <ProgressBar
+                Height="8"
+                Margin="0,16,0,6"
+                Maximum="100"
+                Minimum="0"
+                Value="{Binding Progress}" />
+              <TextBlock
+                FontFamily="{StaticResource MonoFont}"
+                FontSize="13"
+                Foreground="{StaticResource NeonMutedBrush}"
+                Text="{Binding ProgressText}" />
+              <TextBlock Margin="0,14,0,0" Style="{StaticResource Muted}" Text="Rien n'est remplacé. Tu peux masquer cette fenêtre et continuer : elle reviendra quand ce sera fini. Annuler supprime le fichier partiel." />
+            </StackPanel>
+
+            <!-- 3. Prête -->
+            <StackPanel Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock FontSize="20" Style="{StaticResource NeonTitle}" Text="Le fichier est prêt" />
+              <TextBlock Margin="0,14,0,0" Style="{StaticResource TechLabel}" Text="EMPREINTE SHA-256, IDENTIQUE À CELLE DE LA RELEASE" />
+              <TextBlock Foreground="{StaticResource NeonCyanBrush}" Style="{StaticResource Hash}" Text="{Binding ActualHash}" />
+              <TextBlock Style="{StaticResource Muted}" Text="L'empreinte prouve que le fichier est arrivé intact. Elle ne prouve pas qui l'a publié." />
+              <TextBlock Margin="0,6,0,6" Style="{StaticResource TechLabel}" Text="POUR L'INSTALLER" />
+              <TextBlock Style="{StaticResource Line}" Text="Quitte Aria Cockpit (menu de son icône), dézippe le fichier, puis remplace Aria-Cockpit.exe et Aria-Bench.exe par les nouveaux. Tes réglages et tes sauvegardes ne bougent pas." />
+              <TextBlock Style="{StaticResource Muted}" Text="Garde l'ancien exe de côté tant que tu n'as pas essayé le nouveau. Le fichier reste une semaine dans le cache." />
+            </StackPanel>
+
+            <!-- 4. Empreinte différente -->
+            <StackPanel Visibility="{Binding IsMismatch, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock
+                FontSize="20"
+                Foreground="{StaticResource NeonRedBrush}"
+                Style="{StaticResource NeonTitle}"
+                Text="Le fichier ne correspond pas à la release"
+                TextWrapping="Wrap" />
+              <TextBlock Margin="0,12,0,8" Style="{StaticResource Line}" Text="Rien n'a été installé. Le fichier téléchargé a été supprimé." />
+              <TextBlock Style="{StaticResource Line}" Text="{Binding ErrorText}" />
+              <TextBlock Style="{StaticResource TechLabel}" Text="EMPREINTE ATTENDUE" />
+              <TextBlock Style="{StaticResource Hash}" Text="{Binding ExpectedHash}" />
+              <StackPanel Visibility="{Binding HasActualHash, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Style="{StaticResource TechLabel}" Text="EMPREINTE CALCULÉE" />
+                <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource Hash}" Text="{Binding ActualHash}" />
+              </StackPanel>
+              <TextBlock Style="{StaticResource Muted}" Text="Le plus souvent, c'est un téléchargement coupé. Si ça se reproduit, n'installe rien et va voir la page de la release." />
+            </StackPanel>
+
+            <!-- 5. Échec du téléchargement -->
+            <StackPanel Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock FontSize="20" Style="{StaticResource NeonTitle}" Text="Le téléchargement n'a pas abouti" TextWrapping="Wrap" />
+              <TextBlock Margin="0,12,0,8" Style="{StaticResource Line}" Text="{Binding ErrorText}" />
+              <TextBlock Style="{StaticResource Muted}" Text="Rien n'a été gardé ni installé." />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Boutons, selon l'étape -->
+        <Border
+          Grid.Row="2"
+          Padding="24,14,24,20"
+          BorderBrush="{StaticResource NeonLineBrush}"
+          BorderThickness="0,1,0,0">
+          <Grid>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsOffer, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="PLUS TARD" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
+              <Button
+                x:Name="DownloadButton"
+                MinWidth="160"
+                Command="{Binding DownloadCommand}"
+                Content="TÉLÉCHARGER"
+                Style="{StaticResource HudButton}"
+                Visibility="{Binding CanDownload, Converter={StaticResource BoolToVisibility}}" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CancelCommand}" Content="ANNULER" Style="{StaticResource HudButtonGhost}" />
+              <Button MinWidth="120" Command="{Binding CloseCommand}" Content="MASQUER" Style="{StaticResource HudButtonGhost}" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button MinWidth="190" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButton}" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsMismatch, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
+              <Button MinWidth="140" Command="{Binding DownloadCommand}" Content="RÉESSAYER" Style="{StaticResource HudButtonGhost}" />
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}">
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
+              <Button MinWidth="140" Command="{Binding DownloadCommand}" Content="RÉESSAYER" Style="{StaticResource HudButton}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
+    </ContentControl>
+  </Grid>
+</UserControl>

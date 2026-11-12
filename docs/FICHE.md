@@ -30,7 +30,8 @@ jour quand l'appli change.
 
 ## Connexions sortantes
 
-- `api.github.com` : dernière version publiée d'Aria Cockpit.
+- `api.github.com` : dernière version publiée d'Aria Cockpit, au lancement.
+- `github.com`, puis `release-assets.githubusercontent.com` vers lequel GitHub redirige : téléchargement de la nouvelle version, seulement à la demande. Aucun autre hôte n'est suivi.
 - `gfwsl.geforce.com` : dernière version du pilote NVIDIA.
 - `raw.githubusercontent.com` : table des cartes NVIDIA, tenue par un dépôt tiers (`ZenitH-AT/nvidia-data`). Une copie est embarquée si la lecture échoue.
 - Windows Update et winget : appelés par Windows, à la demande de l'appli.
@@ -41,5 +42,5 @@ dans le navigateur : l'appli ne s'y connecte pas elle-même.
 ## Écarts connus avec les règles communes
 
 - Toute l'appli tourne en administrateur, pas seulement les opérations qui l'exigent.
-- La mise à jour se limite à signaler une version et à ouvrir sa page.
+- La mise à jour télécharge la nouvelle version et contrôle son empreinte, mais ne remplace pas l'exe et ne garde pas l'ancienne version : c'est encore fait à la main.
 - L'argument de démarrage est `--tray`, pas `--silencieux`.

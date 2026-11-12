@@ -11,6 +11,10 @@ public static class Shell
     public static void OpenUnelevated(string target) =>
         Process.Start(new ProcessStartInfo("explorer.exe", $"\"{target}\"") { UseShellExecute = false });
 
+    /// <summary>Ouvre le dossier d'un fichier dans l'Explorateur, le fichier sélectionné, sans les droits administrateur.</summary>
+    public static void ShowInFolder(string file) =>
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{file}\"") { UseShellExecute = false });
+
     /// <summary>Ouvre un fichier local (rapport…) avec l'application associée.</summary>
     public static void OpenFile(string path) =>
         Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
