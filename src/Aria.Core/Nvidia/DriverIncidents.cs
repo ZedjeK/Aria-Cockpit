@@ -21,6 +21,9 @@ public enum DriverIncidentKind
 /// <summary>Un incident : les lignes que le pilote écrit d'un coup pour un même problème.</summary>
 public sealed record DriverIncident(DateTime At, DriverIncidentKind Kind, int Events);
 
+/// <summary>Un incident et ses lignes du journal Système, dans l'ordre.</summary>
+public sealed record DriverIncidentDetail(DriverIncident Incident, IReadOnlyList<DriverEvent> Lines);
+
 /// <summary>
 /// Incidents du pilote graphique d'après le journal Système. Pour un seul problème, le pilote écrit souvent 5 à 7 lignes
 /// dans la même seconde (exception, puis plusieurs erreurs 153) : les compter une par une affichait « 25 plantages » pour 4.
@@ -33,24 +36,32 @@ public static class DriverIncidents
     /// <summary>Incidents depuis une date ; vide si le journal est illisible (pas d'alerte inventée).</summary>
     public static IReadOnlyList<DriverIncident> Since(DateTime since) => Group(ReadEvents(since));
 
+    /// <summary>Incidents depuis une date, avec les lignes du pilote de chacun (pour le rapport d'incidents).</summary>
+    public static IReadOnlyList<DriverIncidentDetail> DetailedSince(DateTime since) => GroupDetailed(ReadEvents(since));
+
     /// <summary>Regroupe les lignes proches dans le temps ; la nature de l'incident est la plus grave de ses lignes.</summary>
-    public static IReadOnlyList<DriverIncident> Group(IEnumerable<DriverEvent> events)
+    public static IReadOnlyList<DriverIncident> Group(IEnumerable<DriverEvent> events) =>
+        GroupDetailed(events).Select(d => d.Incident).ToList();
+
+    /// <summary>Comme <see cref="Group"/>, en gardant les lignes de chaque incident.</summary>
+    public static IReadOnlyList<DriverIncidentDetail> GroupDetailed(IEnumerable<DriverEvent> events)
     {
-        var incidents = new List<DriverIncident>();
+        var incidents = new List<(DriverIncident Incident, List<DriverEvent> Lines)>();
         DateTime? last = null;
         foreach (var e in events.OrderBy(e => e.At))
         {
             var kind = Classify(e);
             if (last is { } previous && e.At - previous <= Window && incidents.Count > 0)
             {
-                var current = incidents[^1];
-                incidents[^1] = current with { Kind = kind > current.Kind ? kind : current.Kind, Events = current.Events + 1 };
+                var (current, lines) = incidents[^1];
+                lines.Add(e);
+                incidents[^1] = (current with { Kind = kind > current.Kind ? kind : current.Kind, Events = current.Events + 1 }, lines);
             }
             else
-                incidents.Add(new DriverIncident(e.At, kind, 1));
+                incidents.Add((new DriverIncident(e.At, kind, 1), [e]));
             last = e.At;
         }
-        return incidents;
+        return incidents.Select(i => new DriverIncidentDetail(i.Incident, i.Lines)).ToList();
     }
 
     public static DriverIncidentKind Classify(DriverEvent e) => e switch
@@ -97,6 +108,18 @@ public static class DriverIncidents
         return text + cause + $"Revenez au réglage d'origine, puis relancez l'assistant avec le banc d'essai : ses paliers passent désormais {checks}.";
     }
 
+    /// <summary>
+    /// Une donnée d'une ligne du journal, en texte. Le pilote joint un bloc d'octets (son code d'erreur interne) :
+    /// il est rendu en hexadécimal, sans les zéros de fin, au lieu du « System.Byte[] » que donnerait ToString.
+    /// </summary>
+    internal static string Text(object? value)
+    {
+        if (value is not byte[] bytes) return value?.ToString() ?? "";
+        var length = bytes.Length;
+        while (length > 0 && bytes[length - 1] == 0) length--;
+        return length == 0 ? "(octets nuls)" : "0x" + Convert.ToHexString(bytes, 0, length);
+    }
+
     private static IReadOnlyList<DriverEvent> ReadEvents(DateTime since)
     {
         if (!OperatingSystem.IsWindows()) return [];
@@ -112,7 +135,7 @@ public static class DriverIncidents
                 using (e)
                     if (e.TimeCreated is { } at)
                         found.Add(new DriverEvent(at, e.ProviderName, e.Id,
-                            string.Join(" | ", e.Properties.Select(p => p.Value?.ToString() ?? ""))));
+                            string.Join(" | ", e.Properties.Select(p => Text(p.Value)))));
         }
         catch (Exception e) when (e is EventLogException or UnauthorizedAccessException)
         {

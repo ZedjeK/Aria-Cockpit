@@ -73,6 +73,7 @@
           <StackPanel Grid.Column="1" Margin="12,0,16,0">
             <TextBlock Foreground="{StaticResource NeonRedBrush}" Style="{StaticResource TechLabel}" Text="INCIDENTS DU PILOTE DÉTECTÉS" />
             <TextBlock Margin="0,4,0,0" Text="{Binding CrashText}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" Text="Détail de chaque incident, commentaires et rapport à envoyer : carte « Incidents du pilote », plus bas." TextWrapping="Wrap" />
           </StackPanel>
           <StackPanel Grid.Column="2" VerticalAlignment="Center">
             <Button HorizontalAlignment="Stretch" Command="{Binding RevertCommand}" Content="REVENIR D'ORIGINE" Style="{StaticResource HudButton}" />
@@ -663,6 +664,87 @@
                   ToolTip="Enregistre les points affichés, sans rien appliquer" />
               </StackPanel>
             </StackPanel>
+          </StackPanel>
+        </ContentControl>
+
+        <!-- ===== Incidents du pilote (30 jours) : commentés, puis rapport à coller dans une IA ===== -->
+        <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}" Visibility="{Binding HasIncidents, Converter={StaticResource BoolToVisibility}}">
+          <StackPanel>
+            <TextBlock Margin="0,0,0,8" Style="{StaticResource HudCode}" Text="INCIDENTS DU PILOTE · 30 DERNIERS JOURS" />
+            <TextBlock Style="{StaticResource SliderHelp}" Text="Ce que le pilote NVIDIA a noté dans le journal de Windows. Le journal ne dit pas ce que tu faisais : note-le (jeu, IA locale, repos, depuis combien de temps…). C'est ce qui permet de relier un incident à ton réglage. Le rapport reprend tout : carte, pilote, réglages et leur historique, chaque incident avec ton commentaire." />
+            <ItemsControl Focusable="False" ItemsSource="{Binding Incidents}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Padding="0,10" BorderBrush="#1F7DF9FF" BorderThickness="0,0,0,1" Visibility="{Binding IsShown, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock FontFamily="{StaticResource TechFont}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding When}" />
+                        <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource NeonOrangeBrush}" Text="{Binding What}" />
+                      </StackPanel>
+                      <ItemsControl Margin="0,4,0,0" Focusable="False" ItemsSource="{Binding Lines}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Foreground="{StaticResource NeonMutedBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Margin="0,8,0,4" Style="{StaticResource SliderLabel}" Text="CE QUE JE FAISAIS" />
+                      <TextBox
+                        AcceptsReturn="True"
+                        MaxLength="500"
+                        MinLines="1"
+                        Text="{Binding Note, UpdateSourceTrigger=LostFocus}"
+                        TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button
+              Margin="0,12,0,0"
+              HorizontalAlignment="Left"
+              Command="{Binding ShowOlderIncidentsCommand}"
+              Content="{Binding OlderIncidentsText}"
+              Style="{StaticResource HudButtonGhost}"
+              ToolTip="Le rapport contient déjà tous les incidents des 30 derniers jours"
+              Visibility="{Binding HasOlderIncidents, Converter={StaticResource BoolToVisibility}}" />
+            <WrapPanel Margin="0,14,0,0">
+              <Button
+                Margin="0,0,10,6"
+                Command="{Binding CopyIncidentReportCommand}"
+                Content="COPIER LE RAPPORT"
+                Style="{StaticResource HudButton}"
+                ToolTip="Copie le rapport complet, prêt à coller dans une IA ou dans un message" />
+              <Button
+                Margin="0,0,10,6"
+                Command="{Binding SaveIncidentReportCommand}"
+                Content="ENREGISTRER LE RAPPORT"
+                Style="{StaticResource HudButtonGhost}"
+                ToolTip="Enregistre le rapport dans le dossier Rapports" />
+              <Button
+                Margin="0,0,0,6"
+                Command="{Binding OpenIncidentReportCommand}"
+                Content="OUVRIR"
+                Style="{StaticResource HudButtonGhost}"
+                Visibility="{Binding CanOpenIncidentReport, Converter={StaticResource BoolToVisibility}}" />
+            </WrapPanel>
+            <TextBlock
+              Margin="0,8,0,0"
+              FontSize="12.5"
+              Text="{Binding IncidentNote}"
+              TextWrapping="Wrap"
+              Visibility="{Binding HasIncidentNote, Converter={StaticResource BoolToVisibility}}">
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Foreground" Value="{StaticResource NeonTealBrush}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IncidentNoteIsError}" Value="True">
+                      <Setter Property="Foreground" Value="{StaticResource NeonRedBrush}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
           </StackPanel>
         </ContentControl>
         </StackPanel>
