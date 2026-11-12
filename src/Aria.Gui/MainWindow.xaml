@@ -110,6 +110,10 @@
           <RadioButton Content="NETTOYAGE" Style="{StaticResource HudTab}" Tag="{x:Type views:CleanupPage}" />
           <RadioButton Content="RESTAURATION" Style="{StaticResource HudTab}" Tag="{x:Type views:RestorePage}" />
           <RadioButton Content="RAPPORTS" Style="{StaticResource HudTab}" Tag="{x:Type views:ReportsPage}" />
+          <!-- Paramètres de l'appli elle-même (démarrage, fenêtre, données), à part des réglages du PC -->
+          <RadioButton Style="{StaticResource HudTab}" Tag="{x:Type views:PreferencesPage}" ToolTip="Paramètres d'Aria Cockpit">
+            <ui:SymbolIcon FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" Symbol="Settings24" />
+          </RadioButton>
         </StackPanel>
         </Viewbox>
 

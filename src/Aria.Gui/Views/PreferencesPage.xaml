@@ -1,0 +1,166 @@
+<Page
+  x:Class="Aria.Gui.Views.PreferencesPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Paramètres"
+  Foreground="{StaticResource NeonTextBrush}">
+  <!-- Paramètres de l'application elle-même. Les réglages du PC sont dans la page Optimisation. DataContext : PreferencesViewModel. -->
+  <Page.Resources>
+    <Style x:Key="Help" TargetType="TextBlock">
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Foreground" Value="{StaticResource NeonMutedBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="FieldLabel" BasedOn="{StaticResource TechLabel}" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource NeonBlueLightBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- Résultat d'une action : cyan glacé, rouge si elle a échoué (Tag = vrai) -->
+    <Style x:Key="Note" TargetType="TextBlock">
+      <Setter Property="Margin" Value="0,12,0,0" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{StaticResource NeonTealBrush}" />
+      <Style.Triggers>
+        <Trigger Property="Tag" Value="True">
+          <Setter Property="Foreground" Value="{StaticResource NeonRedBrush}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+  </Page.Resources>
+
+  <StackPanel MaxWidth="1100" Margin="36,24,36,36">
+    <!-- En-tête -->
+    <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="08 · DÉMARRAGE · FENÊTRE · DONNÉES" />
+    <TextBlock Style="{StaticResource NeonTitle}" Text="PARAMÈTRES" />
+    <TextBlock
+      Margin="0,4,0,0"
+      Foreground="{StaticResource NeonMutedBrush}"
+      Text="Ce qui règle Aria Cockpit elle-même. Les réglages de ton PC sont dans Optimisation, ceux de ta carte dans Réglage GPU."
+      TextWrapping="Wrap" />
+
+    <!-- ===== Démarrage ===== -->
+    <ContentControl Margin="0,22,0,0" Style="{StaticResource HudPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,14" Style="{StaticResource HudCode}" Text="DÉMARRAGE" />
+        <CheckBox
+          Content="Démarrer Aria Cockpit avec Windows"
+          IsChecked="{Binding StartWithWindows}"
+          IsEnabled="{Binding StartupKnown}" />
+        <TextBlock Style="{StaticResource Help}">
+          <Run Text="Aria se lance à chaque ouverture de session, directement rangée dans son icône à côté de l'horloge, sans fenêtre. Une tâche planifiée, «" />
+          <Run Text="{Binding StartupTaskName, Mode=OneWay}" />
+          <Run Text="», la lance avec les droits administrateur et sans fenêtre de confirmation, depuis la copie rangée dans «" />
+          <Run Text="{Binding ProtectedFolder, Mode=OneWay}" />
+          <Run Text="», que seuls les administrateurs peuvent modifier." />
+        </TextBlock>
+        <TextBlock
+          Style="{StaticResource Note}"
+          Tag="{Binding StartupNoteIsError}"
+          Text="{Binding StartupNote}"
+          Visibility="{Binding HasStartupNote, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock Margin="0,18,0,0" Style="{StaticResource FieldLabel}" Text="COURBE DE VENTILATION" />
+        <TextBlock Style="{StaticResource Help}" Text="Avec « Démarrer avec Windows », Aria relance la courbe qui tournait quand elle s'est arrêtée (fermeture, fin de session, plantage). Si tu as rendu la main au pilote, rien n'est relancé." />
+        <TextBlock Margin="0,4,0,0" Text="{Binding FanResumeText}" TextWrapping="Wrap" />
+
+        <TextBlock Margin="0,18,0,0" Style="{StaticResource FieldLabel}" Text="PROFIL GPU" />
+        <TextBlock Margin="0,4,0,0" Text="{Binding GpuStartupText}" TextWrapping="Wrap" />
+      </StackPanel>
+    </ContentControl>
+
+    <!-- ===== Fenêtre et icône ===== -->
+    <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,14" Style="{StaticResource HudCode}" Text="FENÊTRE ET ICÔNE" />
+        <TextBlock Style="{StaticResource FieldLabel}" Text="QUAND JE FERME LA FENÊTRE" />
+        <RadioButton Margin="0,8,0,0" Content="Ranger Aria dans son icône seulement si elle a quelque chose d'actif" GroupName="Close" IsChecked="{Binding CloseAuto}" />
+        <TextBlock Margin="28,0,0,0" Style="{StaticResource Help}" Text="Profil GPU en place, courbe de ventilation ou opération en cours : Aria reste dans son icône. Sinon elle s'arrête. C'est le réglage d'origine." />
+        <RadioButton Margin="0,10,0,0" Content="Toujours la ranger dans son icône" GroupName="Close" IsChecked="{Binding CloseTray}" />
+        <TextBlock Margin="28,0,0,0" Style="{StaticResource Help}" Text="La croix ne l'arrête jamais : « Quitter Aria Cockpit » est dans le menu de l'icône." />
+        <RadioButton Margin="0,10,0,0" Content="Toujours l'arrêter" GroupName="Close" IsChecked="{Binding CloseQuit}" />
+        <TextBlock Margin="28,0,0,0" Style="{StaticResource Help}" Text="Une courbe de ventilation en cours rend alors la main au pilote NVIDIA. Ton profil GPU reste sur la carte, mais l'icône ne le surveille plus. Si une opération est en cours, Aria demande confirmation." />
+
+        <CheckBox Margin="0,18,0,0" Content="Me prévenir quand la fenêtre se range dans l'icône" IsChecked="{Binding NotifyOnHide}" />
+        <TextBlock Style="{StaticResource Help}" Text="Une notification Windows dit pourquoi Aria reste ouverte." />
+        <TextBlock
+          Style="{StaticResource Note}"
+          Text="{Binding WindowNote}"
+          Visibility="{Binding HasWindowNote, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </ContentControl>
+
+    <!-- ===== Données ===== -->
+    <ContentControl Margin="0,14,0,0" Style="{StaticResource HudPanel}">
+      <StackPanel>
+        <TextBlock Margin="0,0,0,14" Style="{StaticResource HudCode}" Text="DONNÉES" />
+        <TextBlock Style="{StaticResource FieldLabel}" Text="DOSSIER" />
+        <Grid Margin="0,6,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonWhiteBrush}" Text="{Binding DataPath, Mode=OneWay}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,4,0,0" Foreground="{StaticResource NeonTealBrush}" Text="{Binding DataSizeText}" />
+          </StackPanel>
+          <Button
+            Grid.Column="1"
+            Margin="14,0,0,0"
+            Command="{Binding OpenDataFolderCommand}"
+            Content="OUVRIR LE DOSSIER"
+            Style="{StaticResource HudButtonGhost}" />
+        </Grid>
+        <TextBlock Style="{StaticResource Help}" Text="Sauvegardes, rapports, profils GPU, courbes de ventilation et journaux. Seuls les administrateurs peuvent le modifier : c'est ce qui empêche un programme sans droits d'y glisser un réglage que les tâches de démarrage appliqueraient. Son emplacement ne se change donc pas." />
+
+        <TextBlock Margin="0,20,0,0" Style="{StaticResource FieldLabel}" Text="DURÉES DE CONSERVATION" />
+        <Grid Margin="0,8,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Rapports et fiches PC gardés" />
+          <TextBox Grid.Row="0" Grid.Column="1" Width="80" Margin="14,3" HorizontalContentAlignment="Right" MaxLength="3" Text="{Binding ReportsMonths, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="mois" />
+
+          <TextBlock Grid.Row="1" VerticalAlignment="Center" Text="Sauvegardes gardées" />
+          <TextBox Grid.Row="1" Grid.Column="1" Width="80" Margin="14,3" HorizontalContentAlignment="Right" MaxLength="3" Text="{Binding BackupsMonths, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="mois" />
+
+          <TextBlock Grid.Row="2" VerticalAlignment="Center" Text="Sauvegardes les plus récentes toujours gardées" />
+          <TextBox Grid.Row="2" Grid.Column="1" Width="80" Margin="14,3" HorizontalContentAlignment="Right" MaxLength="3" Text="{Binding KeepBackups, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" Foreground="{StaticResource NeonMutedBrush}" Text="quel que soit leur âge" />
+        </Grid>
+        <TextBlock Style="{StaticResource Help}">
+          <Run Text="Le ménage a lieu au plus une fois par jour, au lancement d'Aria. Il ne touche qu'aux rapports et aux sauvegardes créés par Aria, jamais aux réglages en place (profil GPU, profils, courbes)." />
+          <Run Text="{Binding RangeText, Mode=OneWay}" />
+        </TextBlock>
+        <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
+          <Button Command="{Binding SaveRetentionCommand}" Content="ENREGISTRER" Style="{StaticResource HudButton}" ToolTip="Enregistre les durées. Rien n'est supprimé tout de suite." />
+          <Button
+            Margin="10,0,0,0"
+            Command="{Binding CleanNowCommand}"
+            Content="FAIRE LE MÉNAGE MAINTENANT"
+            Style="{StaticResource HudButtonGhost}"
+            ToolTip="Applique tout de suite les durées enregistrées, après confirmation" />
+        </StackPanel>
+        <TextBlock
+          Style="{StaticResource Note}"
+          Tag="{Binding DataNoteIsError}"
+          Text="{Binding DataNote}"
+          Visibility="{Binding HasDataNote, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </ContentControl>
+
+    <!-- ===== À propos ===== -->
+    <TextBlock Margin="0,18,0,0" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="#FF5E7290" Text="{Binding VersionText, Mode=OneWay}" />
+  </StackPanel>
+</Page>

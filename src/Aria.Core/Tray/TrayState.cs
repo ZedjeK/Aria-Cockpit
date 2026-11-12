@@ -17,6 +17,17 @@ public enum GpuProfileStatus
     Foreign
 }
 
+/// <summary>Voir <see cref="TrayState.OnClose"/>.</summary>
+public enum CloseAction
+{
+    /// <summary>La fenêtre se range dans l'icône, Aria continue.</summary>
+    Hide,
+    /// <summary>Aria s'arrête.</summary>
+    Quit,
+    /// <summary>Une opération est en cours : Aria ne s'arrête qu'après confirmation.</summary>
+    AskThenQuit
+}
+
 /// <summary>Dessin de l'icône de la zone de notification.</summary>
 public enum TrayIconKind
 {
@@ -93,6 +104,17 @@ public sealed record TrayState(
     /// de quitter. Un réglage perdu compte aussi : c'est justement ce que l'icône doit signaler.
     /// </summary>
     public bool KeepsRunning => Profile is GpuProfileStatus.Applied or GpuProfileStatus.Lost || FanCurve is not null || Work.Count > 0;
+
+    /// <summary>
+    /// Ce que fait la croix de la fenêtre, selon le choix fait dans les Paramètres. Une opération en cours n'est jamais
+    /// coupée sans le dire : « toujours quitter » demande alors confirmation.
+    /// </summary>
+    public CloseAction OnClose(Settings.CloseBehavior behavior) => behavior switch
+    {
+        Settings.CloseBehavior.AlwaysTray => CloseAction.Hide,
+        Settings.CloseBehavior.AlwaysQuit => Work.Count > 0 ? CloseAction.AskThenQuit : CloseAction.Quit,
+        _ => KeepsRunning ? CloseAction.Hide : CloseAction.Quit
+    };
 
     public TrayIconKind Icon => Profile == GpuProfileStatus.Lost ? TrayIconKind.Alert
         : Profile == GpuProfileStatus.Applied || FanCurve is not null ? TrayIconKind.Active
