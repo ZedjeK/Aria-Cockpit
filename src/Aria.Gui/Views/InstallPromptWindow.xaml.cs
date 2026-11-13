@@ -87,6 +87,8 @@ public partial class InstallPromptWindow : Window
         }
         Outcome = outcome;
         Result = InstallPromptResult.Installed;
+        // La copie est finie : sans ça, OnClosing refuse la fermeture et la fenêtre reste sur « Copie en cours… »
+        _busy = false;
         DialogResult = true;
     }
 
