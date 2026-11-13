@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Rien pour l'instant.
+
+## 0.29.0, le 13 novembre 2026
+
+Notes complètes : [docs/releases/v0.29.0.md](docs/releases/v0.29.0.md).
+
 - Installation par l'exe : lancé hors de son dossier, l'exe propose de se ranger dans `.Aria-Cockpit\programme`
   avec son banc d'essai, et de créer un raccourci sur le Bureau (case décochée d'office). La proposition se coupe dans
   Paramètres, ou avec `--portable`. L'installation vérifie les droits du dossier et refuse si un programme sans droits
