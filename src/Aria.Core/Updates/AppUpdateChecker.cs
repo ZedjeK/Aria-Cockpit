@@ -20,6 +20,17 @@ public sealed record AppUpdate(Version Latest, string PageUrl)
     public IReadOnlyList<string> Notes { get; init; } = [];
 }
 
+/// <summary>Ce qu'une recherche de nouvelle version a trouvé.</summary>
+public enum AppUpdateLookup
+{
+    /// <summary>Une version plus récente est publiée.</summary>
+    Newer,
+    /// <summary>GitHub a répondu, et la version installée est la dernière publiée (ou plus récente).</summary>
+    UpToDate,
+    /// <summary>Pas de réseau, GitHub indisponible ou réponse inattendue : on ne sait pas.</summary>
+    Unreachable
+}
+
 /// <summary>
 /// Vérifie s'il existe une release d'Aria Cockpit plus récente sur GitHub (dernière release publiée du dépôt).
 /// Ne télécharge et n'installe rien : il renvoie la version, l'adresse de sa page et la liste de ses fichiers.
@@ -39,16 +50,48 @@ public static partial class AppUpdateChecker
 
     private static readonly HttpClient Http = CreateClient();
 
-    public static async Task<AppUpdate?> CheckAsync(Version current, CancellationToken cancel = default)
+    public static async Task<AppUpdate?> CheckAsync(Version current, CancellationToken cancel = default) =>
+        (await LookAsync(current, cancel).ConfigureAwait(false)).Update;
+
+    /// <summary>
+    /// Comme <see cref="CheckAsync"/>, en disant aussi pourquoi aucune version n'est proposée : parce que celle-ci est
+    /// la dernière, ou parce que GitHub n'a pas donné de réponse utilisable.
+    /// </summary>
+    public static async Task<(AppUpdateLookup Outcome, AppUpdate? Update)> LookAsync(Version current, CancellationToken cancel = default)
     {
+        string json;
         try
         {
-            var json = await Http.GetStringAsync(LatestReleaseApi, cancel).ConfigureAwait(false);
-            return Parse(json, current);
+            json = await Http.GetStringAsync(LatestReleaseApi, cancel).ConfigureAwait(false);
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            return null;
+            return (AppUpdateLookup.Unreachable, null);
+        }
+        return Classify(json, current);
+    }
+
+    /// <summary>Lit la réponse de GitHub : version plus récente, version à jour, ou réponse inutilisable.</summary>
+    internal static (AppUpdateLookup Outcome, AppUpdate? Update) Classify(string json, Version current)
+    {
+        if (Parse(json, current) is { } update) return (AppUpdateLookup.Newer, update);
+        return (HasReleaseTag(json) ? AppUpdateLookup.UpToDate : AppUpdateLookup.Unreachable, null);
+    }
+
+    /// <summary>La réponse décrit bien une release, avec un numéro de version lisible.</summary>
+    private static bool HasReleaseTag(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                   && doc.RootElement.TryGetProperty("tag_name", out var tag)
+                   && Text(tag) is { } name
+                   && TryParseVersion(name, out _);
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 

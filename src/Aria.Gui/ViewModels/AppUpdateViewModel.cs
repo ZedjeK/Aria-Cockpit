@@ -54,7 +54,8 @@ public sealed partial class AppUpdateViewModel : ObservableObject
 
     /// <summary>Version plus récente trouvée par la dernière recherche ; null s'il n'y en a pas.</summary>
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasUpdate), nameof(AvailableLabel))] private AppUpdate? available;
-    [ObservableProperty] private bool isChecking;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanCheck))] private bool isChecking;
+    public bool CanCheck => !IsChecking;
     [ObservableProperty] private string lastCheckText = "pas encore faite depuis ce lancement";
 
     public bool HasUpdate => Available is not null;
@@ -74,9 +75,13 @@ public sealed partial class AppUpdateViewModel : ObservableObject
             : RealVersion;
     }
 
+    /// <summary>Durée minimale d'affichage de « en cours… » : GitHub répond souvent en moins d'une seconde.</summary>
+    private static readonly TimeSpan MinimumCheck = TimeSpan.FromMilliseconds(700);
+
     /// <summary>
-    /// Demande à GitHub la dernière version publiée. Une seule requête ; rien n'est téléchargé. La recherche ne
-    /// distingue pas « à jour » de « GitHub injoignable » : dans les deux cas, aucune version n'est proposée.
+    /// Demande à GitHub la dernière version publiée. Une seule requête ; rien n'est téléchargé. Le résultat dit si
+    /// une version est disponible, si celle-ci est la dernière, ou si GitHub n'a pas répondu. Un clic a toujours un
+    /// effet à l'écran : « en cours… », puis l'heure à la seconde.
     /// </summary>
     public async Task CheckAsync()
     {
@@ -87,14 +92,22 @@ public sealed partial class AppUpdateViewModel : ObservableObject
             return;
         }
         IsChecking = true;
+        LastCheckText = "en cours…";
         try
         {
-            var update = await AppUpdateChecker.CheckAsync(installed);
+            var started = DateTime.UtcNow;
+            var (outcome, update) = await AppUpdateChecker.LookAsync(installed);
+            var remaining = MinimumCheck - (DateTime.UtcNow - started);
+            if (remaining > TimeSpan.Zero) await Task.Delay(remaining);
             _installed = installed;
             Available = update;
-            LastCheckText = update is null
-                ? $"à {DateTime.Now:HH:mm} · aucune version plus récente trouvée"
-                : $"à {DateTime.Now:HH:mm} · {update.Latest.ToString(3)} disponible";
+            var at = $"à {DateTime.Now:HH:mm:ss}";
+            LastCheckText = outcome switch
+            {
+                AppUpdateLookup.Newer => $"{at} · {update!.Latest.ToString(3)} disponible",
+                AppUpdateLookup.UpToDate => $"{at} · tu as la dernière version publiée",
+                _ => $"{at} · GitHub n'a pas répondu : réessaie plus tard"
+            };
         }
         finally
         {
