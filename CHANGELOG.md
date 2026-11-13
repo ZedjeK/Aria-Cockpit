@@ -11,6 +11,8 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
   pouvait le modifier.
 - Paramètres, carte « Installation » : état de l'installation, case pour remettre la proposition, création, mise à jour
   et retrait du raccourci du Bureau.
+- Fond animé : le faisceau monte jusqu'en haut de la fenêtre, derrière la barre de titre, au lieu de s'arrêter
+  sous elle avec un bord coupé net.
 
 ## 0.28.0, le 13 novembre 2026
 

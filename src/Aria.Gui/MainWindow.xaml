@@ -65,6 +65,12 @@
       </Ellipse.Fill>
     </Ellipse>
 
+    <!--
+      ===== Fond animé : le balayage, sur toute la hauteur de la zone des pages, bande de titre comprise, jamais sous le
+      menu latéral (colonne 0) =====
+      Posé ici, avant la barre de titre et le bandeau de mise à jour : ils restent par-dessus, le faisceau passe derrière.
+    -->
+    <fx:SweepBackdrop Grid.Row="0" Grid.RowSpan="3" Grid.Column="1" />
     <!-- ===== Menu latéral : logo, pages, version. Panneau opaque : le fond animé ne passe jamais dessous ===== -->
     <Border
       Grid.RowSpan="3"
@@ -187,9 +193,6 @@
           ToolTip="Masquer jusqu'au prochain lancement" />
       </Grid>
     </Border>
-
-    <!-- ===== Fond animé : le balayage, sous les pages seulement, jamais sous le menu latéral ===== -->
-    <fx:SweepBackdrop Grid.Row="2" Grid.Column="1" />
 
     <!--
       Hôte des pages : un cadre sans barre de navigation, dans un défilement vertical commun à toutes les pages.
