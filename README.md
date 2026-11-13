@@ -49,6 +49,29 @@ n'est jamais modifié, seulement lu et expliqué.
    ordinateur », clique sur « Informations complémentaires » puis « Exécuter quand même ». Le code source complet est
    dans ce dépôt.
 
+3. Aria propose alors de **s'installer** (voir ci-dessous). Tu peux aussi la lancer sans installer : l'exe reste
+   portable, là où tu l'as décompressé.
+
+### Installer Aria Cockpit depuis l'exe
+
+Lancé hors de son dossier (zip décompressé dans Téléchargements, sur le Bureau, sur une clé USB), l'exe ouvre une
+fenêtre avant tout le reste :
+
+- **Installer** copie `Aria-Cockpit.exe` et `Aria-Bench.exe`, avec les deux fichiers de licence, dans
+  `%USERPROFILE%\.Aria-Cockpit\programme`, puis relance Aria depuis là. La version déjà installée, s'il y en a une, est
+  gardée de côté dans `Sauvegardes\versions`. Les mises à jour d'Aria se font ensuite à cet endroit.
+- **Créer un raccourci sur le Bureau** : case décochée d'office. Le raccourci est sur ton Bureau (jamais le Bureau
+  public) et pointe vers l'exe installé : il ne change pas d'une version à l'autre. S'il existe déjà, la case propose
+  de le mettre à jour.
+- **Lancer sans installer** : Aria se lance depuis l'exe où tu l'as mis, sans rien copier. La case « Ne plus me proposer
+  l'installation » coupe la proposition (elle se remet dans Paramètres). L'argument `--portable` la saute aussi, pour un
+  seul lancement.
+
+Pourquoi ce dossier : il n'est modifiable que par le système et les administrateurs, ce qui rend sûr d'y lancer un exe
+élevé. Un exe resté dans Téléchargements pourrait être remplacé par n'importe quel programme. Avant de copier, Aria
+vérifie ces droits (propriétaire compris) sur le dossier des données et sur `programme\`, et **refuse de s'installer** si
+l'un des deux est plus ouvert. Si `Aria-Bench.exe` n'est pas à côté de l'exe, la fenêtre le signale : l'assistant de
+Réglage GPU en a besoin pour mesurer.
 Aria Cockpit demande les **droits administrateur** : il en a besoin pour lire et modifier les réglages du système.
 Lance-le depuis ta propre session (si un autre compte administrateur valide l'élévation, les réglages personnels
 comme la souris ou le Mode Jeu s'appliqueraient à ce compte-là). Une seule fenêtre à la fois : le relancer ramène au
@@ -610,6 +633,10 @@ rapport) : elle peut donc elle-même être annulée.
 - **Toute l'appli demande les droits administrateur**, même pour lire. Elle en a besoin pour le registre, les services,
   le pilote NVIDIA et les tâches planifiées.
 - **L'exe n'est pas signé.** Windows SmartScreen peut afficher un avertissement au premier lancement.
+- **L'installation par l'exe ne contrôle pas le fichier qu'elle copie.** Elle recopie l'exe que tu viens de lancer,
+  tel quel : aucune empreinte n'est vérifiée (c'est la mise à jour intégrée qui contrôle le SHA-256). Les fichiers
+  installés n'ont plus la marque « téléchargé depuis Internet », puisque tu as lancé l'exe et accepté l'installation :
+  Windows ne redemandera donc pas son avertissement à chaque ouverture depuis le raccourci.
 - **Les mises à jour d'Aria Cockpit ne s'installent jamais seules.** Il faut un clic pour télécharger, un second pour
   installer. Lancée par le démarrage automatique, Aria tourne depuis sa copie de `Program Files` et ne se remplace pas :
   ouvre-la depuis ton exe pour la mettre à jour.

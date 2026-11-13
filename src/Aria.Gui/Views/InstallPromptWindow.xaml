@@ -1,0 +1,51 @@
+<Window
+  x:Class="Aria.Gui.Views.InstallPromptWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Installer Aria Cockpit"
+  Width="660"
+  Background="{StaticResource SpaceBackgroundBrush}"
+  Foreground="{StaticResource NeonTextBrush}"
+  Icon="pack://application:,,,/Assets/Aria-Cockpit.ico"
+  ResizeMode="NoResize"
+  ShowInTaskbar="True"
+  SizeToContent="Height"
+  WindowStartupLocation="CenterScreen"
+  WindowStyle="None">
+  <!-- Proposition d'installation, au lancement d'un exe qui n'est pas dans son dossier. Fenêtre à part, avant la fenêtre principale. -->
+  <Border BorderBrush="#2D4F78" BorderThickness="1" MouseLeftButtonDown="OnDrag">
+    <Grid Margin="22">
+      <ContentControl Style="{StaticResource HudPanel}">
+        <StackPanel>
+          <TextBlock Margin="0,0,0,2" Style="{StaticResource HudCode}" Text="INSTALLATION" />
+          <TextBlock x:Name="TitleText" FontFamily="{StaticResource TechFont}" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource NeonWhiteBrush}" />
+
+          <TextBlock Margin="0,12,0,0" TextWrapping="Wrap" Text="Cet exe n'est pas installé. Aria Cockpit peut se ranger dans son dossier, avec son banc d'essai : tu la lanceras ensuite depuis là, et les mises à jour s'y feront." />
+
+          <TextBlock Margin="0,14,0,0" Style="{StaticResource HudCode}" Text="DESTINATION" />
+          <TextBlock x:Name="DestinationText" Margin="0,4,0,0" FontFamily="{StaticResource MonoFont}" Foreground="{StaticResource NeonWhiteBrush}" TextWrapping="Wrap" />
+          <TextBlock x:Name="InstalledText" Margin="0,6,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+          <TextBlock x:Name="BenchText" Margin="0,8,0,0" FontSize="12.5" Foreground="{StaticResource NeonOrangeBrush}" TextWrapping="Wrap" Visibility="Collapsed"
+            Text="Aria-Bench.exe n'est pas à côté de cet exe : l'assistant de Réglage GPU ne pourra pas mesurer. Remets les deux fichiers dans le même dossier pour qu'il soit copié aussi." />
+
+          <CheckBox x:Name="ShortcutBox" Margin="0,18,0,0" Content="Créer un raccourci sur le Bureau" />
+          <TextBlock x:Name="ShortcutHelp" Margin="28,0,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" TextWrapping="Wrap" />
+
+          <CheckBox x:Name="DontAskBox" Margin="0,10,0,0" Content="Ne plus me proposer l'installation" />
+          <TextBlock Margin="28,0,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" TextWrapping="Wrap"
+            Text="Cochée, « Lancer sans installer » ne redemande plus rien ; la proposition se remet dans Paramètres." />
+
+          <TextBlock Margin="0,16,0,0" FontSize="12.5" Foreground="{StaticResource NeonMutedBrush}" TextWrapping="Wrap"
+            Text="Rien d'autre n'est modifié. La version déjà installée, s'il y en a une, est gardée de côté. « Lancer sans installer » laisse l'exe où il est." />
+
+          <TextBlock x:Name="StatusText" Margin="0,12,0,0" FontSize="12.5" Foreground="{StaticResource NeonTealBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+
+          <StackPanel Margin="0,18,0,0" Orientation="Horizontal">
+            <Button x:Name="InstallButton" Click="OnInstall" Content="INSTALLER" Style="{StaticResource HudButton}" />
+            <Button x:Name="RunButton" Margin="10,0,0,0" Click="OnRunHere" Content="LANCER SANS INSTALLER" Style="{StaticResource HudButtonGhost}" />
+          </StackPanel>
+        </StackPanel>
+      </ContentControl>
+    </Grid>
+  </Border>
+</Window>
