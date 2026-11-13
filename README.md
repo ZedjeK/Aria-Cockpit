@@ -612,6 +612,10 @@ GPU, Équilibre, profils, courbes de ventilation) ne sont jamais touchés. Le r�
   « toujours ranger » ou « toujours arrêter ». Avec « toujours arrêter », une courbe de ventilation en cours rend la
   main au pilote à la fermeture, et une opération en cours demande confirmation. La notification affichée quand la
   fenêtre se range peut être coupée.
+- **Installation** : où tourne cette Aria (dossier d'installation, copie de démarrage ou exe lancé ailleurs), la version
+  installée dans `programme\`, un bouton pour ouvrir ce dossier, la case « Proposer l'installation quand l'exe est lancé
+  hors de son dossier » (c'est ici qu'on la remet après « Ne plus me proposer »), et le raccourci du Bureau : créé ou
+  mis à jour s'il pointe ailleurs, retiré (après confirmation) seulement s'il pointe vers l'exe installé.
 - **Données** : chemin du dossier, sa taille, le nombre de rapports et de sauvegardes, et un bouton pour l'ouvrir. Son
   emplacement ne se change pas : seuls les administrateurs peuvent y écrire, ce qui empêche un programme sans droits d'y
   glisser un réglage que les tâches de démarrage appliqueraient.

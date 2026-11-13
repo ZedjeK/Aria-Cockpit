@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Aria.Core.Backup;
+using Aria.Core.Install;
 using Aria.Core.Nvidia;
 using Aria.Core.Settings;
 using Aria.Core.Tray;
@@ -77,6 +78,19 @@ public sealed partial class PreferencesViewModel : ObservableObject
             : "Aria ne contactera plus GitHub au lancement. La recherche se fait avec le bouton ci-dessous.";
     }
 
+    // ---- Installation ----
+    [ObservableProperty] private bool offerInstall = true;
+    [ObservableProperty] private string installStateText = "";
+    [ObservableProperty] private bool isInstalled;
+    [ObservableProperty] private string shortcutText = "";
+    [ObservableProperty] private bool canCreateShortcut;
+    [ObservableProperty] private string createShortcutLabel = "CRÉER LE RACCOURCI";
+    [ObservableProperty] private bool canRemoveShortcut;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasInstallNote))] private string installNote = "";
+    [ObservableProperty] private bool installNoteIsError;
+    public bool HasInstallNote => InstallNote.Length > 0;
+    public string ProgramFolder => SelfInstall.Folder;
+
     // ---- Données ----
     public string DataPath => BackupStore.DataRoot;
     [ObservableProperty] private string dataSizeText = "calcul…";
@@ -116,6 +130,7 @@ public sealed partial class PreferencesViewModel : ObservableObject
             CloseQuit = _saved.Close == CloseBehavior.AlwaysQuit;
             NotifyOnHide = _saved.NotifyOnHide;
             CheckUpdates = _saved.CheckUpdates;
+            OfferInstall = _saved.OfferInstall;
             ShowBackground(_saved.Background);
             ShowRetention(_saved);
 
@@ -135,6 +150,7 @@ public sealed partial class PreferencesViewModel : ObservableObject
             ? $"Courbe à relancer au prochain lancement : « {curve.Name} »."
             : "Aucune courbe à relancer : le pilote NVIDIA a la main, ou aucune courbe n'a tourné depuis cette version.";
         await Updates.RefreshKeptAsync();
+        await RefreshInstallAsync();
         await MeasureAsync();
     }
 
@@ -275,6 +291,102 @@ public sealed partial class PreferencesViewModel : ObservableObject
             error = e.Message;
             return false;
         }
+    }
+
+    // ---------------------------------------------------------------- Installation
+
+    /// <summary>Où tourne cette Aria, ce qui est installé, et l'état du raccourci du Bureau.</summary>
+    private async Task RefreshInstallAsync()
+    {
+        var self = Environment.ProcessPath;
+        var (place, installed, target) = await Task.Run(() => (SelfInstall.PlaceOf(self), SelfInstall.InstalledVersion(),
+            DesktopShortcut.TargetOf(DesktopShortcut.DefaultPath)));
+
+        IsInstalled = installed is not null;
+        var where = installed is null ? "Rien n'est installé dans le dossier du programme." : $"La version {installed.ToString(3)} est installée dans le dossier du programme.";
+        InstallStateText = place switch
+        {
+            InstallPlace.Home => $"Cette Aria tourne depuis son dossier d'installation. {where}",
+            InstallPlace.ProtectedCopy => $"Cette Aria a été lancée par le démarrage automatique, depuis sa copie de Program Files. {where}",
+            _ => $"Cette Aria tourne depuis « {self} ». {where}" + (installed is null ? " Au prochain lancement de cet exe, Aria proposera de s'installer." : "")
+        };
+
+        var ours = target is not null && string.Equals(Path.GetFullPath(target), Path.GetFullPath(SelfInstall.HomeExe), StringComparison.OrdinalIgnoreCase);
+        CanRemoveShortcut = ours;
+        CanCreateShortcut = installed is not null && !ours;
+        CreateShortcutLabel = target is null ? "CRÉER LE RACCOURCI" : "METTRE À JOUR LE RACCOURCI";
+        ShortcutText = target is null ? "Aucun raccourci « Aria Cockpit » sur ton Bureau."
+            : ours ? "Le raccourci du Bureau pointe vers l'exe installé."
+            : $"Un raccourci « {DesktopShortcut.FileName} » existe sur ton Bureau, mais il pointe vers {target}, pas vers l'exe installé.";
+        if (installed is null && target is null) ShortcutText += " Il se crée depuis la fenêtre d'installation, ou ici une fois Aria installée.";
+    }
+
+    partial void OnOfferInstallChanged(bool value)
+    {
+        if (_loading) return;
+        if (!TrySave(_saved with { OfferInstall = value }, out var error))
+        {
+            ShowInstall($"Réglage non enregistré : {error}", error: true);
+            return;
+        }
+        ShowInstall(value
+            ? "Aria proposera de s'installer quand l'exe sera lancé hors de son dossier."
+            : "Aria ne proposera plus de s'installer : l'exe se lance tel quel, partout où il est.", error: false);
+    }
+
+    [RelayCommand]
+    private async Task CreateShortcut()
+    {
+        try
+        {
+            await Task.Run(() => DesktopShortcut.Create(DesktopShortcut.DefaultPath, SelfInstall.HomeExe));
+            ShowInstall("Raccourci créé sur ton Bureau, vers l'exe installé.", error: false);
+        }
+        catch (IOException e)
+        {
+            ShowInstall(e.Message, error: true);
+        }
+        await RefreshInstallAsync();
+    }
+
+    [RelayCommand]
+    private async Task RemoveShortcut()
+    {
+        if (!await DialogService.Current.ConfirmAsync(new DialogRequest(
+                Title: "Retirer le raccourci",
+                ConfirmText: "Retirer",
+                Message: $"Le raccourci « {DesktopShortcut.FileName} » de ton Bureau est supprimé. Aria elle-même n'est pas touchée.",
+                Icon: "Delete24")))
+            return;
+        try
+        {
+            var removed = await Task.Run(() => DesktopShortcut.Remove(DesktopShortcut.DefaultPath, SelfInstall.HomeExe));
+            ShowInstall(removed ? "Raccourci retiré." : "Ce raccourci ne pointe plus vers l'exe installé : il n'a pas été touché.", error: !removed);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            ShowInstall($"Raccourci non retiré : {e.Message}", error: true);
+        }
+        await RefreshInstallAsync();
+    }
+
+    [RelayCommand]
+    private void OpenProgramFolder()
+    {
+        try
+        {
+            if (Directory.Exists(SelfInstall.Folder)) Shell.OpenUnelevated(SelfInstall.Folder);
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            ShowInstall($"Dossier non ouvert : {e.Message}", error: true);
+        }
+    }
+
+    private void ShowInstall(string text, bool error)
+    {
+        InstallNote = text;
+        InstallNoteIsError = error;
     }
 
     // ---------------------------------------------------------------- Données

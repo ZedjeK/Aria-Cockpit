@@ -9,6 +9,8 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
   avec son banc d'essai, et de créer un raccourci sur le Bureau (case décochée d'office). La proposition se coupe dans
   Paramètres, ou avec `--portable`. L'installation vérifie les droits du dossier et refuse si un programme sans droits
   pouvait le modifier.
+- Paramètres, carte « Installation » : état de l'installation, case pour remettre la proposition, création, mise à jour
+  et retrait du raccourci du Bureau.
 
 ## 0.28.0, le 13 novembre 2026
 
