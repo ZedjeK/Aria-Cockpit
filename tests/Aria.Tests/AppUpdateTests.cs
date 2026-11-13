@@ -118,6 +118,42 @@ public sealed class AppUpdateTests : IDisposable
         Assert.All(notes, n => Assert.True(n.Length <= AppUpdateChecker.MaxNoteLength && n.EndsWith('…')));
     }
 
+    // ----- Ce qu'une recherche répond -----
+
+    [Fact]
+    public void ANewerReleaseIsReportedAsNewer()
+    {
+        var (outcome, update) = AppUpdateChecker.Classify("""{ "tag_name": "v0.27.0" }""", Installed);
+
+        Assert.Equal(AppUpdateLookup.Newer, outcome);
+        Assert.Equal(new Version(0, 27, 0), update!.Latest);
+    }
+
+    [Theory]
+    [InlineData("v0.26.0")]
+    [InlineData("v0.25.0")]
+    public void TheSameOrAnOlderReleaseMeansUpToDate(string tag)
+    {
+        var (outcome, update) = AppUpdateChecker.Classify($$"""{ "tag_name": "{{tag}}" }""", Installed);
+
+        Assert.Equal(AppUpdateLookup.UpToDate, outcome);
+        Assert.Null(update);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("pas du json")]
+    [InlineData("[]")]
+    [InlineData("""{ "message": "API rate limit exceeded" }""")]
+    [InlineData("""{ "tag_name": "nightly" }""")]
+    public void AnAnswerThatIsNotAReleaseIsNotMistakenForUpToDate(string json)
+    {
+        var (outcome, update) = AppUpdateChecker.Classify(json, Installed);
+
+        Assert.Equal(AppUpdateLookup.Unreachable, outcome);
+        Assert.Null(update);
+    }
+
     // ----- Choix du fichier -----
 
     [Fact]

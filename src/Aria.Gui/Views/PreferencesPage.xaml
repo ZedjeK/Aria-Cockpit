@@ -149,7 +149,7 @@
         </Grid>
 
         <StackPanel Margin="0,14,0,0" Orientation="Horizontal">
-          <Button Command="{Binding Updates.CheckNowCommand}" Content="CHERCHER MAINTENANT" Style="{StaticResource HudButtonGhost}" ToolTip="Demande à GitHub la dernière version publiée. Rien n'est téléchargé." />
+          <Button Command="{Binding Updates.CheckNowCommand}" Content="CHERCHER MAINTENANT" IsEnabled="{Binding Updates.CanCheck}" Style="{StaticResource HudButtonGhost}" ToolTip="Demande à GitHub la dernière version publiée. Rien n'est téléchargé." />
           <Button
             Margin="10,0,0,0"
             Command="{Binding Updates.OpenAvailableCommand}"
