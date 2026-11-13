@@ -5,7 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
-- Rien pour l'instant.
+- Menu latéral à gauche, à la place de la barre d'onglets du haut. « Paramètres » y est écrit en toutes lettres.
+- Panneaux à coins coupés, avec un fin liseré cyan, sans halo. Un panneau d'alerte garde sa couleur.
+- Boutons : le secondaire passe en contour cyan, et un niveau discret apparaît pour annuler, fermer ou remettre à plus tard.
+- Le cyan marque ce qui est actif : la catégorie choisie dans Optimisation et Restauration.
+- Icône de notification : une seule pastille à la fois (orange, cyan, bleue). La pastille jaune devient orange ; la bleue signale une mise à jour d'Aria.
+- Menu de l'icône en blocs titrés, avec « Voir la mise à jour » quand une version est disponible, et « Paramètres ».
 
 ## 0.27.0, le 13 novembre 2026
 

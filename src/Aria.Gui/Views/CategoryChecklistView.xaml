@@ -22,7 +22,7 @@
       </Style.Triggers>
     </Style>
 
-    <!-- Entrée du menu : barre orange, cadre néon et texte clair pour la catégorie affichée -->
+    <!-- Entrée du menu : barre cyan, cadre néon et texte cyan pour la catégorie affichée -->
     <Style x:Key="MenuItem" TargetType="ListBoxItem">
       <Setter Property="Margin" Value="0,0,0,4" />
       <Setter Property="Cursor" Value="Hand" />
@@ -46,7 +46,7 @@
                   x:Name="Bar"
                   Width="3"
                   Margin="0,0,10,0"
-                  Fill="{StaticResource NeonOrangeBrush}"
+                  Fill="{StaticResource NeonCyanBrush}"
                   Visibility="Hidden" />
                 <TextBlock
                   x:Name="Label"
@@ -76,7 +76,7 @@
                 <Setter TargetName="Box" Property="Background" Value="{StaticResource PanelBrush}" />
                 <Setter TargetName="Box" Property="BorderBrush" Value="#2E7DF9FF" />
                 <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
-                <Setter TargetName="Label" Property="Foreground" Value="{StaticResource NeonTextBrush}" />
+                <Setter TargetName="Label" Property="Foreground" Value="{StaticResource NeonCyanBrush}" />
                 <Setter TargetName="Label" Property="FontWeight" Value="SemiBold" />
                 <Setter TargetName="Count" Property="Foreground" Value="{StaticResource NeonCyanBrush}" />
               </Trigger>

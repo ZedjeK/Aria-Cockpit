@@ -4,7 +4,8 @@
 -->
 <ResourceDictionary
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:fx="clr-namespace:Aria.Gui.Effects">
 
   <!-- ===== Palette ===== -->
   <Color x:Key="NeonOrangeColor">#FFFF8A1F</Color>
@@ -170,54 +171,30 @@
   </Style>
 
   <!--
-    Panneau néon, version cockpit : angles droits, fin liseré cyan, deux coins de viseur lumineux
-    (haut gauche, bas droite) et halo discret qui s'allume au survol. Utilisé par toutes les pages.
+    Panneau néon : coins coupés (haut droit, bas gauche), fond opaque et fin liseré cyan, sans halo.
+    Le liseré s'avive au survol. Utilisé par les fenêtres intégrées et plusieurs pages.
   -->
   <Style x:Key="NeonPanel" TargetType="ContentControl">
     <Setter Property="Padding" Value="18" />
     <Setter Property="Focusable" Value="False" />
     <Setter Property="Foreground" Value="{StaticResource NeonTextBrush}" />
     <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource NeonCyanBrush}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
-          <Grid>
-            <!-- Halo séparé du contenu : le texte reste net -->
-            <Border x:Name="Glow" Background="{TemplateBinding Background}">
-              <Border.Effect>
-                <DropShadowEffect BlurRadius="20" Opacity="0.12" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-              </Border.Effect>
-            </Border>
-            <Border
-              x:Name="Frame"
-              Padding="{TemplateBinding Padding}"
-              BorderBrush="#2E7DF9FF"
-              BorderThickness="1">
-              <ContentPresenter />
-            </Border>
-            <Path
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top"
-              Data="M0,14 L0,0 L14,0"
-              IsHitTestVisible="False"
-              Stroke="{StaticResource NeonCyanBrush}"
-              StrokeThickness="2" />
-            <Path
-              HorizontalAlignment="Right"
-              VerticalAlignment="Bottom"
-              Data="M0,14 L14,14 L14,0"
-              IsHitTestVisible="False"
-              Stroke="{StaticResource NeonCyanBrush}"
-              StrokeThickness="2" />
-          </Grid>
+          <fx:CutBorder
+            x:Name="Frame"
+            Padding="{TemplateBinding Padding}"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            SnapsToDevicePixels="True"
+            StrokeOpacity="0.45">
+            <ContentPresenter />
+          </fx:CutBorder>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Frame" Property="BorderBrush" Value="#557DF9FF" />
-              <Setter TargetName="Glow" Property="Effect">
-                <Setter.Value>
-                  <DropShadowEffect BlurRadius="26" Opacity="0.28" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-                </Setter.Value>
-              </Setter>
+              <Setter TargetName="Frame" Property="StrokeOpacity" Value="0.7" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -312,8 +289,8 @@
   <!-- ===== Cockpit HUD ===== -->
 
   <!--
-    Panneau de viseur : fond nuit translucide, fin liseré et deux coins lumineux (haut gauche, bas droite).
-    BorderBrush = couleur des coins.
+    Panneau à coins coupés (haut droit, bas gauche) : fond opaque et fin liseré, sans lueur.
+    BorderBrush = couleur du liseré : cyan, ou orange et rouge pour une alerte.
   -->
   <Style x:Key="HudPanel" TargetType="ContentControl">
     <Setter Property="Padding" Value="20,16" />
@@ -324,39 +301,18 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
-          <Grid>
-            <Border
-              x:Name="Body"
-              Padding="{TemplateBinding Padding}"
-              Background="{TemplateBinding Background}"
-              BorderBrush="#1F7DF9FF"
-              BorderThickness="1">
-              <ContentPresenter />
-            </Border>
-            <Path
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top"
-              Data="M0,16 L0,0 L16,0"
-              Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="2">
-              <Path.Effect>
-                <DropShadowEffect BlurRadius="8" Opacity="0.8" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-              </Path.Effect>
-            </Path>
-            <Path
-              HorizontalAlignment="Right"
-              VerticalAlignment="Bottom"
-              Data="M0,16 L16,16 L16,0"
-              Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="2">
-              <Path.Effect>
-                <DropShadowEffect BlurRadius="8" Opacity="0.8" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-              </Path.Effect>
-            </Path>
-          </Grid>
+          <fx:CutBorder
+            x:Name="Body"
+            Padding="{TemplateBinding Padding}"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            SnapsToDevicePixels="True"
+            StrokeOpacity="0.45">
+            <ContentPresenter />
+          </fx:CutBorder>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Body" Property="BorderBrush" Value="#407DF9FF" />
+              <Setter TargetName="Body" Property="StrokeOpacity" Value="0.7" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -364,50 +320,11 @@
     </Setter>
   </Style>
 
-  <!-- Même panneau, coins en miroir (haut droite, bas gauche) : pour la colonne de droite du cockpit -->
-  <Style x:Key="HudPanelMirror" BasedOn="{StaticResource HudPanel}" TargetType="ContentControl">
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="ContentControl">
-          <Grid>
-            <Border
-              x:Name="Body"
-              Padding="{TemplateBinding Padding}"
-              Background="{TemplateBinding Background}"
-              BorderBrush="#1F7DF9FF"
-              BorderThickness="1">
-              <ContentPresenter />
-            </Border>
-            <Path
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Data="M0,0 L16,0 L16,16"
-              Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="2">
-              <Path.Effect>
-                <DropShadowEffect BlurRadius="8" Opacity="0.8" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-              </Path.Effect>
-            </Path>
-            <Path
-              HorizontalAlignment="Left"
-              VerticalAlignment="Bottom"
-              Data="M0,0 L0,16 L16,16"
-              Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="2">
-              <Path.Effect>
-                <DropShadowEffect BlurRadius="8" Opacity="0.8" ShadowDepth="0" Color="{StaticResource NeonCyanColor}" />
-              </Path.Effect>
-            </Path>
-          </Grid>
-          <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Body" Property="BorderBrush" Value="#407DF9FF" />
-            </Trigger>
-          </ControlTemplate.Triggers>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
-  </Style>
+  <!--
+    Variante gardée pour les pages qui la nomment : depuis les coins coupés, elle est identique à HudPanel
+    (elle ne servait qu'à inverser les deux coins lumineux, qui n'existent plus).
+  -->
+  <Style x:Key="HudPanelMirror" BasedOn="{StaticResource HudPanel}" TargetType="ContentControl" />
 
   <!--
     Formes des boutons biseautés : dessinées en fond (pinceau étiré), elles ne pèsent pas sur la taille
@@ -420,9 +337,18 @@
   </DrawingBrush>
   <DrawingBrush x:Key="HudGhostShape" Stretch="Fill">
     <DrawingBrush.Drawing>
-      <GeometryDrawing Brush="#1F7DF9FF" Geometry="M10,0 L100,0 L90,40 L0,40 Z">
+      <GeometryDrawing Brush="{StaticResource PanelBrush}" Geometry="M10,0 L100,0 L90,40 L0,40 Z">
         <GeometryDrawing.Pen>
-          <Pen Brush="#997DF9FF" Thickness="1" />
+          <Pen Brush="{StaticResource NeonCyanBrush}" Thickness="1" />
+        </GeometryDrawing.Pen>
+      </GeometryDrawing>
+    </DrawingBrush.Drawing>
+  </DrawingBrush>
+  <DrawingBrush x:Key="HudQuietShape" Stretch="Fill">
+    <DrawingBrush.Drawing>
+      <GeometryDrawing Brush="{StaticResource PanelBrush}" Geometry="M10,0 L100,0 L90,40 L0,40 Z">
+        <GeometryDrawing.Pen>
+          <Pen Brush="#FF27406B" Thickness="1" />
         </GeometryDrawing.Pen>
       </GeometryDrawing>
     </DrawingBrush.Drawing>
@@ -484,10 +410,16 @@
     </Setter>
   </Style>
 
-  <!-- Bouton biseauté secondaire : verre cyan -->
+  <!-- Bouton biseauté secondaire : contour cyan. Même forme et même taille que le principal, seul le remplissage change -->
   <Style x:Key="HudButtonGhost" BasedOn="{StaticResource HudButton}" TargetType="Button">
     <Setter Property="Background" Value="{StaticResource HudGhostShape}" />
-    <Setter Property="Foreground" Value="{StaticResource NeonWhiteBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource NeonCyanBrush}" />
+  </Style>
+
+  <!-- Bouton biseauté discret : annuler, fermer, plus tard -->
+  <Style x:Key="HudButtonQuiet" BasedOn="{StaticResource HudButton}" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource HudQuietShape}" />
+    <Setter Property="Foreground" Value="{StaticResource NeonMutedBrush}" />
   </Style>
 
   <!--
@@ -608,6 +540,58 @@
               <Setter Property="Foreground" Value="{StaticResource NeonWhiteBrush}" />
               <Setter TargetName="Underline" Property="Opacity" Value="1" />
               <Setter TargetName="Glow" Property="Opacity" Value="1" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Entrée du menu latéral : barre cyan à gauche et fond teinté quand sa page est affichée -->
+  <Style x:Key="HudNav" TargetType="RadioButton">
+    <Setter Property="GroupName" Value="Navigation" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="Foreground" Value="{StaticResource NeonMutedBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource TechFont}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent">
+            <Rectangle x:Name="Fill" Fill="#127DF9FF" Opacity="0" />
+            <Rectangle
+              x:Name="Bar"
+              Width="3"
+              HorizontalAlignment="Left"
+              Fill="{StaticResource NeonCyanBrush}"
+              Opacity="0" />
+            <ContentPresenter
+              Margin="22,0,12,0"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Center"
+              RecognizesAccessKey="True" />
+            <Rectangle
+              x:Name="Focus"
+              Margin="6,5"
+              Stroke="{StaticResource NeonCyanBrush}"
+              StrokeDashArray="2 2"
+              StrokeThickness="1"
+              Visibility="Collapsed" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="{StaticResource NeonTextBrush}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Focus" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter Property="Foreground" Value="{StaticResource NeonCyanBrush}" />
+              <Setter TargetName="Bar" Property="Opacity" Value="1" />
+              <Setter TargetName="Fill" Property="Opacity" Value="1" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

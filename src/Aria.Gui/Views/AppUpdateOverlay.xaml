@@ -215,7 +215,7 @@
           BorderThickness="0,1,0,0">
           <Grid>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsOffer, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="PLUS TARD" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="PLUS TARD" Style="{StaticResource HudButtonQuiet}" />
               <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
               <Button
                 x:Name="DownloadButton"
@@ -226,11 +226,11 @@
                 Visibility="{Binding CanDownload, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CancelCommand}" Content="ANNULER" Style="{StaticResource HudButtonGhost}" />
-              <Button MinWidth="120" Command="{Binding CloseCommand}" Content="MASQUER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CancelCommand}" Content="ANNULER" Style="{StaticResource HudButtonQuiet}" />
+              <Button MinWidth="120" Command="{Binding CloseCommand}" Content="MASQUER" Style="{StaticResource HudButtonQuiet}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsReady, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonQuiet}" />
               <Button Margin="0,0,10,0" MinWidth="170" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButtonGhost}" />
               <Button
                 MinWidth="220"
@@ -240,17 +240,17 @@
                 Visibility="{Binding CanInstall, Converter={StaticResource BoolToVisibility}}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsInstallFailed, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonQuiet}" />
               <Button Margin="0,0,10,0" MinWidth="170" Command="{Binding ShowFileCommand}" Content="OUVRIR LE DOSSIER" Style="{StaticResource HudButtonGhost}" />
               <Button MinWidth="140" Command="{Binding InstallCommand}" Content="RÉESSAYER" Style="{StaticResource HudButton}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsMismatch, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonQuiet}" />
               <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
               <Button MinWidth="140" Command="{Binding DownloadCommand}" Content="RÉESSAYER" Style="{StaticResource HudButtonGhost}" />
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Visibility="{Binding IsFailed, Converter={StaticResource BoolToVisibility}}">
-              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonGhost}" />
+              <Button Margin="0,0,10,0" MinWidth="120" Command="{Binding CloseCommand}" Content="FERMER" Style="{StaticResource HudButtonQuiet}" />
               <Button Margin="0,0,10,0" MinWidth="150" Command="{Binding OpenPageCommand}" Content="VOIR LA PAGE" Style="{StaticResource HudButtonGhost}" />
               <Button MinWidth="140" Command="{Binding DownloadCommand}" Content="RÉESSAYER" Style="{StaticResource HudButton}" />
             </StackPanel>

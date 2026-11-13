@@ -28,7 +28,7 @@
 | **Nettoyage** | Espace récupérable par élément, suppression après confirmation |
 | **Restauration** | Choix d'une sauvegarde, puis retour aux valeurs enregistrées (lui-même annulable) |
 | **Rapports** | Tous les rapports (réglages, restaurations, mises à jour, nettoyages, fiches PC) avec leur bilan et un aperçu |
-| **Paramètres** (roue crantée) | Ce qui règle Aria Cockpit elle-même : démarrage avec Windows, ce que fait la croix de la fenêtre, dossier des données et durées de conservation |
+| **Paramètres** | Ce qui règle Aria Cockpit elle-même : démarrage avec Windows, ce que fait la croix de la fenêtre, dossier des données et durées de conservation |
 
 **Rien n'est modifié sans ton accord.** Chaque changement est récapitulé avant d'être appliqué. Aria Cockpit sauvegarde
 d'abord les valeurs d'origine et crée un point de restauration Windows : tout se restaure en quelques clics. Le BIOS
@@ -64,16 +64,20 @@ Tant qu'Aria Cockpit tourne, son icône est à côté de l'horloge (dans le peti
 | --- | --- |
 | Délavée | Rien d'actif : carte au réglage d'usine, ventilateurs au pilote |
 | Normale | Ton profil GPU est en place, ou une courbe de ventilation tourne |
-| Pastille jaune | Ton profil GPU est enregistré, mais la carte ne l'a plus (pilote rechargé, mis à jour ou planté) |
+| Pastille orange | Ton profil GPU est enregistré, mais la carte ne l'a plus (pilote rechargé, mis à jour ou planté) |
 | Pastille cyan | Aria pilote les ventilateurs |
+| Pastille bleue | Une mise à jour d'Aria Cockpit est disponible |
+
+Une seule pastille à la fois, par ordre de priorité : orange, puis cyan, puis bleue.
 
 L'état du profil est **relu sur la carte** toutes les 5 secondes (limite de puissance et décalages) : l'icône dit ce
 que la carte répond, pas ce qu'Aria croit avoir posé. Le plafond de fréquence n'est pas relisible par le pilote, il ne
 compte donc pas dans cette vérification.
 
 - **Infobulle** : l'état en une ligne, avec la température du GPU et la vitesse des ventilateurs.
-- **Clic gauche** : rouvre la fenêtre. **Clic droit** : ouvrir, l'état détaillé, les actions ci-dessous, aller droit à
-  Réglage GPU, Mises à jour ou Rapports, quitter.
+- **Clic gauche** : rouvre la fenêtre. **Clic droit** : un menu en blocs. Ouvrir ; « État », avec la mise à jour
+  disponible et « Voir la mise à jour » quand il y en a une ; « Agir sans ouvrir », les actions ci-dessous ; « Aller à »
+  Réglage GPU, Mises à jour, Rapports ou Paramètres ; démarrer avec Windows ; quitter.
 - **Ventilateurs** (menu) : lance un préréglage, une de tes courbes enregistrées ou la dernière courbe personnalisée,
   ou rend la main au pilote, sans ouvrir la fenêtre. Le choix en place est marqué d'un « ● ». Ici, pas de fenêtre de
   confirmation : la courbe démarre tout de suite, et la page Réglage GPU reprend le même choix à son prochain affichage.
@@ -81,7 +85,7 @@ compte donc pas dans cette vérification.
   confirmation, car la tâche de démarrage est supprimée). « Garder au démarrage » reste tel qu'il est : un profil posé
   d'ici est réappliqué à l'ouverture de session seulement si le réglage en place l'était déjà. Un profil enregistré
   avec un autre pilote est signalé, et demande confirmation. C'est aussi le moyen de reposer un profil perdu (pastille
-  jaune).
+  orange).
 - Le résultat de chaque action arrive par une notification Windows. Une seule action à la fois, et aucune pendant que
   l'assistant de Réglage GPU fait ses mesures.
 - **Fermer la fenêtre** (réglage d'origine, modifiable dans Paramètres) range Aria dans son icône tant qu'elle a quelque chose d'actif : profil GPU en place (ou
@@ -95,7 +99,7 @@ compte donc pas dans cette vérification.
 
 #### Démarrer avec Windows
 
-Dans la page Paramètres (roue crantée) ou dans le menu de l'icône, **« Démarrer avec Windows »** lance Aria Cockpit à
+Dans la page Paramètres ou dans le menu de l'icône, **« Démarrer avec Windows »** lance Aria Cockpit à
 chaque ouverture de session, directement rangée dans son icône : pas de fenêtre, pas d'analyse du matériel tant que tu
 ne l'ouvres pas.
 
@@ -576,7 +580,7 @@ GPU, Équilibre, profils, courbes de ventilation) ne sont jamais touchés. Le r�
 
 ### Paramètres
 
-La roue crantée, à droite de « Rapports », ouvre les paramètres de l'application elle-même (enregistrés dans
+« Paramètres », en bas du menu latéral, ouvre les paramètres de l'application elle-même (enregistrés dans
 `reglages.json`, dans le dossier des données ; jusqu'à la 0.26 il s'appelait `parametres.json`, qui est repris une fois puis laissé tel quel). Tant que tu n'y touches pas, Aria se comporte comme avant.
 
 - **Démarrage** : « Démarrer Aria Cockpit avec Windows » (la même option que dans le menu de l'icône), avec la courbe
