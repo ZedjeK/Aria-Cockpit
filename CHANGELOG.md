@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Rien pour l'instant.
+
+## 0.28.0, le 13 novembre 2026
+
+Notes complètes : [docs/releases/v0.28.0.md](docs/releases/v0.28.0.md).
+
 - Menu latéral à gauche, à la place de la barre d'onglets du haut. « Paramètres » y est écrit en toutes lettres.
 - Panneaux à coins coupés, avec un fin liseré cyan, sans halo. Un panneau d'alerte garde sa couleur.
 - Boutons : le secondaire passe en contour cyan, et un niveau discret apparaît pour annuler, fermer ou remettre à plus tard.
