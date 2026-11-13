@@ -48,6 +48,15 @@ public partial class App : Application
         // Fermer la fenêtre ne suffit plus à arrêter Aria : elle peut rester dans la zone de notification
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+        // Exe lancé hors de son dossier (zip décompressé) : proposition de s'installer, avant toute fenêtre d'Aria
+        if (!inTray && Environment.ProcessPath is { } self
+            && Aria.Core.Install.SelfInstall.ShouldOffer(self, Aria.Core.Settings.AppPreferencesStore.Load(), e.Args)
+            && OfferInstall(self))
+        {
+            Shutdown();
+            return;
+        }
+
         var state = new AppState();
         var window = new MainWindow(state);
         // À l'ouverture de session, le pilote graphique peut être encore en cours de chargement : l'icône attend qu'il
@@ -120,6 +129,55 @@ public partial class App : Application
     }
 
     private Services.TrayIcon? _tray;
+
+    /// <summary>
+    /// Propose d'installer Aria dans son dossier. Vrai si ce lancement doit s'arrêter : Aria est installée et relancée
+    /// depuis son dossier, ou la fenêtre a été fermée sans choix. Faux : Aria continue depuis ici, comme un exe portable.
+    /// </summary>
+    private bool OfferInstall(string self)
+    {
+        var prompt = new Views.InstallPromptWindow(self, Services.SingleInstance.OwnVersion);
+        prompt.ShowDialog();
+        switch (prompt.Result)
+        {
+            case Views.InstallPromptResult.Installed:
+                var outcome = prompt.Outcome!;
+                if (outcome.ShortcutError is { } shortcutError)
+                    System.Windows.MessageBox.Show($"Aria est installée, mais le raccourci n'a pas pu être créé : {shortcutError}",
+                        "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                // La place d'exemplaire unique est rendue d'abord : l'exe installé la prend en démarrant
+                Services.SingleInstance.Release();
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(outcome.Exe!) { UseShellExecute = false });
+                    return true;
+                }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+                {
+                    Services.SingleInstance.Claim();
+                    System.Windows.MessageBox.Show(
+                        $"Aria est installée dans « {Aria.Core.Install.SelfInstall.Folder} », mais n'a pas pu s'y relancer : {ex.Message}\n\n" +
+                        "Elle continue ici pour cette fois ; lance-la ensuite depuis son dossier.",
+                        "Aria Cockpit", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return false;
+                }
+            case Views.InstallPromptResult.RunHere:
+                if (prompt.DontAskAgain)
+                {
+                    try
+                    {
+                        Aria.Core.Settings.AppPreferencesStore.Save(Aria.Core.Settings.AppPreferencesStore.Load() with { OfferInstall = false });
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        ErrorLog.Write(ex);
+                    }
+                }
+                return false;
+            default:
+                return true;
+        }
+    }
 
     /// <summary>
     /// Ouverture de session : attend que le pilote NVIDIA réponde, une minute au plus (comme la tâche du profil GPU).

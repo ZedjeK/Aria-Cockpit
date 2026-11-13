@@ -122,6 +122,13 @@ public sealed record AppPreferences(
     [JsonPropertyName("chercherMisesAJour")]
     public bool CheckUpdates { get; init; } = true;
 
+    /// <summary>
+    /// Proposer de s'installer quand l'exe est lancé ailleurs que dans son dossier (zip décompressé dans Téléchargements,
+    /// sur le Bureau…). Décoché : Aria se lance telle quelle, comme un exe portable, sans rien demander.
+    /// </summary>
+    [JsonPropertyName("proposerInstallation")]
+    public bool OfferInstall { get; init; } = true;
+
     public RetentionSettings Retention => new(ReportsMonths, BackupsMonths, KeepBackups);
 
     /// <summary>Valeurs ramenées dans les bornes : un fichier modifié à la main ne peut pas demander « 0 mois ».</summary>

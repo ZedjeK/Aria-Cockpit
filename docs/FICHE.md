@@ -12,6 +12,7 @@ jour quand l'appli change.
 | Stack | C# et .NET 10, WPF, exe autonome en un seul fichier |
 | Droits administrateur | Oui, pour toute l'appli (interface et console) : registre de la machine, services, pilote NVIDIA, tâches planifiées |
 | Démarrage automatique | Oui, désactivé par défaut. Tâche planifiée « Aria Cockpit\Zone de notification », argument `--tray`. Deux autres tâches possibles : profil GPU (`--gpu-profile`) et limite de charge (`--limite-charge`). |
+| Installation par l'exe | Oui, avec accord : l'exe lancé hors de son dossier propose de se ranger dans `%USERPROFILE%\.Aria-Cockpit\programme`, avec un raccourci du Bureau en option (décoché d'office). Se coupe dans Paramètres, ou avec `--portable`. |
 | Port local (interface web) | aucun |
 | Données de l'utilisateur | `%USERPROFILE%\.Aria-Cockpit`, modifiable par les seuls administrateurs ; secrètes : aucune |
 | Écritures hors du dossier de données | Voir la liste ci-dessous |
@@ -22,6 +23,7 @@ jour quand l'appli change.
 ## Écritures hors du dossier de données
 
 - `C:\Program Files\Aria Cockpit` : une copie de l'exe, que lancent les tâches planifiées.
+- Le raccourci `Aria Cockpit.lnk` du Bureau de l'utilisateur : seulement si la case est cochée dans la fenêtre d'installation, et mis à jour sur demande. Jamais le Bureau public.
 - Le dossier où l'exe a été dézippé : `Aria-Cockpit.exe`, `Aria-Bench.exe` et les deux fichiers de licence, remplacés lors d'une mise à jour ou d'un retour à la version gardée, sur clic. La version remplacée est copiée avant dans `Sauvegardes\versions`.
 - Tâches planifiées : jusqu'à trois, créées et supprimées à la demande.
 - Registre de la machine et de l'utilisateur : les réglages que l'appli applique, après sauvegarde.
