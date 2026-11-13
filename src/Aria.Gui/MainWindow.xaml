@@ -19,6 +19,11 @@
   WindowCornerPreference="Round"
   WindowStartupLocation="CenterScreen">
   <Grid>
+    <!-- Menu latéral à gauche (colonne 0, sur toute la hauteur), pages à droite (colonne 1) -->
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="212" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
@@ -26,10 +31,11 @@
     </Grid.RowDefinitions>
 
     <!-- ===== Décor : nuit profonde, grille fine et halo bleu au centre ===== -->
-    <Rectangle Grid.RowSpan="3" Fill="{StaticResource SpaceBackgroundBrush}" IsHitTestVisible="False" />
-    <Rectangle Grid.RowSpan="3" Fill="{StaticResource GridBrush}" IsHitTestVisible="False" />
+    <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="2" Fill="{StaticResource SpaceBackgroundBrush}" IsHitTestVisible="False" />
+    <Rectangle Grid.RowSpan="3" Grid.ColumnSpan="2" Fill="{StaticResource GridBrush}" IsHitTestVisible="False" />
     <Ellipse
       Grid.RowSpan="3"
+      Grid.ColumnSpan="2"
       Width="1100"
       Height="900"
       HorizontalAlignment="Center"
@@ -44,6 +50,7 @@
     </Ellipse>
     <Ellipse
       Grid.RowSpan="3"
+      Grid.ColumnSpan="2"
       Width="900"
       Height="700"
       Margin="0,0,-360,-380"
@@ -58,80 +65,80 @@
       </Ellipse.Fill>
     </Ellipse>
 
-    <!-- ===== Barre du haut : logo, onglets, boutons de la fenêtre ===== -->
+    <!-- ===== Menu latéral : logo, pages, version. Panneau opaque : le fond animé ne passe jamais dessous ===== -->
     <Border
-      Grid.Row="0"
-      Height="66"
-      Background="#D9020611"
-      BorderBrush="#247DF9FF"
-      BorderThickness="0,0,0,1"
-      MouseLeftButtonDown="OnHeaderMouseDown">
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="200" />
-        </Grid.ColumnDefinitions>
-
-        <StackPanel Margin="22,0,24,0" VerticalAlignment="Center" Orientation="Horizontal">
-          <views:AriaLogo Width="48" Height="48" />
+      Grid.RowSpan="3"
+      Background="{StaticResource PanelBrush}"
+      BorderBrush="{StaticResource LineBrush}"
+      BorderThickness="0,0,1,0">
+      <DockPanel>
+        <!-- Le logo sert aussi de poignée : on déplace la fenêtre en l'attrapant, comme par la barre de titre -->
+        <StackPanel
+          Margin="18,20,12,22"
+          Background="Transparent"
+          DockPanel.Dock="Top"
+          MouseLeftButtonDown="OnHeaderMouseDown"
+          Orientation="Horizontal">
+          <views:AriaLogo Width="44" Height="44" />
           <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
             <TextBlock
-              FontSize="24"
+              FontSize="22"
               FontWeight="Bold"
               Style="{StaticResource NeonTitle}"
               Text="ARIA" />
             <TextBlock
               Margin="1,-3,0,0"
               FontFamily="{StaticResource TechFont}"
-              FontSize="11.5"
+              FontSize="11"
               FontWeight="SemiBold"
               Foreground="{StaticResource NeonOrangeBrush}"
               Text="C O C K P I T" />
           </StackPanel>
         </StackPanel>
 
-        <!-- Onglets : chacun mène à sa page (Tag = type de la page).
-             Fenêtre trop étroite pour les 7 onglets : ils rétrécissent au lieu d'être coupés. -->
-        <Viewbox
-          Grid.Column="1"
-          HorizontalAlignment="Center"
-          Stretch="Uniform"
-          StretchDirection="DownOnly">
-        <StackPanel
-          x:Name="Tabs"
-          Height="65"
-          Orientation="Horizontal"
-          RadioButton.Checked="OnTabChecked">
-          <RadioButton x:Name="DashboardTab" Content="MON PC" IsChecked="True" Style="{StaticResource HudTab}" Tag="{x:Type views:DashboardPage}" />
-          <RadioButton Content="OPTIMISATION" Style="{StaticResource HudTab}" Tag="{x:Type views:SettingsPage}" />
-          <RadioButton Content="RÉGLAGE GPU" Style="{StaticResource HudTab}" Tag="{x:Type views:GpuTuningPage}" />
-          <RadioButton Content="MISES À JOUR" Style="{StaticResource HudTab}" Tag="{x:Type views:UpdatesPage}" />
-          <RadioButton Content="NETTOYAGE" Style="{StaticResource HudTab}" Tag="{x:Type views:CleanupPage}" />
-          <RadioButton Content="RESTAURATION" Style="{StaticResource HudTab}" Tag="{x:Type views:RestorePage}" />
-          <RadioButton Content="RAPPORTS" Style="{StaticResource HudTab}" Tag="{x:Type views:ReportsPage}" />
-          <!-- Paramètres de l'appli elle-même (démarrage, fenêtre, données), à part des réglages du PC -->
-          <RadioButton Style="{StaticResource HudTab}" Tag="{x:Type views:PreferencesPage}" ToolTip="Paramètres d'Aria Cockpit">
-            <ui:SymbolIcon FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" Symbol="Settings24" />
-          </RadioButton>
+        <StackPanel Margin="22,0,12,16" DockPanel.Dock="Bottom">
+          <TextBlock
+            x:Name="VersionText"
+            FontFamily="{StaticResource MonoFont}"
+            FontSize="11"
+            Foreground="{StaticResource NeonMutedBrush}" />
+          <TextBlock
+            Margin="0,2,0,0"
+            FontFamily="{StaticResource MonoFont}"
+            FontSize="11"
+            Foreground="#FF5E7290"
+            Text="tout en local" />
         </StackPanel>
-        </Viewbox>
 
-        <TextBlock
-          x:Name="VersionText"
-          Grid.Column="2"
-          Margin="0,0,22,10"
-          HorizontalAlignment="Right"
-          VerticalAlignment="Bottom"
-          FontFamily="{StaticResource MonoFont}"
-          FontSize="11"
-          Foreground="#FF5E7290" />
-      </Grid>
+        <!-- Pages : chaque entrée mène à sa page (Tag = type de la page). Fenêtre basse : la liste défile. -->
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="Tabs" RadioButton.Checked="OnTabChecked">
+            <RadioButton x:Name="DashboardTab" Content="MON PC" IsChecked="True" Style="{StaticResource HudNav}" Tag="{x:Type views:DashboardPage}" />
+            <RadioButton Content="OPTIMISATION" Style="{StaticResource HudNav}" Tag="{x:Type views:SettingsPage}" />
+            <RadioButton Content="RÉGLAGE GPU" Style="{StaticResource HudNav}" Tag="{x:Type views:GpuTuningPage}" />
+            <RadioButton Content="MISES À JOUR" Style="{StaticResource HudNav}" Tag="{x:Type views:UpdatesPage}" />
+            <RadioButton Content="NETTOYAGE" Style="{StaticResource HudNav}" Tag="{x:Type views:CleanupPage}" />
+            <RadioButton Content="RESTAURATION" Style="{StaticResource HudNav}" Tag="{x:Type views:RestorePage}" />
+            <RadioButton Content="RAPPORTS" Style="{StaticResource HudNav}" Tag="{x:Type views:ReportsPage}" />
+            <!-- Paramètres de l'appli elle-même (démarrage, fenêtre, données), à part des réglages du PC -->
+            <RadioButton Content="PARAMÈTRES" Style="{StaticResource HudNav}" Tag="{x:Type views:PreferencesPage}" ToolTip="Paramètres d'Aria Cockpit" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
     </Border>
 
-    <!-- Boutons réduire / agrandir / fermer : seuls, en haut à droite, au-dessus de la barre -->
+    <!-- ===== Barre de titre : la bande qu'on attrape pour déplacer la fenêtre, au-dessus des pages ===== -->
+    <Border
+      Grid.Row="0"
+      Grid.Column="1"
+      Height="44"
+      Background="Transparent"
+      MouseLeftButtonDown="OnHeaderMouseDown" />
+
+    <!-- Boutons réduire / agrandir / fermer : seuls, en haut à droite -->
     <ui:TitleBar
       Grid.Row="0"
+      Grid.Column="1"
       Width="190"
       HorizontalAlignment="Right"
       VerticalAlignment="Top"
@@ -140,7 +147,7 @@
     <!-- ===== Bandeau « nouvelle version », affiché seulement si GitHub publie une release plus récente ===== -->
     <Border
       x:Name="UpdateBanner"
-      Grid.Row="1"
+      Grid.Row="1" Grid.Column="1"
       Padding="22,10"
       Background="#1FFF8A1F"
       BorderBrush="#66FF8A1F"
@@ -181,16 +188,16 @@
       </Grid>
     </Border>
 
-    <!-- ===== Fond animé : le balayage, sous les pages seulement, jamais sous la barre du haut ===== -->
-    <fx:SweepBackdrop Grid.Row="2" />
+    <!-- ===== Fond animé : le balayage, sous les pages seulement, jamais sous le menu latéral ===== -->
+    <fx:SweepBackdrop Grid.Row="2" Grid.Column="1" />
 
     <!--
       Hôte des pages : un cadre sans barre de navigation, dans un défilement vertical commun à toutes les pages.
-      La barre du haut choisit la page affichée.
+      Le menu latéral choisit la page affichée.
     -->
     <ui:DynamicScrollViewer
       x:Name="PageScroller"
-      Grid.Row="2"
+      Grid.Row="2" Grid.Column="1"
       HorizontalScrollBarVisibility="Disabled"
       VerticalScrollBarVisibility="Auto">
       <Frame
@@ -202,7 +209,7 @@
 
     <!-- ===== Écran d'analyse ===== -->
     <Grid
-      Grid.Row="2"
+      Grid.Row="2" Grid.Column="1"
       fx:Fx.Sweep="True"
       Background="#E6030812"
       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
@@ -239,12 +246,12 @@
     <!-- ===== Mise à jour d'Aria Cockpit : proposition, téléchargement, contrôle de l'empreinte ===== -->
     <views:AppUpdateOverlay
       x:Name="UpdateOverlay"
-      Grid.Row="2"
+      Grid.Row="2" Grid.Column="1"
       Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
 
     <!-- ===== Confirmations, intégrées à la fenêtre (barre de titre laissée libre) ===== -->
     <views:DialogOverlay
-      Grid.Row="2"
+      Grid.Row="2" Grid.Column="1"
       DataContext="{x:Static services:DialogService.Current}"
       Visibility="{Binding IsOpen, Converter={StaticResource BoolToVisibility}}" />
   </Grid>

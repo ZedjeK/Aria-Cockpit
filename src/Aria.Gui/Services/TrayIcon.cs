@@ -14,11 +14,12 @@ namespace Aria.Gui.Services;
 /// Icône d'Aria Cockpit dans la zone de notification (à côté de l'horloge) : son dessin, son infobulle et son menu
 /// suivent ce qu'Aria a d'actif sur la machine, pour tout voir sans ouvrir la fenêtre.
 ///
-///   icône      délavée (rien d'actif), normale (profil GPU en place ou courbe en cours), pastille jaune (le profil
-///              enregistré n'est plus sur la carte), pastille cyan (Aria pilote les ventilateurs)
+///   icône      délavée (rien d'actif), normale (profil GPU en place ou courbe en cours), et une seule pastille à
+///              la fois : orange (le profil enregistré n'est plus sur la carte), cyan (Aria pilote les
+///              ventilateurs), bleue (une mise à jour d'Aria est disponible)
 ///   infobulle  « Aria Cockpit · profil GPU appliqué · courbe « Ma config » · 52 °C · ventilateurs 60 % »
-///   menu       ouvrir, état, lancer ou arrêter une courbe de ventilation, poser un profil GPU ou revenir à l'usine,
-///              aller à une page, quitter
+///   menu       en blocs titrés : ouvrir, état (et la mise à jour disponible), agir sans ouvrir (courbe de
+///              ventilation, profil GPU ou retour à l'usine), aller à une page, démarrer avec Windows, quitter
 ///
 /// L'état du réglage GPU est relu sur la carte toutes les 5 s, hors du fil de l'interface : l'icône dit ce que la
 /// carte répond, pas ce qu'Aria croit avoir posé.
@@ -32,7 +33,9 @@ public sealed class TrayIcon : IDisposable
     private static readonly Color MenuBorder = Color.FromArgb(0x2D, 0x4F, 0x78);
     private static readonly Color MenuText = Color.FromArgb(0xDD, 0xEB, 0xFF);
     private static readonly Color MenuMuted = Color.FromArgb(0x93, 0xA8, 0xC8);
-    private static readonly Color AlertColor = Color.FromArgb(0xFF, 0xD2, 0x3F);
+    // Orange : à regarder. Cyan : Aria agit en ce moment. Bleu : une information.
+    private static readonly Color AlertColor = Color.FromArgb(0xFF, 0x8A, 0x1F);
+    private static readonly Color UpdateColor = Color.FromArgb(0x5C, 0x8B, 0xFF);
     private static readonly Color FanColor = Color.FromArgb(0x7D, 0xF9, 0xFF);
 
     private readonly Forms.NotifyIcon _icon;
@@ -41,7 +44,7 @@ public sealed class TrayIcon : IDisposable
     private readonly Action _open;
     private readonly Action<Type> _openPage;
     private readonly Action _quit;
-    private readonly Dictionary<(TrayIconKind Kind, bool Fan), Icon> _icons = [];
+    private readonly Dictionary<(TrayIconKind Kind, int Dot), Icon> _icons = [];
     private readonly List<IntPtr> _iconHandles = [];
     private Forms.ToolStripLabel? _profileLine, _fanLine, _workLine;
     private Forms.ToolStripMenuItem? _fanMenu, _gpuMenu;
@@ -75,7 +78,7 @@ public sealed class TrayIcon : IDisposable
         _driverReady = !waitForDriver;
         _dispatcher = Dispatcher.CurrentDispatcher;
 
-        _icon = new Forms.NotifyIcon { Text = State.Summary(), Icon = IconFor(TrayIconKind.Idle, fan: false), Visible = true };
+        _icon = new Forms.NotifyIcon { Text = State.Summary(), Icon = IconFor(TrayIconKind.Idle, fan: false, update: false), Visible = true };
         _icon.MouseClick += (_, e) =>
         {
             if (e.Button == Forms.MouseButtons.Left) _open();
@@ -86,6 +89,8 @@ public sealed class TrayIcon : IDisposable
         FanCurveService.Changed += OnFanCurveChanged;
         BackgroundWork.Changed += RefreshSoon;
         MeasurementGate.Changed += RefreshSoon;
+        // Une recherche vient de trouver une version, ou de constater qu'il n'y en a plus : pastille et menu suivent
+        ViewModels.AppUpdateViewModel.Shared.PropertyChanged += OnUpdateChanged;
 
         _timer = new DispatcherTimer(Interval, DispatcherPriority.Background, (_, _) => _ = RefreshAsync(), _dispatcher);
         _ = RefreshAsync();
@@ -180,10 +185,12 @@ public sealed class TrayIcon : IDisposable
     {
         State = state;
         _icon.Text = state.Summary();
-        if (state.Signature != _signature)
+        var update = AvailableUpdate;
+        var signature = state.Signature + "|" + update;
+        if (signature != _signature)
         {
-            _signature = state.Signature;
-            _icon.Icon = IconFor(state.Icon, state.FanBadge);
+            _signature = signature;
+            _icon.Icon = IconFor(state.Icon, state.FanBadge, update is not null);
             var old = _icon.ContextMenuStrip;
             _icon.ContextMenuStrip = BuildMenu(state);
             old?.Dispose();
@@ -192,6 +199,18 @@ public sealed class TrayIcon : IDisposable
         if (_profileLine is not null) _profileLine.Text = ProfileText(state);
         if (_fanLine is not null) _fanLine.Text = Sentence(state.FanLine ?? "");
         if (_workLine is not null) _workLine.Text = Sentence(state.WorkLine ?? "");
+    }
+
+    /// <summary>Numéro de la version d'Aria Cockpit plus récente, trouvée par la dernière recherche ; null sinon.</summary>
+    private static string? AvailableUpdate => ViewModels.AppUpdateViewModel.Shared.Available?.Latest.ToString(3);
+
+    private void OnUpdateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ViewModels.AppUpdateViewModel.Available) || _disposed) return;
+        _dispatcher.InvokeAsync(() =>
+        {
+            if (!_disposed) Show(State);
+        });
     }
 
     private static string ProfileText(TrayState state) =>
@@ -218,27 +237,41 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add(open);
         menu.Items.Add(new Forms.ToolStripSeparator());
 
+        menu.Items.Add(Title("ÉTAT"));
         _profileLine = Line(ProfileText(state));
         menu.Items.Add(_profileLine);
         _fanLine = state.FanLine is null ? null : Line(Sentence(state.FanLine));
         if (_fanLine is not null) menu.Items.Add(_fanLine);
         _workLine = state.WorkLine is null ? null : Line(Sentence(state.WorkLine));
         if (_workLine is not null) menu.Items.Add(_workLine);
+        // Utile quand Aria démarre rangée avec Windows : le bandeau de la fenêtre ne se voit jamais
+        if (AvailableUpdate is { } version)
+        {
+            menu.Items.Add(Line($"Mise à jour : la {version} est disponible"));
+            menu.Items.Add(Item("Voir la mise à jour", () =>
+            {
+                _open();
+                ViewModels.AppUpdateViewModel.Shared.OpenAvailableCommand.Execute(null);
+            }));
+        }
         menu.Items.Add(new Forms.ToolStripSeparator());
 
         // Actions sans ouvrir la fenêtre : leurs listes sont refaites à chaque ouverture du menu (une courbe ou un
         // profil enregistré entre-temps y apparaît tout de suite)
         _fanMenu = Submenu("Ventilateurs");
         _gpuMenu = Submenu("Profil GPU");
+        menu.Items.Add(Title("AGIR SANS OUVRIR"));
         menu.Items.Add(_fanMenu);
         menu.Items.Add(_gpuMenu);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Opening += (_, _) => FillActions();
         FillActions();
 
+        menu.Items.Add(Title("ALLER À"));
         menu.Items.Add(Item("Réglage GPU", () => _openPage(typeof(GpuTuningPage))));
         menu.Items.Add(Item("Mises à jour", () => _openPage(typeof(UpdatesPage))));
         menu.Items.Add(Item("Rapports", () => _openPage(typeof(ReportsPage))));
+        menu.Items.Add(Item("Paramètres", () => _openPage(typeof(PreferencesPage))));
         menu.Items.Add(new Forms.ToolStripSeparator());
 
         _autostartItem = Item(AutostartText(), ToggleAutostart);
@@ -433,6 +466,14 @@ public sealed class TrayIcon : IDisposable
     /// <summary>Ligne d'état : du texte, pas une commande.</summary>
     private static Forms.ToolStripLabel Line(string text) => new(text) { ForeColor = MenuMuted };
 
+    /// <summary>Titre d'un bloc du menu : petit, discret, non cliquable.</summary>
+    private static Forms.ToolStripLabel Title(string text) => new(text)
+    {
+        ForeColor = MenuMuted,
+        Font = new Font(Forms.Control.DefaultFont.FontFamily, 7f),
+        Margin = new Forms.Padding(0, 4, 0, 0)
+    };
+
     /// <summary>
     /// Dessin du menu, accordé à la fenêtre d'Aria (nuit profonde). Tout est dessiné ici, avec les couleurs d'Aria :
     /// le rendu standard de Windows Forms reprend les couleurs du système dans une application qui n'est pas Windows
@@ -487,9 +528,12 @@ public sealed class TrayIcon : IDisposable
     private const int IconSize = 32, DotSize = 13;
 
     /// <summary>Icône d'Aria dans l'état demandé, dessinée une fois puis gardée.</summary>
-    private Icon IconFor(TrayIconKind kind, bool fan)
+    private Icon IconFor(TrayIconKind kind, bool fan, bool update)
     {
-        if (_icons.TryGetValue((kind, fan), out var cached)) return cached;
+        // Une seule pastille à la fois, par ordre de priorité : orange (le réglage enregistré n'est plus sur la
+        // carte), cyan (Aria pilote les ventilateurs), bleue (une mise à jour d'Aria est disponible)
+        var dot = kind == TrayIconKind.Alert ? 1 : fan ? 2 : update ? 3 : 0;
+        if (_icons.TryGetValue((kind, dot), out var cached)) return cached;
 
         using var bitmap = new Bitmap(IconSize, IconSize, PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bitmap))
@@ -514,14 +558,14 @@ public sealed class TrayIcon : IDisposable
             }
             else g.DrawImage(logo, area);
 
-            if (kind == TrayIconKind.Alert) Dot(g, IconSize - DotSize, 0, AlertColor);
-            if (fan) Dot(g, IconSize - DotSize, IconSize - DotSize, FanColor);
+            if (dot != 0)
+                Dot(g, IconSize - DotSize, IconSize - DotSize, dot == 1 ? AlertColor : dot == 2 ? FanColor : UpdateColor);
         }
 
         var handle = bitmap.GetHicon();
         _iconHandles.Add(handle);
         var icon = Icon.FromHandle(handle);
-        _icons[(kind, fan)] = icon;
+        _icons[(kind, dot)] = icon;
         return icon;
     }
 
@@ -551,6 +595,7 @@ public sealed class TrayIcon : IDisposable
         FanCurveService.Changed -= OnFanCurveChanged;
         BackgroundWork.Changed -= RefreshSoon;
         MeasurementGate.Changed -= RefreshSoon;
+        ViewModels.AppUpdateViewModel.Shared.PropertyChanged -= OnUpdateChanged;
         // Sans ce retrait, l'icône reste affichée jusqu'au passage de la souris
         _icon.Visible = false;
         _icon.ContextMenuStrip?.Dispose();

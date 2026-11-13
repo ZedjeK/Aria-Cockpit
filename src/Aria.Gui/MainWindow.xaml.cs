@@ -27,7 +27,7 @@ public partial class MainWindow : FluentWindow
         {
             if (e.PropertyName == nameof(ViewModels.AppUpdateViewModel.Available)) ShowUpdateBanner();
         };
-        // Pas d'historique « Précédent » : la barre du haut est la seule navigation
+        // Pas d'historique « Précédent » : le menu latéral est la seule navigation
         PageHost.Navigated += (_, _) =>
         {
             while (PageHost.CanGoBack) PageHost.RemoveBackEntry();
@@ -214,7 +214,7 @@ public partial class MainWindow : FluentWindow
 
     private void OnCloseUpdate(object sender, RoutedEventArgs e) => UpdateBanner.Visibility = Visibility.Collapsed;
 
-    /// <summary>Un onglet de la barre du haut vient d'être choisi : affiche sa page.</summary>
+    /// <summary>Une entrée du menu latéral vient d'être choisie : affiche sa page.</summary>
     private void OnTabChecked(object sender, RoutedEventArgs e)
     {
         // Pendant le chargement, la page d'accueil est ouverte par Loaded
@@ -237,7 +237,7 @@ public partial class MainWindow : FluentWindow
         PageHost.Navigate(page);
     }
 
-    /// <summary>La barre du haut sert aussi de barre de titre : glisser déplace la fenêtre, double-clic l'agrandit.</summary>
+    /// <summary>La bande du haut et le logo du menu servent de barre de titre : glisser déplace la fenêtre, double-clic l'agrandit.</summary>
     private void OnHeaderMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left) return;
