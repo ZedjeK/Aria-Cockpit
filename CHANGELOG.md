@@ -7,6 +7,14 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 - Rien pour l'instant.
 
+## 0.29.1, le 13 novembre 2026
+
+Notes complètes : [docs/releases/v0.29.1.md](docs/releases/v0.29.1.md).
+
+- Installation par l'exe : la fenêtre se ferme d'elle-même une fois la copie terminée. Dans la 0.29.0, elle restait sur
+  « Copie en cours… » alors que les fichiers étaient en place, et Aria ne se relançait pas depuis son dossier.
+- README et notes : le zip se décompresse d'abord ; lancé depuis son aperçu, l'exe est seul, sans le banc d'essai.
+
 ## 0.29.0, le 13 novembre 2026
 
 Notes complètes : [docs/releases/v0.29.0.md](docs/releases/v0.29.0.md).

@@ -44,6 +44,7 @@ n'est jamais modifié, seulement lu et expliqué.
    | `Aria-Cockpit-<version>-leger.zip` | PC qui ont déjà le [runtime .NET 10 Desktop](https://dotnet.microsoft.com/download/dotnet/10.0) (≈ 11 Mo) |
 
    Le zip contient `Aria-Cockpit.exe` et `Aria-Bench.exe`, le banc d'essai : garde-les dans le même dossier.
+   Décompresse **d'abord** le zip (clic droit, « Extraire tout ») : lancer l'exe depuis l'aperçu du zip dans l'Explorateur ne sort que l'exe, sans le banc d'essai.
 
 2. Lance `Aria-Cockpit.exe`. L'exe n'est pas signé : si Windows SmartScreen affiche « Windows a protégé votre
    ordinateur », clique sur « Informations complémentaires » puis « Exécuter quand même ». Le code source complet est
