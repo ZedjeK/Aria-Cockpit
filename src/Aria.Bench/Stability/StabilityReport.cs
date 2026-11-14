@@ -36,16 +36,28 @@ public sealed class StabilityReport
     public List<WrongWord> PremieresErreurs { get; set; } = [];
     public List<WrongWord> PremiersEcartsCalcul { get; set; } = [];
 
+    /// <summary>Cœurs Tensor (calcul INT8 vérifié bit à bit) : lancements relus, résultats faux, warps fautifs, débit médian.</summary>
+    public long ExecutionsTenseurs { get; set; }
+    public long EcartsTenseurs { get; set; }
+    public int WarpsTenseursFautifs { get; set; }
+    public double? DebitTenseursTops { get; set; }
+    public List<WrongWord> PremiersEcartsTenseurs { get; set; } = [];
+    /// <summary>Raison pour laquelle les cœurs Tensor n'ont pas été testés (pas de CUDA, carte trop ancienne…) ; absent s'ils l'ont été.</summary>
+    public string? TenseursNonTestes { get; set; }
+
     /// <summary>Gain minimal de bande passante pour qu'un palier mémoire compte comme « plus rapide » que le précédent.</summary>
     public const double MinBandwidthGain = 0.005;
 
     /// <summary>
     /// Le verdict : échec au moindre signe d'instabilité, attention si la bande passante n'augmente pas ou recule en
-    /// chauffant. Fonction pure (testable) : elle ne lit que ce qui a été mesuré.
+    /// chauffant, ou si les cœurs Tensor n'ont pas pu être testés. Fonction pure (testable) : elle ne lit que ce qui a été mesuré.
     /// </summary>
+    /// <param name="tensorElements">Résultats comparés par lancement des cœurs Tensor : l'auto-contrôle doit tous les retrouver faux.</param>
+    /// <param name="tensorSkipped">Pourquoi les cœurs Tensor n'ont pas été testés (verdict « attention », jamais « échec »).</param>
     public static StabilityReport Conclude(string mode, bool selfCheck, bool memoryTested, bool burnTested,
         IReadOnlyList<MemoryPass> passes, long wrongWords, long flippedBits, long dispatches, long mismatches,
-        IReadOnlyList<string> failures, double? previousReadGoS, double requestedSeconds, double realSeconds)
+        IReadOnlyList<string> failures, double? previousReadGoS, double requestedSeconds, double realSeconds,
+        bool tensorTested = false, long tensorExecutions = 0, long tensorWrong = 0, long tensorElements = 0, string? tensorSkipped = null)
     {
         var r = new StabilityReport { Mode = mode, AutoControle = selfCheck, DureeS = Math.Round(realSeconds, 1) };
         var reasons = new List<string>();
@@ -102,7 +114,21 @@ public sealed class StabilityReport
                             "Le cœur graphique fait des erreurs avec ce réglage (décalage de fréquence ou undervolt).");
         }
 
-        if (realSeconds < Math.Min(requestedSeconds, 600) * 0.9 && failures.Count == 0)
+        if (tensorTested)
+        {
+            r.ExecutionsTenseurs = tensorExecutions;
+            r.EcartsTenseurs = tensorWrong;
+            if (tensorWrong > 0)
+                reasons.Add($"Cœurs Tensor : {tensorWrong} résultat(s) faux sur {tensorExecutions} exécutions d'un calcul INT8 identique. " +
+                            "Les cœurs Tensor font des erreurs avec ce réglage : une IA locale (LLM, génération d'images) peut donner des résultats faux ou planter.");
+        }
+        if (tensorSkipped is not null)
+        {
+            r.TenseursNonTestes = tensorSkipped;
+            if (!selfCheck) warnings.Add($"Cœurs Tensor non testés : {tensorSkipped}");
+        }
+
+        if (realSeconds < Math.Min(requestedSeconds, 600) * 0.9 && failures.Count == 0 && tensorSkipped is null)
             warnings.Add($"Test arrêté avant la fin ({realSeconds:0} s sur {requestedSeconds:0} s) : verdict moins sûr.");
 
         if (selfCheck)
@@ -113,7 +139,11 @@ public sealed class StabilityReport
                 missed.Add($"Mémoire : {wrongWords} mot(s) faux trouvés au lieu des {MemoryTest.InjectedWords} faussés exprès.");
             if (burnTested && mismatches < BurnTest.Threads * 0.99)
                 missed.Add($"Calcul : {mismatches} écart(s) trouvés pour {BurnTest.Threads} résultats faussés exprès.");
-            missed.AddRange(reasons.Where(x => !x.StartsWith("Mémoire", StringComparison.Ordinal) && !x.StartsWith("Calcul", StringComparison.Ordinal)));
+            if (tensorTested && tensorWrong < tensorElements * 0.99)
+                missed.Add($"Cœurs Tensor : {tensorWrong} résultat(s) faux trouvés pour {tensorElements} faussés exprès.");
+            if (tensorSkipped is not null) missed.Add($"Cœurs Tensor : auto-contrôle impossible ({tensorSkipped}).");
+            missed.AddRange(reasons.Where(x => !x.StartsWith("Mémoire", StringComparison.Ordinal) && !x.StartsWith("Calcul", StringComparison.Ordinal)
+                                               && !x.StartsWith("Cœurs Tensor", StringComparison.Ordinal)));
             r.Statut = missed.Count == 0 ? Passed : Failed;
             r.Raisons = missed;
             return r;

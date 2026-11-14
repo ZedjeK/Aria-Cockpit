@@ -72,6 +72,13 @@ public static class GpuCatalog
                ?? Models.FirstOrDefault(m => Normalize(m.Name) == key.Replace("GTX ", "", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// La carte a des cœurs Tensor : les RTX (20 et plus récentes). Les GTX 16, Turing sans cœurs RT ni Tensor, n'en ont pas, pas
+    /// plus que les générations d'avant. Carte absente de la table : le nom « RTX » en décide.
+    /// </summary>
+    public static bool HasTensorCores(string gpuName) =>
+        Find(gpuName) is { } model ? model.IsRtx : Normalize(gpuName).Contains("RTX", StringComparison.Ordinal);
+
     /// <summary>Architecture déduite du nom, pour une carte absente de la table (nouvelle référence, variante régionale…).</summary>
     public static GpuArchitecture ArchitectureFromName(string gpuName)
     {
