@@ -139,6 +139,12 @@ public sealed class GsyncSetting() : NvidiaDriverSetting(DrsIds.VrrMode, DrsIds.
                                             "la synchronisation et la limite d'images adaptées. Ferme l'application NVIDIA avant d'appliquer.");
 }
 
+/// <summary>
+/// Nombre d'images en attente du pilote (« Maximum pre-rendered frames » du SDK NVIDIA). Ce n'est pas l'interrupteur « Mode de
+/// faible latence » de l'application NVIDIA, que celle-ci range dans des réglages que l'API ne montre pas : relu le 14/11/2026,
+/// le panneau affichait « Désactivé » alors que ce nombre valait 1, et le choisir « Activé » dans le panneau ne l'a pas changé.
+/// Le texte ne parle donc que du nombre d'images en attente, pas d'un mode « Activé » ou « Désactivé ».
+/// </summary>
 public sealed class LowLatencySetting() : NvidiaDriverSetting(DrsIds.LowLatency, DrsIds.LowLatencyAppControlled)
 {
     public override string Id => "nvidia.lowlatency";
@@ -146,14 +152,16 @@ public sealed class LowLatencySetting() : NvidiaDriverSetting(DrsIds.LowLatency,
 
     protected override string Describe(uint value) => value switch
     {
-        0 => "Désactivé",
-        1 => "Activé",
+        0 => "Choix du jeu",
+        1 => "Une image en attente",
         var n => $"{n} images en attente"
     };
 
     public override SettingTarget ComputeTarget(HardwareProfile hw) =>
         new(User(1), "Une seule image en attente au lieu de 1 à 3 : moins de latence dans les jeux DirectX 9 et 11. " +
-                     "Les jeux avec NVIDIA Reflex utilisent leur propre réglage, plus efficace.");
+                     "Les jeux avec NVIDIA Reflex utilisent leur propre réglage, plus efficace. " +
+                     "L'application NVIDIA peut continuer d'afficher « Désactivé » pour son mode de faible latence : " +
+                     "Aria règle le nombre d'images en attente, pas cet interrupteur.");
 }
 
 public sealed class VSyncSetting() : NvidiaDriverSetting(DrsIds.VSync, DrsIds.VSyncPassive)
