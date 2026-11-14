@@ -406,8 +406,16 @@ aucun écart. Les contrôles d'Aria-Bench (voir plus bas) s'ajoutent donc au ren
   pilote (rien à installer de plus), chaque résultat comparé au calcul exact fait sur le processeur. Un seul résultat faux
   et le réglage est jugé instable : une IA locale donnerait des résultats faux ou planterait. Si le test n'est pas
   possible (pilote sans CUDA, carte sans cœurs Tensor), il est noté « non testé » dans le rapport et ne juge pas le palier.
-- **Validation** : aux 15 minutes de banc s'ajoutent 1 min de cœurs Tensor (cartes RTX), 2 min de calcul vérifié, et
-  2 min de mémoire si elle est poussée.
+- **Transitions** (2 min, toutes les cartes, à la validation) : un test soutenu à pleine charge ne traverse jamais les
+  états bas de la carte, où la fréquence mémoire et la tension du cœur sont ailleurs. Le contrôle fait donc des cycles :
+  la mémoire est écrite, la carte se repose 3 s (le pilote redescend), la mémoire est relue, puis des rafales de calcul
+  vérifié à 5, 20, 50 et 100 % de charge font traverser les états, la mémoire étant relue après chaque phase. Un mot de
+  mémoire faux ou un résultat de calcul différent, et le réglage est jugé instable. Le contrôle relève aussi l'état de la
+  carte (par `nvml.dll`) pour prouver qu'elle a bougé : si elle a presque gardé le même état (un autre programme la
+  charge, mode « performances maximales »), ou si l'état n'a pas pu être relevé, le verdict est « à surveiller », jamais
+  « réussi » sur la foi d'un test qui n'a rien fait traverser. Ne touchez à rien pendant ces 2 minutes : le repos compte.
+- **Validation** : aux 15 minutes de banc s'ajoutent 2 min de transitions, 1 min de cœurs Tensor (cartes RTX), 2 min de
+  calcul vérifié, et 2 min de mémoire si elle est poussée.
 - Les tuiles de résultat montrent ce qui a été vérifié : « Calcul vérifié » (exécutions, écarts) et « Mémoire vidéo »
   (bande passante, passes, erreurs).
 
@@ -462,7 +470,9 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
-mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Le rendu du banc ne
+mesures se font surtout à pleine charge ; le contrôle des transitions de la validation fait traverser les états bas
+pendant quelques cycles, pas toutes les situations du bureau, et le garde-fou signale un éventuel plantage au repos après
+coup. Il suit la première carte NVIDIA de même nom : avec deux cartes identiques, il peut relever l'autre. Le rendu du banc ne
 sollicite ni les cœurs de ray tracing ni les cœurs Tensor (DLSS) : un jeu qui s'en sert peut révéler un réglage que le
 banc n'a pas vu. Le contrôle des cœurs Tensor de la validation ne couvre que le mode INT8 : les modes FP16, BF16 et FP8
 qu'utilisent aussi les IA locales ne sont pas testés. Les contrôles de calcul, de mémoire et de cœurs Tensor réduisent le
@@ -496,7 +506,7 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
   passé hors du premier plan (`arrierePlanS`) est noté aussi : le pilote bride alors la fenêtre.
 - **Journal** : `bench-<date>.json` (et `bench-dernier.json`) à côté de l'exe : carte, pilote, contexte, résultats,
   erreurs. C'est lui qu'Aria Cockpit lit.
-- **Contrôles de stabilité** (`--calcul`, `--vram`, `--tenseurs`, les deux premiers repris du « Test VRAM discriminant » de la session Aria Pilote),
+- **Contrôles de stabilité** (`--calcul`, `--vram`, `--tenseurs`, `--transitions`, les deux premiers repris du « Test VRAM discriminant » de la session Aria Pilote),
   dans une petite fenêtre au lieu du rendu 3D. Le calcul vérifié fait faire à un million de fils la même longue chaîne
   de multiplications-additions, et compare chaque résultat à celui de la première exécution. Le test mémoire écrit 70 %
   de la mémoire vidéo libre, sans dépasser ce qui reste vraiment libre sur la carte moins 1 Go (les autres programmes
@@ -508,10 +518,14 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
   (instructions `wmma` d'un noyau PTX embarqué en texte, que le pilote compile lui-même : `nvcuda.dll` suffit, sans le kit
   CUDA). L'INT8 vers INT32 est exact, sans arrondi : le résultat attendu se calcule sur le processeur, et chaque résultat
   relu qui en diffère est compté. Le test vise la même carte que le banc (par son identifiant local) et demande une carte
-  Turing ou plus récente (RTX 20, capacité de calcul 7.5). Le journal gagne une section
+  Turing ou plus récente (RTX 20, capacité de calcul 7.5). Avec `--transitions`, 0,5 à 2 Gio de mémoire sont écrits, puis la
+  carte alterne repos de 3 s et quatre phases de 3 s (rafales de calcul vérifié à 5, 20, 50 et 100 % de charge, même shader
+  et même référence que `--calcul`), la mémoire étant relue après le repos et après chaque phase ; l'état de performance
+  et les fréquences du cœur et de la mémoire sont relevés toutes les 100 ms (NVML, lecture seule). Le journal gagne une section
   `stabilite` : statut (`reussi`, `attention`, `echec`), raisons, exécutions et écarts, passes, mots faux, bande passante,
   et pour les cœurs Tensor exécutions, résultats faux, débit médian (en TOPS, une information, pas un verdict) ou raison
-  du « non testé ».
+  du « non testé » ; pour les transitions cycles, mots faux, écarts de calcul, états observés, plages de fréquence et
+  nombre de changements, phase par phase.
 
 Lancement à la main (Échap arrête) :
 
@@ -524,6 +538,8 @@ Lancement à la main (Échap arrête) :
     Aria-Bench.exe --tenseurs --duree 60            Cœurs Tensor : calcul INT8 vérifié bit à bit (RTX 20 et plus)
     Aria-Bench.exe --auto-controle                  Erreurs injectées exprès : le test doit toutes les retrouver
     Aria-Bench.exe --tenseurs --auto-controle       Idem pour les cœurs Tensor
+    Aria-Bench.exe --transitions --duree 120        Repos et rafales de plus en plus chargées : mémoire et calcul vérifiés
+    Aria-Bench.exe --transitions --auto-controle    Idem pour les transitions
 
 `--debug` active la couche de diagnostic de Direct3D (fonctionnalité facultative « Outils graphiques » de Windows) :
 les performances mesurées ne sont alors pas représentatives.

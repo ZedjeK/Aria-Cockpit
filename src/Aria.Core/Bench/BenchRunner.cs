@@ -17,10 +17,16 @@ public sealed record BenchPass(string Qualite, string Definition, int Images, do
 /// <param name="ExecutionsTenseurs">Lancements INT8 des cœurs Tensor (--tenseurs) dont les résultats ont été comparés.</param>
 /// <param name="EcartsTenseurs">Résultats des cœurs Tensor qui différaient du calcul exact : la carte calcule faux sous une IA locale.</param>
 /// <param name="TenseursNonTestes">Pourquoi les cœurs Tensor n'ont pas pu être testés (pas de CUDA, carte trop ancienne…) ; absent s'ils l'ont été.</param>
+/// <param name="CyclesTransitions">Cycles repos/charge (--transitions) menés jusqu'au bout.</param>
+/// <param name="MotsFauxTransitions">Mots de mémoire relus faux après un changement d'état de la carte.</param>
+/// <param name="EcartsCalculTransitions">Résultats de calcul différents de la référence quand la carte change d'état.</param>
+/// <param name="ChangementsEtat">Changements d'état ou de fréquence mémoire relevés pendant le test, preuve qu'il a fait bouger la carte ; absent si l'état n'a pas pu être relevé.</param>
 public sealed record BenchStability(string Statut, string Mode, bool AutoControle, long ExecutionsCalcul, long EcartsCalcul,
     int Passes, long MotsFaux, double? BandePassanteLectureMedianeGoS, bool PasPlusRapide,
     IReadOnlyList<string>? Raisons = null, IReadOnlyList<string>? Avertissements = null,
-    long ExecutionsTenseurs = 0, long EcartsTenseurs = 0, double? DebitTenseursTops = null, string? TenseursNonTestes = null);
+    long ExecutionsTenseurs = 0, long EcartsTenseurs = 0, double? DebitTenseursTops = null, string? TenseursNonTestes = null,
+    long CyclesTransitions = 0, long MotsFauxTransitions = 0, long EcartsCalculTransitions = 0, int? ChangementsEtat = null,
+    IReadOnlyList<string>? EtatsObserves = null, string? PlageCoeurMHz = null, string? PlageMemoireMHz = null);
 
 /// <summary>Contrôle de stabilité demandé à Aria-Bench à la place du rendu 3D.</summary>
 public enum BenchCheck
@@ -31,6 +37,8 @@ public enum BenchCheck
     Memory,
     /// <summary>Calcul INT8 des cœurs Tensor, vérifié bit à bit (--tenseurs) : ce que sollicite une IA locale. RTX 20 et plus récentes.</summary>
     Tensor,
+    /// <summary>Repos puis rafales de calcul vérifié de plus en plus chargées, mémoire relue après chaque phase (--transitions) : stabilité aux changements d'état de la carte.</summary>
+    Transitions,
     /// <summary>Erreurs injectées exprès (--auto-controle) : le contrôle doit toutes les retrouver.</summary>
     SelfCheck
 }
@@ -139,7 +147,7 @@ public static class BenchRunner
     {
         var args = new List<string>
         {
-            check switch { BenchCheck.Compute => "--calcul", BenchCheck.Memory => "--vram", BenchCheck.Tensor => "--tenseurs", _ => "--auto-controle" },
+            check switch { BenchCheck.Compute => "--calcul", BenchCheck.Memory => "--vram", BenchCheck.Tensor => "--tenseurs", BenchCheck.Transitions => "--transitions", _ => "--auto-controle" },
             "--duree", ((int)Math.Ceiling(duration.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture),
             "--sortie", output
         };
