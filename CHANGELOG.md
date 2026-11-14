@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Nettoyage : nouvel élément « Caches de shaders anciens (plus de 30 jours) », décoché, qui garde les caches récents ;
+  les rapports de blocage du pilote graphique (`LiveKernelReports`) rejoignent les rapports de plantage ; l'âge d'un
+  fichier est désormais la plus récente de sa création et de sa modification, pour ne plus supprimer un fichier sorti le
+  jour même d'une archive avec une vieille date. Des caches cochés ensemble ne sont comptés qu'une fois dans le total.
+- Optimisation > Windows : réglage « Veille prolongée et démarrage rapide », décoché, réservé aux PC fixes. Il libère le
+  fichier `hiberfil.sys` (25 Go sur un PC à 64 Go de mémoire) par `powercfg`, et se restaure.
 - Mode faible latence : le texte du réglage parle maintenant du nombre d'images en attente (« Une image en attente »), et
   non d'un mode « Activé ». L'application NVIDIA range son interrupteur « Mode de faible latence » dans des réglages que
   l'API ne montre pas : elle peut afficher « Désactivé » alors que le nombre d'images en attente vaut 1. Le comportement

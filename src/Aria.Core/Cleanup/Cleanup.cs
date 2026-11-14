@@ -5,7 +5,7 @@ using Microsoft.Win32;
 
 namespace Aria.Core.Cleanup;
 
-public enum CleanupKind { TempFiles, DeliveryOptimization, ComponentStore, ShaderCaches, CrashDumps, PreviousWindows }
+public enum CleanupKind { TempFiles, DeliveryOptimization, ComponentStore, ShaderCaches, CrashDumps, PreviousWindows, OldShaderCaches }
 
 /// <summary>Un élément de nettoyage, avec ce que l'analyse a trouvé.</summary>
 /// <param name="Bytes">Taille récupérable estimée, ou null si non estimable à l'avance.</param>
@@ -71,7 +71,8 @@ public sealed class CleanupPaths
                 Path.Combine(local, "AMD", "VkCache"),
                 Path.Combine(localLow, "Intel", "ShaderCache")
             ],
-            CrashDumpFolders = [Path.Combine(windows, "Minidump"), Path.Combine(local, "CrashDumps")],
+            // LiveKernelReports : ce que Windows écrit quand un pilote se bloque sans écran bleu (le pilote graphique, surtout)
+            CrashDumpFolders = [Path.Combine(windows, "Minidump"), Path.Combine(local, "CrashDumps"), Path.Combine(windows, "LiveKernelReports")],
             CrashDumpFiles = [Path.Combine(windows, "MEMORY.DMP")],
             DeliveryOptimizationCache = Path.Combine(windows, "ServiceProfiles", "NetworkService", "AppData", "Local",
                 "Microsoft", "Windows", "DeliveryOptimization", "Cache"),
@@ -87,6 +88,9 @@ public static class CleanupService
     /// <summary>Âge minimal des fichiers temporaires supprimés.</summary>
     public static readonly TimeSpan TempMinAge = TimeSpan.FromDays(7);
 
+    /// <summary>Âge à partir duquel un fichier de cache de shaders compte comme ancien (ni créé ni modifié depuis).</summary>
+    public static readonly TimeSpan OldShaderAge = TimeSpan.FromDays(30);
+
     private const string PreviousInstallationsHandler =
         @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches\Previous Installations";
     private const string StateFlags = "StateFlags6060"; // numéro de profil de Nettoyage de disque réservé à Aria
@@ -99,6 +103,7 @@ public static class CleanupService
         var tempLimit = DateTime.Now - TempMinAge;
         var temp = Sum(paths.Temp.Select(p => SafeDelete.Measure(p, tempLimit)));
         var shaders = Sum(paths.ShaderCaches.Select(p => SafeDelete.Measure(p)));
+        var oldShaders = Sum(paths.ShaderCaches.Select(p => SafeDelete.Measure(p, DateTime.Now - OldShaderAge)));
         var dumps = Sum(paths.CrashDumpFolders.Select(p => SafeDelete.Measure(p))).Add(MeasureFiles(paths.CrashDumpFiles));
         var delivery = SafeDelete.Measure(paths.DeliveryOptimizationCache);
         var items = new List<CleanupItem>
@@ -112,12 +117,18 @@ public static class CleanupService
             new(CleanupKind.ComponentStore, "Anciens composants des mises à jour Windows",
                 "Nettoyage officiel de Windows (DISM /StartComponentCleanup, sans /ResetBase) : les mises à jour installées restent désinstallables.",
                 true, null, 0, IsLong: true),
+            new(CleanupKind.OldShaderCaches, "Caches de shaders anciens (plus de 30 jours)",
+                "Fichiers de cache ni créés ni modifiés depuis 30 jours : le plus souvent ceux de jeux que vous ne lancez plus, ou d'anciens pilotes. " +
+                "Les caches récents sont gardés.",
+                false, oldShaders.Bytes, oldShaders.Files,
+                Warning: "Windows ne dit pas quand un cache a servi pour la dernière fois : un jeu lancé souvent mais dont le cache n'a pas changé " +
+                         "depuis un mois recompilera ses shaders, avec quelques saccades à ses premières parties."),
             new(CleanupKind.ShaderCaches, "Caches de shaders (NVIDIA, DirectX…)",
-                "À vider seulement en cas de saccades ou de bugs graphiques après une mise à jour du pilote.",
+                "Tous les caches, récents compris. À vider seulement en cas de saccades ou de bugs graphiques après une mise à jour du pilote.",
                 false, shaders.Bytes, shaders.Files,
                 Warning: "Les caches se reconstruisent : les premières parties de chaque jeu seront un peu saccadées."),
             new(CleanupKind.CrashDumps, "Rapports de plantage (minidumps)",
-                "Fichiers créés lors d'un écran bleu ou du plantage d'une application.",
+                "Fichiers créés lors d'un écran bleu, du plantage d'une application ou d'un blocage du pilote graphique.",
                 false, dumps.Bytes, dumps.Files,
                 Warning: "Utiles pour diagnostiquer un écran bleu : à garder si le PC plante."),
         };
@@ -132,6 +143,16 @@ public static class CleanupService
                 Warning: "Vous ne pourrez plus revenir à la version précédente de Windows.", IsLong: true));
         }
         return items;
+    }
+
+    /// <summary>
+    /// Place récupérable connue d'une sélection. Les caches de shaders anciens font partie de « tous les caches » : cochés
+    /// ensemble, ils ne sont comptés qu'une fois.
+    /// </summary>
+    public static long Recoverable(IReadOnlyList<CleanupItem> chosen)
+    {
+        var all = chosen.Any(i => i.Kind == CleanupKind.ShaderCaches);
+        return chosen.Where(i => i.Bytes is not null && !(all && i.Kind == CleanupKind.OldShaderCaches)).Sum(i => i.Bytes!.Value);
     }
 
     private static FolderTally Sum(IEnumerable<FolderTally> tallies) => tallies.Aggregate(FolderTally.Empty, (a, b) => a.Add(b));
@@ -162,6 +183,7 @@ public static class CleanupService
                 results.Add(item.Kind switch
                 {
                     CleanupKind.TempFiles => FromTally(item, Sum(paths.Temp.Select(p => SafeDelete.Delete(p, DateTime.Now - TempMinAge)))),
+                    CleanupKind.OldShaderCaches => FromTally(item, Sum(paths.ShaderCaches.Select(p => SafeDelete.Delete(p, DateTime.Now - OldShaderAge)))),
                     CleanupKind.ShaderCaches => FromTally(item, Sum(paths.ShaderCaches.Select(p => SafeDelete.Delete(p)))),
                     CleanupKind.CrashDumps => FromTally(item, Sum(paths.CrashDumpFolders.Select(p => SafeDelete.Delete(p))).Add(DeleteFiles(paths.CrashDumpFiles))),
                     CleanupKind.DeliveryOptimization => RunDeliveryOptimization(paths, item),

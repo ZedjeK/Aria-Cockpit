@@ -28,6 +28,7 @@ jour quand l'appli change.
 - Tâches planifiées : jusqu'à trois, créées et supprimées à la demande.
 - Registre de la machine et de l'utilisateur : les réglages que l'appli applique, après sauvegarde.
 - Services Windows : type de démarrage de services existants, après sauvegarde. Aucun service n'est créé.
+- Veille prolongée de Windows (PC fixe, sur demande) : coupée par `powercfg`, ce qui retire `hiberfil.sys` du disque système ; la restauration la réactive et Windows recrée le fichier.
 - Point de restauration Windows : créé avant les changements.
 - Fichiers supprimés par le nettoyage : fichiers temporaires et caches, après confirmation.
 
