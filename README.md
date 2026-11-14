@@ -222,7 +222,7 @@ global (« Paramètres globaux » de l'application NVIDIA) ; les profils propres
 | Réglage | Proposé | Condition |
 |---|---|---|
 | G-SYNC | Plein écran seulement, **seulement s'il est désactivé** (un G-SYNC déjà actif, en plein écran seul ou aussi en fenêtré, est laissé tel quel) | écran principal NVIDIA qui permet G-SYNC ou G-SYNC Compatible (FreeSync) ; décoché d'office |
-| Mode faible latence | Activé (une image en attente) | toujours |
+| Mode faible latence | Une image en attente (l'application NVIDIA peut continuer d'afficher « Désactivé » pour son mode de faible latence : Aria règle le nombre d'images en attente, pas cet interrupteur) | toujours |
 | Synchronisation verticale | Activée par le pilote | G-SYNC actif sur l'écran principal |
 | Nombre d'images par seconde maximal | Fréquence max − 3 (ex. 141 à 144 Hz) | G-SYNC actif sur l'écran principal |
 | Fréquence préférée | La plus élevée disponible | toujours |

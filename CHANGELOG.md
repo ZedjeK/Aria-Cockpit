@@ -5,6 +5,10 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Mode faible latence : le texte du réglage parle maintenant du nombre d'images en attente (« Une image en attente »), et
+  non d'un mode « Activé ». L'application NVIDIA range son interrupteur « Mode de faible latence » dans des réglages que
+  l'API ne montre pas : elle peut afficher « Désactivé » alors que le nombre d'images en attente vaut 1. Le comportement
+  du réglage n'a pas changé.
 - Réglage « G-SYNC » dans Optimisation > NVIDIA : il rallume un G-SYNC coupé dans le pilote (réglage `VRR_MODE` publié par
   NVIDIA, valable aussi pour G-SYNC Compatible, c'est-à-dire FreeSync), en mode plein écran, avec la confirmation, la
   sauvegarde et la restauration habituelles. Décoché d'office ; un G-SYNC déjà actif n'est pas touché. Le README disait à
