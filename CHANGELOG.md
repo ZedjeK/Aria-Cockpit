@@ -5,6 +5,10 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Réglage « G-SYNC » dans Optimisation > NVIDIA : il rallume un G-SYNC coupé dans le pilote (réglage `VRR_MODE` publié par
+  NVIDIA, valable aussi pour G-SYNC Compatible, c'est-à-dire FreeSync), en mode plein écran, avec la confirmation, la
+  sauvegarde et la restauration habituelles. Décoché d'office ; un G-SYNC déjà actif n'est pas touché. Le README disait à
+  tort que G-SYNC était absent de l'API officielle, et le diagnostic renvoie maintenant vers ce réglage.
 - Contrôle des transitions : la carte passe du repos à des rafales de calcul vérifié à 5, 20, 50 et 100 % de charge, et la
   mémoire écrite avant chaque repos est relue après chaque phase. Un test soutenu à pleine charge ne traverse jamais les
   états bas de la carte, où un décalage mémoire ou un undervolt peut faire fauter une carte qui tient à pleine charge. Il

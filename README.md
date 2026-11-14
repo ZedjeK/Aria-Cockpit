@@ -221,6 +221,7 @@ global (« Paramètres globaux » de l'application NVIDIA) ; les profils propres
 
 | Réglage | Proposé | Condition |
 |---|---|---|
+| G-SYNC | Plein écran seulement, **seulement s'il est désactivé** (un G-SYNC déjà actif, en plein écran seul ou aussi en fenêtré, est laissé tel quel) | écran principal NVIDIA qui permet G-SYNC ou G-SYNC Compatible (FreeSync) ; décoché d'office |
 | Mode faible latence | Activé (une image en attente) | toujours |
 | Synchronisation verticale | Activée par le pilote | G-SYNC actif sur l'écran principal |
 | Nombre d'images par seconde maximal | Fréquence max − 3 (ex. 141 à 144 Hz) | G-SYNC actif sur l'écran principal |
@@ -230,8 +231,14 @@ global (« Paramètres globaux » de l'application NVIDIA) ; les profils propres
 | Processeur graphique préféré | Processeur NVIDIA (décoché, autonomie réduite) | portable à deux puces graphiques |
 | Plage dynamique (par écran) | Complète (0-255) | écran NVIDIA en plage limitée, RGB, sans HDR |
 
-Un réglage jamais modifié s'affiche « (par défaut) » ; le restaurer remet la valeur d'usine du pilote. Aria Cockpit ne peut
-pas activer G-SYNC lui-même (absent de l'API officielle) : le diagnostic indique où le faire. Ferme le Panneau de
+Un réglage jamais modifié s'affiche « (par défaut) » ; le restaurer remet la valeur d'usine du pilote. Le réglage
+« G-SYNC » est celui que NVIDIA publie dans son SDK (`VRR_MODE`, « Enable G-SYNC globally » : désactivé, plein écran
+seulement, plein écran et fenêtré). Essayé à la main sur une RTX 4080 SUPER, hors jeu : la valeur « désactivé » fait quitter
+le mode VRR à l'écran en moins d'une demi-seconde, et la remise de la valeur d'origine le rétablit. Il est décoché
+d'office, car couper G-SYNC est parfois voulu (fréquence fixe pour le jeu compétitif). Une fois G-SYNC rallumé, il faut
+relancer l'analyse : la synchronisation verticale et la limite d'images ne sont proposées que sur un écran G-SYNC actif. Si
+le réglage est déjà sur un mode actif et que G-SYNC reste éteint, c'est l'application NVIDIA (Système → Écrans) qui le
+coupe : le diagnostic l'indique. Ferme le Panneau de
 configuration NVIDIA avant d'appliquer : un clic sur « Appliquer » de sa part pourrait remettre ses anciennes valeurs.
 
 ### Confidentialité
