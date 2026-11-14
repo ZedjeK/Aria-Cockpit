@@ -15,10 +15,18 @@ public sealed record FolderTally(long Bytes, int Files, int Skipped)
 /// </summary>
 public static class SafeDelete
 {
-    /// <param name="olderThan">Seuls les fichiers non modifiés depuis cette date sont pris en compte (null = tous).</param>
+    /// <param name="olderThan">Seuls les fichiers ni créés ni modifiés depuis cette date sont pris en compte (null = tous).</param>
     public static FolderTally Measure(string root, DateTime? olderThan = null) => Walk(root, olderThan, delete: false);
 
     public static FolderTally Delete(string root, DateTime? olderThan = null) => Walk(root, olderThan, delete: true);
+
+    /// <summary>
+    /// Dernière fois que le fichier a été touché sur ce disque : la plus récente de sa création et de sa modification.
+    /// Un fichier extrait d'une archive ou copié garde sa date de modification d'origine : sorti aujourd'hui d'un
+    /// installeur, il peut se dire vieux de trois ans. Sa date de création, elle, est celle de son arrivée ici.
+    /// </summary>
+    internal static DateTime LastTouched(FileInfo file) =>
+        file.CreationTime > file.LastWriteTime ? file.CreationTime : file.LastWriteTime;
 
     /// <summary>Le chemin est-il strictement à l'intérieur de la racine ? (la racine elle-même : non)</summary>
     public static bool IsInside(string root, string path)
@@ -103,7 +111,7 @@ public static class SafeDelete
                 if (info is DirectoryInfo) { pending.Push(entry); continue; }
 
                 var file = (FileInfo)info;
-                if (olderThan is { } limit && file.LastWriteTime > limit) continue;
+                if (olderThan is { } limit && LastTouched(file) > limit) continue;
 
                 long size;
                 try { size = file.Length; }

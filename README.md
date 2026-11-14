@@ -213,6 +213,13 @@ Fréquence maximale de chaque écran, plan d'alimentation adapté (Performances 
 rafraîchissement variable, enregistrement en arrière-plan de la Xbox Game Bar, accélération de la souris et, en option
 de confort, animations de Windows.
 
+**Veille prolongée et démarrage rapide** (PC fixe, décoché) : activée, la veille prolongée réserve sur le disque système
+un fichier `hiberfil.sys` de la taille d'une bonne part de la mémoire (25 Go sur un PC à 64 Go). La couper
+(`powercfg /hibernate off`, l'outil officiel) rend cette place, affichée dans la raison du réglage. Le démarrage rapide,
+qui s'appuie sur elle, est coupé avec : « Arrêter » éteint alors vraiment Windows, et le PC démarre à froid, quelques
+secondes de plus. La veille simple reste disponible. Restaurer le réglage réactive la veille prolongée et recrée le
+fichier. Jamais proposé sur un portable, où la veille prolongée sauve le travail en cours quand la batterie se vide.
+
 ### NVIDIA
 
 Aria Cockpit parle au pilote via NVAPI (`nvapi64.dll`, installé avec le pilote), avec les seuls identifiants publiés par
@@ -589,16 +596,26 @@ de version.
 
 | Élément | Coché | Méthode |
 |---|---|---|
-| Fichiers temporaires (utilisateur et Windows) | oui | fichiers de plus de 7 jours ; fichiers en cours d'utilisation ignorés |
+| Fichiers temporaires (utilisateur et Windows) | oui | fichiers ni créés ni modifiés depuis 7 jours ; fichiers en cours d'utilisation ignorés |
 | Cache d'Optimisation de la distribution | oui | `Delete-DeliveryOptimizationCache` (commande officielle) |
 | Anciens composants des mises à jour | oui | `DISM /Online /Cleanup-Image /StartComponentCleanup`, sans `/ResetBase` |
-| Caches de shaders (NVIDIA, DirectX, AMD, Intel) | non | à vider en cas de saccades après une mise à jour du pilote |
-| Rapports de plantage (minidumps) | non | utiles pour diagnostiquer un écran bleu |
+| Caches de shaders anciens (plus de 30 jours) | non | fichiers de cache ni créés ni modifiés depuis 30 jours ; les caches récents sont gardés |
+| Caches de shaders (NVIDIA, DirectX, AMD, Intel) | non | tous les caches ; à vider en cas de saccades après une mise à jour du pilote |
+| Rapports de plantage (minidumps, blocages du pilote graphique) | non | utiles pour diagnostiquer un écran bleu ou un blocage du pilote |
 | Ancienne installation de Windows (`Windows.old`) | non | Nettoyage de disque (`cleanmgr /sagerun`) ; plus de retour à la version précédente |
 
 Garde-fous : seuls ces emplacements sont touchés ; aucun lien (jonction, lien symbolique) n'est suivi ; une racine
 dangereuse (racine du disque, dossier Windows, profil, Program Files…) est refusée ; le dossier `TEMP` n'est accepté que
 s'il s'appelle bien « Temp ». La corbeille et les documents ne sont jamais touchés. Une suppression est définitive.
+
+L'âge d'un fichier est la plus récente de sa date de création et de sa date de modification : un fichier sorti aujourd'hui
+d'une archive garde la date de modification d'origine, parfois vieille de plusieurs années, et serait supprimé à tort sur
+cette seule date. Pour les caches de shaders, Windows ne dit pas quand un cache a servi pour la dernière fois : un jeu
+lancé souvent mais dont le cache n'a pas changé depuis un mois recompilera ses shaders, avec quelques saccades à ses
+premières parties. Le cache de shaders NVIDIA grossit sans limite quand sa taille est réglée sur « Illimité » (ce qu'Aria
+propose dans Optimisation) : c'est le prix de l'absence de recompilation. Les caches cochés ensemble ne sont comptés
+qu'une fois dans le total. Le fichier de la veille prolongée (`hiberfil.sys`) ne se supprime pas ici : il se libère par
+le réglage « Veille prolongée et démarrage rapide » d'Optimisation, qui se restaure.
 
 ## Fiche PC (HTML)
 

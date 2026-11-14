@@ -18,6 +18,7 @@ public static class SettingsCatalog
         settings.Add(new PowerPlanSetting());
         settings.Add(new MinProcessorStateSetting());
         settings.Add(new PowerModeSetting());
+        settings.Add(new HibernationSetting());
         settings.Add(new GameModeSetting());
         settings.Add(new HardwareGpuSchedulingSetting());
         settings.Add(new WindowedGamesOptimizationSetting());

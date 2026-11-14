@@ -123,7 +123,7 @@ public sealed partial class CleanupViewModel : ObservableObject
     private void UpdateSelection()
     {
         var chosen = AllItems.Where(i => i.IsSelected).Select(i => (CleanupItem)i.Payload).ToList();
-        var known = chosen.Where(i => i.Bytes is not null).Sum(i => i.Bytes!.Value);
+        var known = CleanupService.Recoverable(chosen);
         var unknown = chosen.Any(i => i.Bytes is null);
         SelectedCount = chosen.Count;
         SelectionText = chosen.Count == 0
