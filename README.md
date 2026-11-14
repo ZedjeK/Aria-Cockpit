@@ -251,6 +251,8 @@ configuration NVIDIA avant d'appliquer : un clic sur « Appliquer » de sa part 
 ### Confidentialité
 
 Réglages officiels (Policy CSP Microsoft, valables sur Windows 11 Pro) ou options écrites par les Paramètres eux-mêmes.
+Trois réglages (écrans de configuration, rappels de compte, installation automatique d'applications) écrivent des options
+que Microsoft ne documente pas : leurs noms viennent de guides de la communauté, et leur effet n'a pas été mesuré par Aria.
 Couper des services n'apporte aucun gain de performances mesurable : l'intérêt est la vie privée et la réduction de la
 surface d'attaque.
 
@@ -259,6 +261,11 @@ surface d'attaque.
   - demandes de commentaires, expériences personnalisées, identifiant de publicité, historique d'activité ;
   - recherche Bing du menu Démarrer (effet secondaire : plus de recherches récentes dans l'Explorateur) ;
   - recommandations du menu Démarrer, suggestions et astuces (Paramètres, écran de verrouillage) ;
+  - écrans « Terminons la configuration de votre appareil » et de bienvenue, qui reviennent après une mise à jour ;
+  - rappels de compte Microsoft dans le menu Démarrer et bandeaux du fournisseur de synchronisation (OneDrive) dans
+    l'Explorateur, publicités comme messages d'information (la synchronisation continue) ;
+  - installation automatique d'applications suggérées : sans ce réglage, Windows peut réinstaller de lui-même des
+    applications retirées dans « Applications » (une grosse mise à jour de Windows peut encore en remettre) ;
   - suivi des applications lancées, liste de langues envoyée aux sites ;
   - services Télémétrie (DiagTrack) et Fax ;
   - spouleur d'impression **seulement si aucune imprimante réelle** (« Imprimer en PDF » ne fonctionnera plus) ;

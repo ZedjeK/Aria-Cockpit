@@ -26,6 +26,9 @@ public static class PrivacySettings
         yield return new StartWebSearchSetting();
         yield return new StartRecommendationsSetting();
         yield return new WindowsSuggestionsSetting();
+        yield return new SetupPromptsSetting();
+        yield return new AccountRemindersSetting();
+        yield return new SilentAppInstallSetting();
         yield return new AppLaunchTrackingSetting();
         yield return new LanguageListSetting();
         yield return new CopilotAppSetting();
@@ -168,34 +171,43 @@ public sealed class LanguageListSetting() : PrivacyRegistrySetting(
         new(Value(1), "Les sites ne reçoivent plus la liste de vos langues installées, une information qui aide à vous identifier.");
 }
 
+/// <summary>
+/// Installation automatique d'applications suggérées (jeux, réseaux sociaux…) par Windows, sans rien demander. Option de
+/// ContentDeliveryManager, celle qu'écrivent les guides de la communauté (Winaero, gHacks) : Microsoft ne la documente pas,
+/// et la stratégie officielle équivalente (« Désactiver les expériences consommateur ») est réservée à Entreprise et Éducation.
+/// </summary>
+public sealed class SilentAppInstallSetting() : PrivacyRegistrySetting(
+    Registry.CurrentUser, WindowsSuggestionsSetting.Cdm, "SilentInstalledAppsEnabled", valueWhenMissing: 1)
+{
+    public override string Id => "privacy.silentinstalls";
+    public override string DisplayName => "Installation automatique d'applications suggérées";
+    protected override string Describe(int value) => value == 0 ? "Désactivée" : "Activée";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "Windows n'installe plus de lui-même les applications que Microsoft met en avant : celles retirées dans " +
+                      "« Applications » ne reviennent plus par ce biais. Une grosse mise à jour de Windows peut encore en réinstaller.");
+}
+
 // ================================================================ Registre (plusieurs valeurs)
 
 /// <summary>
-/// Suggestions et « astuces » de Windows (Paramètres, écran de verrouillage, notifications).
-/// Les stratégies équivalentes sont réservées aux éditions Entreprise et Éducation : on écrit donc les options
-/// des Paramètres elles-mêmes (ContentDeliveryManager), ainsi que la stratégie des suggestions tierces, valable sur Pro.
+/// Réglage fait de plusieurs valeurs DWORD du registre de l'utilisateur, lues et écrites ensemble.
 /// Valeur technique : les valeurs dans l'ordre, séparées par « ; » (« absent » si non définie).
 /// </summary>
-public sealed class WindowsSuggestionsSetting : SettingBase
+public abstract class UserRegistryValuesSetting : SettingBase
 {
     private const string Absent = "absent";
-    private const string Cdm = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
 
-    // (chemin, nom, valeur si absente, valeur voulue)
-    private static readonly (string Path, string Name, int Missing, int Wanted)[] Values =
-    [
-        (Cdm, "SubscribedContent-338393Enabled", 1, 0),   // contenu suggéré dans Paramètres
-        (Cdm, "SubscribedContent-353694Enabled", 1, 0),   // contenu suggéré dans Paramètres
-        (Cdm, "SubscribedContent-353696Enabled", 1, 0),   // contenu suggéré dans Paramètres
-        (Cdm, "SubscribedContent-338389Enabled", 1, 0),   // astuces et suggestions pendant l'utilisation
-        (Cdm, "SubscribedContent-338387Enabled", 1, 0),   // anecdotes et astuces de l'écran de verrouillage
-        (Cdm, "RotatingLockScreenOverlayEnabled", 1, 0),  // idem (superposition)
-        (Cdm, "SystemPaneSuggestionsEnabled", 1, 0),      // suggestions d'applications
-        (@"Software\Policies\Microsoft\Windows\CloudContent", "DisableThirdPartySuggestions", 0, 1)
-    ];
+    /// <summary>(chemin sous HKCU, nom, valeur si absente, valeur voulue), dans l'ordre de la valeur technique.</summary>
+    protected abstract IReadOnlyList<(string Path, string Name, int Missing, int Wanted)> Values { get; }
 
-    public override string Id => "privacy.suggestions";
-    public override string DisplayName => "Suggestions et astuces de Windows (Paramètres, écran de verrouillage)";
+    /// <summary>Raison affichée avec la cible.</summary>
+    protected abstract string Reason { get; }
+
+    /// <summary>« Désactivées » ou « Désactivés », selon le nom du réglage.</summary>
+    protected virtual string OffText => "Désactivées";
+    protected virtual string OnText => "Activées";
+
     public override SettingCategory Category => SettingCategory.Privacy;
 
     public override SettingValue ReadCurrent(HardwareProfile hw)
@@ -211,8 +223,7 @@ public sealed class WindowsSuggestionsSetting : SettingBase
     public override SettingTarget ComputeTarget(HardwareProfile hw)
     {
         var raw = Values.Select(v => v.Wanted.ToString()).ToList();
-        return new(new SettingValue(string.Join(";", raw), Describe(raw)),
-            "Plus de contenus « suggérés » ni de publicités dans les Paramètres, les notifications et l'écran de verrouillage.");
+        return new(new SettingValue(string.Join(";", raw), Describe(raw)), Reason);
     }
 
     public override bool IsAtTarget(SettingValue current, SettingValue target) =>
@@ -221,8 +232,8 @@ public sealed class WindowsSuggestionsSetting : SettingBase
     public override void Apply(HardwareProfile hw, SettingValue value)
     {
         var parts = value.Raw.Split(';');
-        if (parts.Length != Values.Length) throw new FormatException($"Valeur inattendue : {value.Raw}");
-        for (var i = 0; i < Values.Length; i++)
+        if (parts.Length != Values.Count) throw new FormatException($"Valeur inattendue : {value.Raw}");
+        for (var i = 0; i < Values.Count; i++)
         {
             using var key = Registry.CurrentUser.CreateSubKey(Values[i].Path, writable: true);
             if (parts[i] == Absent) key.DeleteValue(Values[i].Name, throwOnMissingValue: false);
@@ -231,18 +242,95 @@ public sealed class WindowsSuggestionsSetting : SettingBase
     }
 
     /// <summary>Valeurs effectives (« absent » remplacé par la valeur par défaut de Windows).</summary>
-    internal static IEnumerable<int> Effective(string raw)
+    internal IEnumerable<int> Effective(string raw)
     {
         var parts = raw.Split(';');
         return Values.Select((v, i) => i < parts.Length && int.TryParse(parts[i], out var n) ? n : v.Missing);
     }
 
-    private static string Describe(IReadOnlyList<string> raw)
+    private string Describe(IReadOnlyList<string> raw)
     {
         var effective = Effective(string.Join(";", raw)).ToList();
         var off = effective.Select((value, i) => value == Values[i].Wanted).Count(x => x);
-        return off == Values.Length ? "Désactivées" : off == 0 ? "Activées" : $"En partie ({off}/{Values.Length} désactivées)";
+        return off == Values.Count ? OffText : off == 0 ? OnText : $"En partie ({off}/{Values.Count} {OffText.ToLowerInvariant()})";
     }
+}
+
+/// <summary>
+/// Suggestions et « astuces » de Windows (Paramètres, écran de verrouillage, notifications).
+/// Les stratégies équivalentes sont réservées aux éditions Entreprise et Éducation : on écrit donc les options
+/// des Paramètres elles-mêmes (ContentDeliveryManager), ainsi que la stratégie des suggestions tierces, valable sur Pro.
+/// </summary>
+public sealed class WindowsSuggestionsSetting : UserRegistryValuesSetting
+{
+    internal const string Cdm = @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
+
+    private static readonly (string Path, string Name, int Missing, int Wanted)[] All =
+    [
+        (Cdm, "SubscribedContent-338393Enabled", 1, 0),   // contenu suggéré dans Paramètres
+        (Cdm, "SubscribedContent-353694Enabled", 1, 0),   // contenu suggéré dans Paramètres
+        (Cdm, "SubscribedContent-353696Enabled", 1, 0),   // contenu suggéré dans Paramètres
+        (Cdm, "SubscribedContent-338389Enabled", 1, 0),   // astuces et suggestions pendant l'utilisation
+        (Cdm, "SubscribedContent-338387Enabled", 1, 0),   // anecdotes et astuces de l'écran de verrouillage
+        (Cdm, "RotatingLockScreenOverlayEnabled", 1, 0),  // idem (superposition)
+        (Cdm, "SystemPaneSuggestionsEnabled", 1, 0),      // suggestions d'applications
+        (@"Software\Policies\Microsoft\Windows\CloudContent", "DisableThirdPartySuggestions", 0, 1)
+    ];
+
+    public override string Id => "privacy.suggestions";
+    public override string DisplayName => "Suggestions et astuces de Windows (Paramètres, écran de verrouillage)";
+    protected override IReadOnlyList<(string Path, string Name, int Missing, int Wanted)> Values => All;
+    protected override string Reason =>
+        "Plus de contenus « suggérés » ni de publicités dans les Paramètres, les notifications et l'écran de verrouillage.";
+}
+
+/// <summary>
+/// Écrans qui reviennent après une mise à jour ou à l'ouverture de session : « Terminons la configuration de votre
+/// appareil » (compte Microsoft, OneDrive, Microsoft 365…) et l'écran de bienvenue. Ce sont deux cases de
+/// Paramètres → Système → Notifications → Paramètres supplémentaires. Noms de valeurs relevés dans des guides de la
+/// communauté (ElevenForum, Winaero) : Microsoft ne les documente pas.
+/// </summary>
+public sealed class SetupPromptsSetting : UserRegistryValuesSetting
+{
+    private static readonly (string Path, string Name, int Missing, int Wanted)[] All =
+    [
+        (WindowsSuggestionsSetting.Cdm, "SubscribedContent-310093Enabled", 1, 0),   // écran de bienvenue après une mise à jour
+        (@"Software\Microsoft\Windows\CurrentVersion\UserProfileEngagement", "ScoobeSystemSettingEnabled", 1, 0)   // « terminons la configuration »
+    ];
+
+    public override string Id => "privacy.setupprompts";
+    public override string DisplayName => "Écrans « Terminons la configuration » et de bienvenue";
+    protected override string OffText => "Désactivés";
+    protected override string OnText => "Activés";
+    protected override IReadOnlyList<(string Path, string Name, int Missing, int Wanted)> Values => All;
+    protected override string Reason =>
+        "Windows ne propose plus, en plein écran après une mise à jour, de « terminer la configuration » (compte Microsoft, " +
+        "OneDrive, Microsoft 365…) ni son écran de bienvenue.";
+}
+
+/// <summary>
+/// Rappels de compte Microsoft dans le menu Démarrer (stockage cloud, abonnements) et bandeaux du fournisseur de
+/// synchronisation dans l'Explorateur (OneDrive). Les deux cases existent dans Windows : Paramètres → Personnalisation →
+/// Démarrer, et Options de l'Explorateur → Affichage.
+/// </summary>
+public sealed class AccountRemindersSetting : UserRegistryValuesSetting
+{
+    private const string Advanced = @"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
+
+    private static readonly (string Path, string Name, int Missing, int Wanted)[] All =
+    [
+        (Advanced, "Start_AccountNotifications", 1, 0),     // rappels de compte dans le menu Démarrer
+        (Advanced, "ShowSyncProviderNotifications", 1, 0)   // bandeaux du fournisseur de synchronisation dans l'Explorateur
+    ];
+
+    public override string Id => "privacy.accountreminders";
+    public override string DisplayName => "Rappels de compte Microsoft (menu Démarrer) et bandeaux OneDrive (Explorateur)";
+    protected override string OffText => "Désactivés";
+    protected override string OnText => "Activés";
+    protected override IReadOnlyList<(string Path, string Name, int Missing, int Wanted)> Values => All;
+    protected override string Reason =>
+        "Plus de rappels sur votre compte Microsoft dans le menu Démarrer (stockage cloud, abonnements) ni de bandeaux du " +
+        "fournisseur de synchronisation dans l'Explorateur, publicités comme messages d'information. La synchronisation continue.";
 }
 
 // ================================================================ Recall
