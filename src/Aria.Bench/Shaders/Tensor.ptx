@@ -1,0 +1,100 @@
+//
+// Cœurs Tensor, multiplication-accumulation INT8 -> INT32 (exacte, sans arrondi), écrite à la main (aucun nvcc).
+// Chaque warp répète tuiles 16x16x16 prises dans un réservoir de 64 paires (A, B) : le résultat attendu se calcule
+// exactement sur le processeur. Un segment = seg_iters multiplications ; le résultat de chaque segment est ajouté
+// à un total, stocké à la fin.
+//
+.version 8.3
+.target sm_75
+.address_size 64
+
+.visible .entry tensor_int8(
+    .param .u64 pool_a,
+    .param .u64 pool_b,
+    .param .u64 out,
+    .param .u32 seg_iters,
+    .param .u32 segments
+)
+{
+    .reg .pred  %p<4>;
+    .reg .b32   %a<2>;
+    .reg .b32   %b<2>;
+    .reg .s32   %acc<8>;
+    .reg .s32   %chk<8>;
+    .reg .u32   %r<16>;
+    .reg .u64   %rd<16>;
+
+    ld.param.u64 %rd1, [pool_a];
+    ld.param.u64 %rd2, [pool_b];
+    ld.param.u64 %rd3, [out];
+    ld.param.u32 %r1, [seg_iters];
+    ld.param.u32 %r2, [segments];
+    cvta.to.global.u64 %rd1, %rd1;
+    cvta.to.global.u64 %rd2, %rd2;
+    cvta.to.global.u64 %rd3, %rd3;
+
+    mov.u32 %r3, %ctaid.x;
+    mov.u32 %r4, %ntid.x;
+    mov.u32 %r5, %tid.x;
+    mad.lo.u32 %r6, %r3, %r4, %r5;
+    shr.u32 %r7, %r6, 5;
+    and.b32 %r8, %r7, 63;
+
+    mov.s32 %chk0, 0;
+    mov.s32 %chk1, 0;
+    mov.s32 %chk2, 0;
+    mov.s32 %chk3, 0;
+    mov.s32 %chk4, 0;
+    mov.s32 %chk5, 0;
+    mov.s32 %chk6, 0;
+    mov.s32 %chk7, 0;
+    mov.u32 %r9, 0;
+
+SEG_LOOP:
+    setp.ge.u32 %p1, %r9, %r2;
+    @%p1 bra SEG_DONE;
+    mov.s32 %acc0, 0;
+    mov.s32 %acc1, 0;
+    mov.s32 %acc2, 0;
+    mov.s32 %acc3, 0;
+    mov.s32 %acc4, 0;
+    mov.s32 %acc5, 0;
+    mov.s32 %acc6, 0;
+    mov.s32 %acc7, 0;
+    mov.u32 %r10, 0;
+
+ITER_LOOP:
+    setp.ge.u32 %p2, %r10, %r1;
+    @%p2 bra ITER_DONE;
+    add.u32 %r11, %r8, %r10;
+    and.b32 %r11, %r11, 63;
+    mul.wide.u32 %rd4, %r11, 256;
+    add.u64 %rd5, %rd1, %rd4;
+    add.u64 %rd6, %rd2, %rd4;
+    wmma.load.a.sync.aligned.row.m16n16k16.global.s8 {%a0, %a1}, [%rd5], 16;
+    wmma.load.b.sync.aligned.col.m16n16k16.global.s8 {%b0, %b1}, [%rd6], 16;
+    wmma.mma.sync.aligned.row.col.m16n16k16.s32.s8.s8.s32
+        {%acc0, %acc1, %acc2, %acc3, %acc4, %acc5, %acc6, %acc7},
+        {%a0, %a1}, {%b0, %b1},
+        {%acc0, %acc1, %acc2, %acc3, %acc4, %acc5, %acc6, %acc7};
+    add.u32 %r10, %r10, 1;
+    bra ITER_LOOP;
+
+ITER_DONE:
+    add.s32 %chk0, %chk0, %acc0;
+    add.s32 %chk1, %chk1, %acc1;
+    add.s32 %chk2, %chk2, %acc2;
+    add.s32 %chk3, %chk3, %acc3;
+    add.s32 %chk4, %chk4, %acc4;
+    add.s32 %chk5, %chk5, %acc5;
+    add.s32 %chk6, %chk6, %acc6;
+    add.s32 %chk7, %chk7, %acc7;
+    add.u32 %r9, %r9, 1;
+    bra SEG_LOOP;
+
+SEG_DONE:
+    mul.wide.u32 %rd7, %r7, 1024;
+    add.u64 %rd8, %rd3, %rd7;
+    wmma.store.d.sync.aligned.row.m16n16k16.global.s32 [%rd8], {%chk0, %chk1, %chk2, %chk3, %chk4, %chk5, %chk6, %chk7}, 16;
+    ret;
+}

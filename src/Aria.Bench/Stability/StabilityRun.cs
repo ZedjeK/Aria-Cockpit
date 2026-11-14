@@ -26,6 +26,7 @@ internal static class StabilityRun
     /// <summary>Renvoie faux si l'utilisateur a arrêté avant la fin (Échap).</summary>
     public static bool Run(GpuDevice gpu, Win32Window window, BenchOptions options, BenchLog log)
     {
+        if (options.Stability == StabilityMode.Tensor) return RunTensor(gpu, window, options, log);
         var memoryTested = options.Stability == StabilityMode.Memory;
         var seconds = options.SelfCheck ? SelfCheckDuration.TotalSeconds : options.Duration.TotalSeconds;
         var previous = ReadPrevious(options.PreviousPath, log);
@@ -114,9 +115,80 @@ internal static class StabilityRun
         return !interrupted;
     }
 
+    /// <summary>
+    /// Contrôle des cœurs Tensor (--tenseurs) : calcul INT8 sur CUDA, relu et comparé au résultat exact calculé sur le
+    /// processeur. Il tourne sur un fil à part (un contexte CUDA appartient au fil qui l'a créé) pendant que la fenêtre
+    /// reste à l'écoute d'Échap. Impossible ici (pas de CUDA, carte avant Turing…) : « non testé », jamais « instable ».
+    /// </summary>
+    private static bool RunTensor(GpuDevice gpu, Win32Window window, BenchOptions options, BenchLog log)
+    {
+        var seconds = options.SelfCheck ? SelfCheckDuration.TotalSeconds : options.Duration.TotalSeconds;
+        var tensor = new TensorTest { InjectFault = options.SelfCheck };
+        var clock = Stopwatch.StartNew();
+        var stop = false;
+        var failures = new List<string>();
+        string? skipped = null;
+        string? device = null;
+        bool KeepGoing() => !Volatile.Read(ref stop) && clock.Elapsed.TotalSeconds < seconds;
+
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                using var cuda = CudaContext.Open(gpu.AdapterLuid);
+                device = $"{cuda.DeviceName} (capacité de calcul {cuda.Capability / 10}.{cuda.Capability % 10}, {cuda.Multiprocessors} multiprocesseurs)";
+                tensor.Run(cuda, KeepGoing);
+            }
+            catch (TensorUnavailableException e)
+            {
+                skipped = e.Message;
+            }
+            catch (BenchException e)
+            {
+                lock (failures) failures.Add($"cœurs Tensor : {e.Message}");
+                Volatile.Write(ref stop, true);
+            }
+        });
+        worker.Start();
+
+        var interrupted = false;
+        while (worker.IsAlive)
+        {
+            if (!window.PumpMessages())
+            {
+                interrupted = true;
+                Volatile.Write(ref stop, true);
+            }
+            Thread.Sleep(50);
+        }
+        worker.Join();
+
+        var tested = tensor.Executions > 0;
+        var report = StabilityReport.Conclude("tenseurs", options.SelfCheck, memoryTested: false, burnTested: false, [], 0, 0, 0, 0,
+            failures, null, seconds, clock.Elapsed.TotalSeconds,
+            tensorTested: tested, tensorExecutions: tensor.Executions, tensorWrong: tensor.WrongElements,
+            tensorElements: tensor.ElementsPerLaunch, tensorSkipped: skipped);
+        report.DebitTenseursTops = tested && tensor.MedianTops > 0 ? tensor.MedianTops : null;
+        report.WarpsTenseursFautifs = tensor.FaultyWarps.Count;
+        report.PremiersEcartsTenseurs = tensor.FirstErrors;
+        log.Stabilite = report;
+        if (device is not null) log.Remarques.Add($"Cœurs Tensor testés sur {device}, noyau INT8 : {tensor.Segments * TensorReference.SegmentIterations} multiplications 16 × 16 par warp et par lancement.");
+
+        var faults = options.SelfCheck ? (report.Statut == StabilityReport.Passed ? 0 : 1) : tensor.WrongElements;
+        log.Resultats.Add(new PassResult("Cœurs Tensor (INT8)", "-", 0, 0, (int)Math.Min(int.MaxValue, tensor.Executions), report.DureeS,
+            0, 0, 0, 0, 0, 0, 0, (int)Math.Min(int.MaxValue, tensor.Executions), (int)Math.Min(int.MaxValue, faults), tensor.WrongElements, null, null));
+        log.Remarques.Add(Summary(report));
+        if (failures.Count > 0) log.Erreurs.AddRange(failures);
+        return !interrupted;
+    }
+
     private static string Summary(StabilityReport r)
     {
         var parts = new List<string>();
+        if (r.ExecutionsTenseurs > 0)
+            parts.Add($"cœurs Tensor : {r.ExecutionsTenseurs} exécutions INT8 vérifiées, {r.EcartsTenseurs} résultat(s) faux" +
+                      (r.DebitTenseursTops is { } tops ? $", {tops:0} TOPS" : ""));
+        if (r.TenseursNonTestes is not null) parts.Add($"cœurs Tensor non testés ({r.TenseursNonTestes})");
         if (r.ExecutionsCalcul > 0) parts.Add($"calcul : {r.ExecutionsCalcul} exécutions vérifiées, {r.EcartsCalcul} écart(s)");
         if (r.Passes > 0)
             parts.Add($"mémoire : {r.MemoireTesteeGio:0.0} Gio, {r.Passes} passes, {r.MotsFaux} mot(s) faux" +

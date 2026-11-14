@@ -14,9 +14,13 @@ public sealed record BenchPass(string Qualite, string Definition, int Images, do
 /// Contrôle de stabilité d'Aria-Bench (--calcul, --vram, --auto-controle) : calcul vérifié à pleine puissance et test de la
 /// mémoire vidéo. Statut : « reussi », « attention » (bande passante qui ne monte plus) ou « echec ».
 /// </summary>
+/// <param name="ExecutionsTenseurs">Lancements INT8 des cœurs Tensor (--tenseurs) dont les résultats ont été comparés.</param>
+/// <param name="EcartsTenseurs">Résultats des cœurs Tensor qui différaient du calcul exact : la carte calcule faux sous une IA locale.</param>
+/// <param name="TenseursNonTestes">Pourquoi les cœurs Tensor n'ont pas pu être testés (pas de CUDA, carte trop ancienne…) ; absent s'ils l'ont été.</param>
 public sealed record BenchStability(string Statut, string Mode, bool AutoControle, long ExecutionsCalcul, long EcartsCalcul,
     int Passes, long MotsFaux, double? BandePassanteLectureMedianeGoS, bool PasPlusRapide,
-    IReadOnlyList<string>? Raisons = null, IReadOnlyList<string>? Avertissements = null);
+    IReadOnlyList<string>? Raisons = null, IReadOnlyList<string>? Avertissements = null,
+    long ExecutionsTenseurs = 0, long EcartsTenseurs = 0, double? DebitTenseursTops = null, string? TenseursNonTestes = null);
 
 /// <summary>Contrôle de stabilité demandé à Aria-Bench à la place du rendu 3D.</summary>
 public enum BenchCheck
@@ -25,6 +29,8 @@ public enum BenchCheck
     Compute,
     /// <summary>Calcul seul, puis mémoire vidéo seule (--vram) : données corrompues et bande passante.</summary>
     Memory,
+    /// <summary>Calcul INT8 des cœurs Tensor, vérifié bit à bit (--tenseurs) : ce que sollicite une IA locale. RTX 20 et plus récentes.</summary>
+    Tensor,
     /// <summary>Erreurs injectées exprès (--auto-controle) : le contrôle doit toutes les retrouver.</summary>
     SelfCheck
 }
@@ -133,7 +139,7 @@ public static class BenchRunner
     {
         var args = new List<string>
         {
-            check switch { BenchCheck.Compute => "--calcul", BenchCheck.Memory => "--vram", _ => "--auto-controle" },
+            check switch { BenchCheck.Compute => "--calcul", BenchCheck.Memory => "--vram", BenchCheck.Tensor => "--tenseurs", _ => "--auto-controle" },
             "--duree", ((int)Math.Ceiling(duration.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture),
             "--sortie", output
         };

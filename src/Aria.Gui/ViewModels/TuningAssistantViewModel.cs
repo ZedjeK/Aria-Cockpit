@@ -77,6 +77,10 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private static readonly BenchResult NoRender = new("terminé", [], [], []);
     /// <summary>Contrôles ajoutés aux 15 minutes de validation (calcul, et mémoire si elle est poussée).</summary>
     public static readonly TimeSpan ValidationCheckDuration = TimeSpan.FromMinutes(2);
+    /// <summary>Cœurs Tensor (calcul INT8 vérifié bit à bit, ce que sollicite une IA locale) : ajoutés à la validation des cartes RTX.</summary>
+    public static readonly TimeSpan TensorCheckDuration = TimeSpan.FromMinutes(1);
+    /// <summary>La carte a des cœurs Tensor (RTX 20 et plus récentes) : la validation les contrôle aussi.</summary>
+    private bool _tensorCapable;
     private static string CheckOutput => Aria.Core.Backup.DataCache.PathFor("controle-calcul.json");
     private static string MemoryOutput => Aria.Core.Backup.DataCache.PathFor("controle-memoire.json");
     /// <summary>Journal du dernier palier mémoire stable : le suivant doit aller plus vite que lui.</summary>
@@ -300,6 +304,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         if (!BenchAvailable || (goal != TuningGoal.Balanced && (Record?.ResultState is null || !IsUnlocked))) return;
 
         var noLock = !t.Limits.SupportsClockLock;
+        _tensorCapable = GpuCatalog.HasTensorCores(t.Identity.Name);
         // Économie et Performance reprennent la définition où Équilibre a mesuré (relevée s'il butait sur une limite d'images) :
         // pas de mesure plafonnée à refaire, et les FPS se comparent à ceux du départ
         var benchDefinition = goal != TuningGoal.Balanced && Record?.BenchDefinition is { } measured
@@ -588,15 +593,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     /// <summary>
     /// Contrôles prévus après le rendu : aucun pour la mesure de départ (valeurs d'usine), la mémoire vidéo pour un palier
     /// mémoire, le calcul vérifié pour tout palier qui touche au cœur et pour le réglage de base de Performance, les deux
-    /// pour la validation (la mémoire seulement si elle est poussée).
+    /// pour la validation (la mémoire seulement si elle est poussée), précédés des cœurs Tensor sur une carte RTX.
     /// </summary>
     private List<(BenchCheck Check, TimeSpan Duration)> PlannedChecks()
     {
         if (!_checks) return [];
         if (_validating)
-            return _lastStable.MemoryOffsetMHz > 0
+        {
+            List<(BenchCheck Check, TimeSpan Duration)> late = _lastStable.MemoryOffsetMHz > 0
                 ? [(BenchCheck.Compute, ValidationCheckDuration), (BenchCheck.Memory, ValidationCheckDuration)]
                 : [(BenchCheck.Compute, ValidationCheckDuration)];
+            // Les cœurs Tensor d'abord : le dernier contrôle réuni au résultat (tuiles de fin) reste celui du calcul ou de la mémoire
+            if (_tensorCapable) late.Insert(0, (BenchCheck.Tensor, TensorCheckDuration));
+            return late;
+        }
         if (_search is not null) return [_memoryPhase ? (BenchCheck.Memory, MemoryCheckDuration) : (BenchCheck.Compute, ComputeCheckDuration)];
         return _step == Step.PerformanceBase ? [(BenchCheck.Compute, ComputeCheckDuration)] : [];
     }
@@ -620,14 +630,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         var notes = _previousStep.Length > 0 ? _previousStep + "\n" : "";
         foreach (var (check, duration) in PlannedChecks())
         {
-            Instruction = notes + (check == BenchCheck.Memory
-                ? $"{setting}. Contrôle de la mémoire vidéo dans une petite fenêtre ({duration.TotalSeconds:0} s) : calcul à pleine puissance, " +
-                  "puis toute la mémoire libre écrite et relue, avec sa bande passante. Laissez le PC travailler."
-                : $"{setting}. Contrôle du calcul dans une petite fenêtre ({duration.TotalSeconds:0} s) : la carte à pleine puissance, " +
-                  "chaque résultat vérifié, comme sous une IA locale. Laissez le PC travailler.");
+            Instruction = notes + (check switch
+            {
+                BenchCheck.Memory => $"{setting}. Contrôle de la mémoire vidéo dans une petite fenêtre ({duration.TotalSeconds:0} s) : calcul à pleine puissance, " +
+                                     "puis toute la mémoire libre écrite et relue, avec sa bande passante. Laissez le PC travailler.",
+                BenchCheck.Tensor => $"{setting}. Contrôle des cœurs Tensor dans une petite fenêtre ({duration.TotalSeconds:0} s) : calcul INT8 à pleine puissance, " +
+                                     "chaque résultat comparé au calcul exact, comme sous une IA locale. Laissez le PC travailler.",
+                _ => $"{setting}. Contrôle du calcul dans une petite fenêtre ({duration.TotalSeconds:0} s) : la carte à pleine puissance, " +
+                     "chaque résultat vérifié, comme sous une IA locale. Laissez le PC travailler."
+            });
             var previous = check == BenchCheck.Memory && !_validating && File.Exists(MemoryPrevious) ? MemoryPrevious : null;
-            var result = await CheckAsync(check, duration, check == BenchCheck.Memory ? "MÉMOIRE VIDÉO" : "CALCUL VÉRIFIÉ", previous);
+            var label = check switch { BenchCheck.Memory => "MÉMOIRE VIDÉO", BenchCheck.Tensor => "CŒURS TENSOR", _ => "CALCUL VÉRIFIÉ" };
+            var result = await CheckAsync(check, duration, label, previous);
             results.Add(result);
+            if (check == BenchCheck.Tensor) NoteTensor(result);
             if (_aborted || !result.Completed || result.Unstable) break;
         }
         // Contrôle arrêté (Échap, « Arrêter la mesure ») ou impossible : le palier ne sera pas jugé
@@ -638,6 +654,25 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             var failed => $"Contrôle de stabilité impossible ({failed.Erreurs.FirstOrDefault() ?? failed.Statut}) : palier non jugé"
         };
         return results;
+    }
+
+    /// <summary>
+    /// Ce que le contrôle des cœurs Tensor laisse au rapport de fin : une étape (exécutions vérifiées, résultats faux, débit), ou
+    /// une note s'il n'a pas pu se faire (pas de CUDA dans le pilote, par exemple), ce qui ne juge pas le palier.
+    /// </summary>
+    private void NoteTensor(BenchResult result)
+    {
+        switch (result.Stabilite)
+        {
+            case { TenseursNonTestes: { } why }:
+                _notes.Add($"Cœurs Tensor non testés : {why}");
+                break;
+            case { ExecutionsTenseurs: > 0 } s:
+                Log(TuningPhase.Check, "Cœurs Tensor", _lastStable, s.EcartsTenseurs == 0 ? StepVerdict.Info : StepVerdict.Unstable,
+                    $"{s.ExecutionsTenseurs} exécutions INT8 vérifiées, {s.EcartsTenseurs} résultat(s) faux" +
+                    (s.DebitTenseursTops is { } tops ? $", {tops:0} TOPS" : ""));
+                break;
+        }
     }
 
     /// <summary>
@@ -748,7 +783,9 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
         : bench.Pass is { ErreursCalcul: > 0 } ? "erreurs de calcul" : "plantage";
 
     private static string StabilityTitle(BenchStability s) =>
-        s.EcartsCalcul > 0 ? "Calculs faux à pleine puissance" : s.MotsFaux > 0 ? "Mémoire vidéo relue fausse" : "Le pilote a lâché pendant le contrôle";
+        s.EcartsCalcul > 0 ? "Calculs faux à pleine puissance"
+        : s.EcartsTenseurs > 0 ? "Calculs faux sur les cœurs Tensor (IA locale)"
+        : s.MotsFaux > 0 ? "Mémoire vidéo relue fausse" : "Le pilote a lâché pendant le contrôle";
 
     /// <summary>« , images et calculs vérifiés » : ce que le palier a passé (et sa bande passante pour un palier mémoire).</summary>
     private string CheckedNote(BenchResult bench) => bench.Stabilite switch

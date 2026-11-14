@@ -5,7 +5,11 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
-- Rien pour l'instant.
+- Contrôle des cœurs Tensor : calcul INT8 sur les cœurs Tensor (API CUDA du pilote, noyau PTX embarqué, rien à installer
+  de plus), chaque résultat comparé au calcul exact fait sur le processeur. Il s'ajoute à la validation de 15 minutes
+  des cartes RTX, avant le calcul vérifié et la mémoire, et se lance à la main avec `Aria-Bench.exe --tenseurs`
+  (`--auto-controle` pour vérifier que le test voit bien les erreurs). Impossible sur la machine (pilote sans CUDA,
+  carte avant Turing) : « non testé » dans le rapport, sans juger le palier. Ne couvre que le mode INT8.
 
 ## 0.29.1, le 13 novembre 2026
 

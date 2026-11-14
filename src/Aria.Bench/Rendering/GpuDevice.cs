@@ -35,6 +35,8 @@ internal sealed class GpuDevice : IDisposable
     public IDXGISwapChain3 SwapChain { get; }
     public ID3D12GraphicsCommandList CommandList { get; }
     public GpuInfo Info { get; }
+    /// <summary>Identifiant local de la carte choisie : il permet de retrouver la même carte côté CUDA (test des cœurs Tensor).</summary>
+    public long AdapterLuid { get; }
     public int Width { get; }
     public int Height { get; }
     public int FrameIndex => (int)SwapChain.CurrentBackBufferIndex;
@@ -72,6 +74,7 @@ internal sealed class GpuDevice : IDisposable
         if (debug) _infoQueue = Device.QueryInterfaceOrNull<ID3D12InfoQueue>();
 
         Info = Describe(_adapter, desc, all);
+        AdapterLuid = ((long)desc.Luid.HighPart << 32) | (uint)desc.Luid.LowPart;
 
         Queue = Device.CreateCommandQueue(CommandListType.Direct);
         Queue.Name = "Aria-Bench file directe";

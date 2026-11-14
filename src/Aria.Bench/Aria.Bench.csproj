@@ -31,6 +31,8 @@
     <!-- Shaders précompilés (outils/compiler-shaders.py) : aucun compilateur livré avec l'exe -->
     <EmbeddedResource Include="Shaders\Compiled\*.cso" LogicalName="Aria.Bench.Shaders.%(Filename).cso" />
     <None Include="Shaders\*.hlsl" />
+    <!-- Noyau des cœurs Tensor (CUDA) : du PTX en texte, compilé par le pilote au chargement, donc sans compilateur à livrer -->
+    <EmbeddedResource Include="Shaders\Tensor.ptx" LogicalName="Aria.Bench.Shaders.Tensor.ptx" />
   </ItemGroup>
 
 </Project>

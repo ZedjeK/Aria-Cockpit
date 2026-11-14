@@ -27,7 +27,7 @@ public sealed record BenchOptions(
         new([QualityPreset.High], AllDefinitions, DefaultDuration, DefaultWarmup, Windowed: false, Debug: false, OutputPath: null);
 
     public const string Help =
-        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--calcul | --vram] [--auto-controle] [--precedent ancien.json] [--sortie fichier.json]";
+        "Aria-Bench [--qualite faible|moyen|eleve|ultra|tout] [--def 1080|1440|2160|tout] [--duree secondes] [--fenetre] [--debug] [--images] [--calcul | --vram | --tenseurs] [--auto-controle] [--precedent ancien.json] [--sortie fichier.json]";
 
     /// <summary>Taille du rendu interne (16:9) pour une définition.</summary>
     public static (int Width, int Height) SizeOf(int definition) => definition switch
@@ -77,6 +77,10 @@ public sealed record BenchOptions(
                 case "--vram":
                     // Contrôle de stabilité : mémoire vidéo et calcul vérifié (voir StabilityRun)
                     options = options with { Stability = StabilityMode.Memory };
+                    break;
+                case "--tenseurs":
+                    // Contrôle de stabilité des cœurs Tensor (CUDA, INT8 vérifié bit à bit) : RTX 20 et plus récentes
+                    options = options with { Stability = StabilityMode.Tensor };
                     break;
                 case "--auto-controle":
                     // Erreurs injectées exprès : le contrôle doit toutes les retrouver
@@ -136,4 +140,4 @@ public sealed record BenchOptions(
 }
 
 /// <summary>Contrôle de stabilité demandé à la place du rendu 3D.</summary>
-public enum StabilityMode { None, Compute, Memory }
+public enum StabilityMode { None, Compute, Memory, Tensor }

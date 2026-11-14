@@ -402,7 +402,12 @@ aucun écart. Les contrôles d'Aria-Bench (voir plus bas) s'ajoutent donc au ren
   Une référence d'une minute au réglage retenu précède le premier palier, pour que +250 soit déjà comparé. Le palier
   échoue au premier mot relu faux, ou s'il ne va pas plus vite que le précédent (au moins 0,5 % de bande passante en
   plus) : au-delà d'un certain point, la GDDR6X corrige ses erreurs en renvoyant les données, et ralentit au lieu de planter.
-- **Validation** : aux 15 minutes de banc s'ajoutent 2 min de calcul vérifié, et 2 min de mémoire si elle est poussée.
+- **Cœurs Tensor** (1 min, cartes RTX seulement, à la validation) : calcul INT8 sur les cœurs Tensor, par l'API CUDA du
+  pilote (rien à installer de plus), chaque résultat comparé au calcul exact fait sur le processeur. Un seul résultat faux
+  et le réglage est jugé instable : une IA locale donnerait des résultats faux ou planterait. Si le test n'est pas
+  possible (pilote sans CUDA, carte sans cœurs Tensor), il est noté « non testé » dans le rapport et ne juge pas le palier.
+- **Validation** : aux 15 minutes de banc s'ajoutent 1 min de cœurs Tensor (cartes RTX), 2 min de calcul vérifié, et
+  2 min de mémoire si elle est poussée.
 - Les tuiles de résultat montrent ce qui a été vérifié : « Calcul vérifié » (exécutions, écarts) et « Mémoire vidéo »
   (bande passante, passes, erreurs).
 
@@ -457,10 +462,11 @@ supérieure pour charger la carte à fond. Sur un portable, branche-le sur secte
   et les incidents du pilote notés par Windows pendant le passage.
 
 Limites connues : le décalage s'applique à toute la courbe, y compris aux basses tensions du bureau, alors que les
-mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Le banc ne sollicite pas
-les cœurs de ray tracing ni les cœurs Tensor (DLSS) : un jeu qui s'en sert peut révéler un réglage que le banc
-n'a pas vu. Les contrôles de calcul et de mémoire réduisent le risque sous une IA locale ou un rendu, sans le supprimer :
-essaie ton usage réel avant de garder un réglage au démarrage.
+mesures se font à pleine charge ; le garde-fou signale un éventuel plantage au repos après coup. Le rendu du banc ne
+sollicite ni les cœurs de ray tracing ni les cœurs Tensor (DLSS) : un jeu qui s'en sert peut révéler un réglage que le
+banc n'a pas vu. Le contrôle des cœurs Tensor de la validation ne couvre que le mode INT8 : les modes FP16, BF16 et FP8
+qu'utilisent aussi les IA locales ne sont pas testés. Les contrôles de calcul, de mémoire et de cœurs Tensor réduisent le
+risque sous une IA locale ou un rendu, sans le supprimer : essaie ton usage réel avant de garder un réglage au démarrage.
 
 ## Banc d'essai Aria
 
@@ -490,15 +496,22 @@ Aria Cockpit reste debout et le constate. Rendu interne en 1080p, 1440p ou 4K (1
   passé hors du premier plan (`arrierePlanS`) est noté aussi : le pilote bride alors la fenêtre.
 - **Journal** : `bench-<date>.json` (et `bench-dernier.json`) à côté de l'exe : carte, pilote, contexte, résultats,
   erreurs. C'est lui qu'Aria Cockpit lit.
-- **Contrôles de stabilité** (`--calcul`, `--vram`, repris du « Test VRAM discriminant » de la session Aria Pilote),
+- **Contrôles de stabilité** (`--calcul`, `--vram`, `--tenseurs`, les deux premiers repris du « Test VRAM discriminant » de la session Aria Pilote),
   dans une petite fenêtre au lieu du rendu 3D. Le calcul vérifié fait faire à un million de fils la même longue chaîne
   de multiplications-additions, et compare chaque résultat à celui de la première exécution. Le test mémoire écrit 70 %
   de la mémoire vidéo libre, sans dépasser ce qui reste vraiment libre sur la carte moins 1 Go (les autres programmes
   comptent : un test qui déborde passe en mémoire système et ne mesure plus que le PCIe). Chaque mot reçoit une valeur
   calculée d'après l'adresse et la passe ; le test relit tout et compte les écarts sur la carte
   elle-même, une passe sur deux dans un ordre mélangé, comme l'inférence d'un LLM. Avec `--vram`, le calcul tourne seul
-  le premier tiers du temps, puis la mémoire seule, pour une bande passante propre. Le journal gagne une section
-  `stabilite` : statut (`reussi`, `attention`, `echec`), raisons, exécutions et écarts, passes, mots faux, bande passante.
+  le premier tiers du temps, puis la mémoire seule, pour une bande passante propre. Avec `--tenseurs`, chaque warp de la
+  carte multiplie en boucle des tuiles 16 × 16 d'entiers INT8 prises dans un réservoir de 64 paires, sur les cœurs Tensor
+  (instructions `wmma` d'un noyau PTX embarqué en texte, que le pilote compile lui-même : `nvcuda.dll` suffit, sans le kit
+  CUDA). L'INT8 vers INT32 est exact, sans arrondi : le résultat attendu se calcule sur le processeur, et chaque résultat
+  relu qui en diffère est compté. Le test vise la même carte que le banc (par son identifiant local) et demande une carte
+  Turing ou plus récente (RTX 20, capacité de calcul 7.5). Le journal gagne une section
+  `stabilite` : statut (`reussi`, `attention`, `echec`), raisons, exécutions et écarts, passes, mots faux, bande passante,
+  et pour les cœurs Tensor exécutions, résultats faux, débit médian (en TOPS, une information, pas un verdict) ou raison
+  du « non testé ».
 
 Lancement à la main (Échap arrête) :
 
@@ -508,7 +521,9 @@ Lancement à la main (Échap arrête) :
     Aria-Bench.exe --calcul --duree 60              Calcul vérifié à pleine puissance
     Aria-Bench.exe --vram --duree 90                Calcul seul (un tiers du temps), puis mémoire vidéo seule
     Aria-Bench.exe --vram --precedent palier.json   Idem, et la bande passante doit dépasser celle de palier.json
+    Aria-Bench.exe --tenseurs --duree 60            Cœurs Tensor : calcul INT8 vérifié bit à bit (RTX 20 et plus)
     Aria-Bench.exe --auto-controle                  Erreurs injectées exprès : le test doit toutes les retrouver
+    Aria-Bench.exe --tenseurs --auto-controle       Idem pour les cœurs Tensor
 
 `--debug` active la couche de diagnostic de Direct3D (fonctionnalité facultative « Outils graphiques » de Windows) :
 les performances mesurées ne sont alors pas représentatives.
