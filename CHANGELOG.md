@@ -5,6 +5,10 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Confidentialité : trois réglages de plus, cochés. « Installation automatique d'applications suggérées » empêche
+  Windows de réinstaller de lui-même des applications retirées dans « Applications » ; « Écrans Terminons la
+  configuration et de bienvenue » ; « Rappels de compte Microsoft (menu Démarrer) et bandeaux OneDrive (Explorateur) ».
+  Ils écrivent des options que Microsoft ne documente pas, et se restaurent comme les autres.
 - Nettoyage : nouvel élément « Caches de shaders anciens (plus de 30 jours) », décoché, qui garde les caches récents ;
   les rapports de blocage du pilote graphique (`LiveKernelReports`) rejoignent les rapports de plantage ; l'âge d'un
   fichier est désormais la plus récente de sa création et de sa modification, pour ne plus supprimer un fichier sorti le
