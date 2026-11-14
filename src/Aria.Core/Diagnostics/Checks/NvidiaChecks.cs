@@ -24,7 +24,10 @@ public sealed class NvapiCheck : IDiagnosticCheck
     }
 }
 
-/// <summary>G-SYNC possible mais éteint : Aria ne peut pas l'activer (absent de l'API officielle), elle guide.</summary>
+/// <summary>
+/// G-SYNC possible mais éteint : le réglage « G-SYNC » de la page NVIDIA le rallume (réglage VRR_MODE publié par NVIDIA) ; si
+/// ce réglage est déjà sur un mode actif et que G-SYNC reste éteint, c'est l'application NVIDIA qui le coupe, et Aria guide.
+/// </summary>
 public sealed class GsyncCheck : IDiagnosticCheck
 {
     public string Name => "G-SYNC";
@@ -47,9 +50,9 @@ public sealed class GsyncCheck : IDiagnosticCheck
                     "L'écran et son branchement permettent G-SYNC (ou G-SYNC Compatible), mais il n'est pas activé.",
                     "L'activer, puis relancer l'analyse : Aria proposera alors la synchronisation et la limite d'images adaptées.",
                     [
-                        "Application NVIDIA → Système → Écrans → G-SYNC : activer",
-                        "Ou Panneau de configuration NVIDIA → Affichage → Configurer G-SYNC → Activer G-SYNC, G-SYNC Compatible",
-                        "Choisir « Activer pour le mode plein écran »"
+                        "Page Optimisation → NVIDIA → réglage « G-SYNC » : le cocher, puis Appliquer",
+                        "Si le réglage « G-SYNC » est déjà sur « Plein écran seulement » ou « Plein écran et fenêtré » : Application NVIDIA → Système → Écrans → G-SYNC : activer",
+                        "Ou Panneau de configuration NVIDIA → Affichage → Configurer G-SYNC → Activer G-SYNC, G-SYNC Compatible, puis « Activer pour le mode plein écran »"
                     ]);
         }
     }

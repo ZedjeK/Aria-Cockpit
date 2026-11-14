@@ -11,6 +11,8 @@ public static class NvidiaSettings
     {
         if (!hw.HasNvidiaGpu) yield break;
 
+        // G-SYNC d'abord : la synchronisation et la limite d'images qui suivent ne s'appliquent que s'il est actif
+        yield return new GsyncSetting();
         yield return new LowLatencySetting();
         yield return new VSyncSetting();
         yield return new FrameRateLimitSetting();
@@ -98,6 +100,43 @@ public abstract class NvidiaDriverSetting(uint settingId, uint factoryValue) : S
         if (hex.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) hex = hex[2..];
         return uint.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
     }
+}
+
+/// <summary>
+/// G-SYNC du profil global (VRR_MODE du SDK NVIDIA, « Enable G-SYNC globally ») : désactivé, plein écran seulement ou plein
+/// écran et fenêtré. Essayé sur une RTX 4080 SUPER le 14/11/2026 : la valeur 0 fait quitter le mode VRR à l'écran en moins
+/// d'une demi-seconde, la remise de la valeur d'origine le rétablit. Valable pour G-SYNC et G-SYNC Compatible (FreeSync).
+/// Aria ne propose que de rallumer un G-SYNC coupé : un G-SYNC déjà actif, en plein écran seul ou aussi en fenêtré, est laissé tel quel.
+/// </summary>
+public sealed class GsyncSetting() : NvidiaDriverSetting(DrsIds.VrrMode, DrsIds.VrrFullscreenOnly)
+{
+    public override string Id => "nvidia.gsync";
+    public override string DisplayName => "G-SYNC";
+
+    /// <summary>Décoché d'office : couper G-SYNC est parfois voulu (fréquence fixe pour le jeu compétitif), on ne le rallume qu'à la demande.</summary>
+    public override bool SelectedByDefault => false;
+
+    protected override string? WhyNot(HardwareProfile hw) => NvidiaRules.WhyGsyncSettingUnavailable(hw);
+
+    protected override string Describe(uint value) => value switch
+    {
+        DrsIds.VrrDisabled => "Désactivé",
+        DrsIds.VrrFullscreenOnly => "Plein écran seulement",
+        DrsIds.VrrFullscreenAndWindowed => "Plein écran et fenêtré",
+        _ => $"Valeur {value}"
+    };
+
+    /// <summary>
+    /// Vers « plein écran » : seul « désactivé » est corrigé, les deux modes actifs sont laissés tels quels.
+    /// Pour une restauration (autre cible), la valeur doit être identique.
+    /// </summary>
+    protected override bool Matches(uint current, uint target) =>
+        target == DrsIds.VrrFullscreenOnly ? current != DrsIds.VrrDisabled : current == target;
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(User(DrsIds.VrrFullscreenOnly), "G-SYNC est coupé dans le pilote : l'écran garde une fréquence fixe, avec déchirures ou latence de la synchronisation verticale. " +
+                                            "Le mode plein écran est celui du pilote par défaut. Relancez l'analyse ensuite : Aria proposera alors " +
+                                            "la synchronisation et la limite d'images adaptées. Ferme l'application NVIDIA avant d'appliquer.");
 }
 
 public sealed class LowLatencySetting() : NvidiaDriverSetting(DrsIds.LowLatency, DrsIds.LowLatencyAppControlled)

@@ -26,6 +26,22 @@ public static partial class NvidiaRules
     /// <summary>Limite d'images par seconde avec G-SYNC : fréquence maximale moins la marge (ex. 144 Hz → 141).</summary>
     public static int FrameCap(int maxRefreshHz) => maxRefreshHz - GsyncMargin;
 
+    /// <summary>
+    /// Raison pour laquelle le réglage « G-SYNC » n'est pas proposé, ou null s'il l'est : l'écran principal doit être piloté
+    /// par la carte NVIDIA et permettre G-SYNC (ou G-SYNC Compatible, c'est-à-dire FreeSync). Contrairement à
+    /// <see cref="WhyNoGsync"/>, il reste proposé quand G-SYNC est coupé : c'est justement son rôle de le rallumer.
+    /// </summary>
+    public static string? WhyGsyncSettingUnavailable(HardwareProfile hw)
+    {
+        if (PrimaryNvidiaDisplay(hw) is not { } primary) return "Écran principal non relié à la carte NVIDIA";
+        return hw.Nvidia?.Display(primary.DeviceName)?.Vrr switch
+        {
+            null => "État G-SYNC illisible (pilote antérieur à la version 525 ?)",
+            { Possible: false } => $"{primary.MonitorName} ne permet pas G-SYNC (écran ou branchement)",
+            _ => null
+        };
+    }
+
     /// <summary>Raison pour laquelle les réglages G-SYNC ne s'appliquent pas, ou null s'ils s'appliquent.</summary>
     public static string? WhyNoGsync(HardwareProfile hw)
     {

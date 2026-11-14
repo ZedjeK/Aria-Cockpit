@@ -26,9 +26,13 @@ public static class DrsIds
     public const uint PreferredRefresh = 0x0064B541;    // REFRESH_RATE_OVERRIDE_ID
     public const uint ShaderCacheSize = 0x00AC8497;     // PS_SHADERDISKCACHE_MAX_SIZE_ID (en Mo)
     public const uint PowerMode = 0x1057EB71;           // PREFERRED_PSTATE_ID
+    public const uint VrrMode = 0x1194F158;             // VRR_MODE_ID — « Enable G-SYNC globally »
     public const uint OptimusCompat = 0x10F9DC80;       // SHIM_MCCOMPAT_ID
     public const uint OptimusRendering = 0x10F9DC81;    // SHIM_RENDERING_MODE_ID
 
+    public const uint VrrDisabled = 0;                  // VRR_MODE_DISABLED
+    public const uint VrrFullscreenOnly = 1;            // VRR_MODE_FULLSCREEN_ONLY (valeur d'usine du SDK)
+    public const uint VrrFullscreenAndWindowed = 2;     // VRR_MODE_FULLSCREEN_AND_WINDOWED
     public const uint LowLatencyAppControlled = 0;      // PRERENDERLIMIT_APP_CONTROLLED
     public const uint VSyncPassive = 0x60925292;        // VSYNCMODE_PASSIVE (choix de l'application)
     public const uint VSyncForceOff = 0x08416747;
