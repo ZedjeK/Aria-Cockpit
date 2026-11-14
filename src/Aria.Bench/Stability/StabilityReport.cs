@@ -45,8 +45,22 @@ public sealed class StabilityReport
     /// <summary>Raison pour laquelle les cœurs Tensor n'ont pas été testés (pas de CUDA, carte trop ancienne…) ; absent s'ils l'ont été.</summary>
     public string? TenseursNonTestes { get; set; }
 
+    /// <summary>Transitions repos/charge : cycles menés jusqu'au bout, mots de mémoire relus faux, écarts de calcul à fréquence variable.</summary>
+    public long CyclesTransitions { get; set; }
+    public long MotsFauxTransitions { get; set; }
+    public long EcartsCalculTransitions { get; set; }
+    /// <summary>Changements d'état ou de fréquence mémoire relevés pendant le test (la preuve qu'il a fait bouger la carte) ; absent si NVML n'a pas répondu.</summary>
+    public int? ChangementsEtat { get; set; }
+    public List<string> EtatsObserves { get; set; } = [];
+    public string? PlageCoeurMHz { get; set; }
+    public string? PlageMemoireMHz { get; set; }
+    public List<TransitionPhase> PhasesTransitions { get; set; } = [];
+
     /// <summary>Gain minimal de bande passante pour qu'un palier mémoire compte comme « plus rapide » que le précédent.</summary>
     public const double MinBandwidthGain = 0.005;
+
+    /// <summary>Changements d'état ou de fréquence mémoire en dessous desquels le test des transitions n'a pas vraiment fait bouger la carte.</summary>
+    public const int MinStateChanges = 4;
 
     /// <summary>
     /// Le verdict : échec au moindre signe d'instabilité, attention si la bande passante n'augmente pas ou recule en
@@ -57,7 +71,9 @@ public sealed class StabilityReport
     public static StabilityReport Conclude(string mode, bool selfCheck, bool memoryTested, bool burnTested,
         IReadOnlyList<MemoryPass> passes, long wrongWords, long flippedBits, long dispatches, long mismatches,
         IReadOnlyList<string> failures, double? previousReadGoS, double requestedSeconds, double realSeconds,
-        bool tensorTested = false, long tensorExecutions = 0, long tensorWrong = 0, long tensorElements = 0, string? tensorSkipped = null)
+        bool tensorTested = false, long tensorExecutions = 0, long tensorWrong = 0, long tensorElements = 0, string? tensorSkipped = null,
+        bool transitionsTested = false, long transitionCycles = 0, long transitionWrongWords = 0, long transitionMismatches = 0,
+        int? stateChanges = null)
     {
         var r = new StabilityReport { Mode = mode, AutoControle = selfCheck, DureeS = Math.Round(realSeconds, 1) };
         var reasons = new List<string>();
@@ -128,6 +144,30 @@ public sealed class StabilityReport
             if (!selfCheck) warnings.Add($"Cœurs Tensor non testés : {tensorSkipped}");
         }
 
+        if (transitionsTested)
+        {
+            r.CyclesTransitions = transitionCycles;
+            r.MotsFauxTransitions = transitionWrongWords;
+            r.EcartsCalculTransitions = transitionMismatches;
+            r.ChangementsEtat = stateChanges;
+            if (transitionWrongWords > 0)
+                reasons.Add($"Transitions : {transitionWrongWords} mot(s) de mémoire relu(s) faux après un changement d'état de la carte (repos, charge). " +
+                            "La mémoire ne tient pas quand sa fréquence change avec ce réglage.");
+            if (transitionMismatches > 0)
+                reasons.Add($"Transitions : {transitionMismatches} résultat(s) de calcul différent(s) quand la carte change d'état. Le cœur fait des erreurs " +
+                            "à fréquence et tension variables avec ce réglage (le décalage GPU s'applique aussi aux basses tensions du bureau).");
+            if (!selfCheck)
+            {
+                if (transitionCycles == 0)
+                    warnings.Add("Transitions : aucun cycle complet (repos, rafales de 5, 20, 50 et 100 %) n'a pu être mené : verdict moins sûr. Allongez la durée du test.");
+                if (stateChanges is null)
+                    warnings.Add("Transitions : l'état de la carte n'a pas pu être relevé (nvml.dll indisponible) : rien ne prouve que le test l'a fait changer d'état.");
+                else if (stateChanges < MinStateChanges)
+                    warnings.Add($"Transitions : la carte n'a presque pas changé d'état pendant le test ({stateChanges} changement(s)) : verdict moins sûr. " +
+                                 "Un autre programme qui la charge, le mode « performances maximales » ou un pilote qui ne baisse pas ses fréquences l'explique.");
+            }
+        }
+
         if (realSeconds < Math.Min(requestedSeconds, 600) * 0.9 && failures.Count == 0 && tensorSkipped is null)
             warnings.Add($"Test arrêté avant la fin ({realSeconds:0} s sur {requestedSeconds:0} s) : verdict moins sûr.");
 
@@ -139,11 +179,16 @@ public sealed class StabilityReport
                 missed.Add($"Mémoire : {wrongWords} mot(s) faux trouvés au lieu des {MemoryTest.InjectedWords} faussés exprès.");
             if (burnTested && mismatches < BurnTest.Threads * 0.99)
                 missed.Add($"Calcul : {mismatches} écart(s) trouvés pour {BurnTest.Threads} résultats faussés exprès.");
+            if (transitionsTested && transitionWrongWords < MemoryTest.InjectedWords)
+                missed.Add($"Transitions : {transitionWrongWords} mot(s) faux trouvés pour {MemoryTest.InjectedWords} faussés exprès.");
+            if (transitionsTested && transitionMismatches < BurnTest.Threads * 0.99)
+                missed.Add($"Transitions : {transitionMismatches} écart(s) trouvés pour {BurnTest.Threads} résultats faussés exprès.");
             if (tensorTested && tensorWrong < tensorElements * 0.99)
                 missed.Add($"Cœurs Tensor : {tensorWrong} résultat(s) faux trouvés pour {tensorElements} faussés exprès.");
             if (tensorSkipped is not null) missed.Add($"Cœurs Tensor : auto-contrôle impossible ({tensorSkipped}).");
             missed.AddRange(reasons.Where(x => !x.StartsWith("Mémoire", StringComparison.Ordinal) && !x.StartsWith("Calcul", StringComparison.Ordinal)
-                                               && !x.StartsWith("Cœurs Tensor", StringComparison.Ordinal)));
+                                               && !x.StartsWith("Cœurs Tensor", StringComparison.Ordinal)
+                                               && !x.StartsWith("Transitions", StringComparison.Ordinal)));
             r.Statut = missed.Count == 0 ? Passed : Failed;
             r.Raisons = missed;
             return r;

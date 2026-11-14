@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Contrôle des transitions : la carte passe du repos à des rafales de calcul vérifié à 5, 20, 50 et 100 % de charge, et la
+  mémoire écrite avant chaque repos est relue après chaque phase. Un test soutenu à pleine charge ne traverse jamais les
+  états bas de la carte, où un décalage mémoire ou un undervolt peut faire fauter une carte qui tient à pleine charge. Il
+  relève l'état de la carte par NVML pour prouver qu'elle a bougé : presque immobile ou illisible, le verdict est
+  « à surveiller », jamais « réussi ». Il s'ajoute à chaque validation de 15 minutes (2 minutes, toutes les cartes) et se
+  lance à la main avec `Aria-Bench.exe --transitions` (`--auto-controle` pour vérifier que le test voit les erreurs).
 - Contrôle des cœurs Tensor : calcul INT8 sur les cœurs Tensor (API CUDA du pilote, noyau PTX embarqué, rien à installer
   de plus), chaque résultat comparé au calcul exact fait sur le processeur. Il s'ajoute à la validation de 15 minutes
   des cartes RTX, avant le calcul vérifié et la mémoire, et se lance à la main avec `Aria-Bench.exe --tenseurs`

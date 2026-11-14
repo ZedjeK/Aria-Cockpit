@@ -97,13 +97,13 @@ internal sealed class MemoryTest(ComputeKit kit, int blocks)
     }
 
     // Les tampons repassent seuls à l'état COMMON à la fin de chaque exécution : on les remet en accès UAV à chaque liste
-    private static void ToUav(ID3D12GraphicsCommandList list, List<ID3D12Resource> data, ID3D12Resource report)
+    internal static void ToUav(ID3D12GraphicsCommandList list, List<ID3D12Resource> data, ID3D12Resource report)
     {
         foreach (var d in data) list.ResourceBarrierTransition(d, ResourceStates.Common, ResourceStates.UnorderedAccess);
         list.ResourceBarrierTransition(report, ResourceStates.Common, ResourceStates.UnorderedAccess);
     }
 
-    private static unsafe void Dispatch(ID3D12GraphicsCommandList list, List<ID3D12Resource> data, ID3D12Resource report, uint seed, bool scattered)
+    internal static unsafe void Dispatch(ID3D12GraphicsCommandList list, List<ID3D12Resource> data, ID3D12Resource report, uint seed, bool scattered)
     {
         list.SetComputeRootUnorderedAccessView(1, report.GPUVirtualAddress);
         var constants = stackalloc uint[8] { 0, Chunks, seed, scattered ? 1u : 0u, Stride, Mul, 0, 0 };

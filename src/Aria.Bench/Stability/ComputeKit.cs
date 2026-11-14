@@ -71,6 +71,7 @@ internal sealed class Lane : IDisposable
     private readonly AutoResetEvent _event = new(false);
     private ulong _value;
 
+    public ComputeKit Kit => _kit;
     public ID3D12CommandQueue Queue { get; }
     public ID3D12GraphicsCommandList List { get; }
 

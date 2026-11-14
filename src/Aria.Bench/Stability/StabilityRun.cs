@@ -27,6 +27,7 @@ internal static class StabilityRun
     public static bool Run(GpuDevice gpu, Win32Window window, BenchOptions options, BenchLog log)
     {
         if (options.Stability == StabilityMode.Tensor) return RunTensor(gpu, window, options, log);
+        if (options.Stability == StabilityMode.Transitions) return RunTransitions(gpu, window, options, log);
         var memoryTested = options.Stability == StabilityMode.Memory;
         var seconds = options.SelfCheck ? SelfCheckDuration.TotalSeconds : options.Duration.TotalSeconds;
         var previous = ReadPrevious(options.PreviousPath, log);
@@ -182,9 +183,114 @@ internal static class StabilityRun
         return !interrupted;
     }
 
+    /// <summary>
+    /// Contrôle des transitions (--transitions) : la carte passe du repos à des rafales de calcul vérifié de plus en plus
+    /// chargées, et la mémoire écrite avant le repos est relue après chaque phase (voir <see cref="TransitionTest"/>). Un fil à
+    /// part relève l'état de la carte par NVML : c'est la preuve que le test l'a vraiment fait changer d'état.
+    /// </summary>
+    private static bool RunTransitions(GpuDevice gpu, Win32Window window, BenchOptions options, BenchLog log)
+    {
+        var seconds = options.SelfCheck ? SelfCheckDuration.TotalSeconds : options.Duration.TotalSeconds;
+        using var kit = new ComputeKit(gpu);
+        var (budget, usage) = gpu.LocalMemory();
+        var bytes = (budget > usage ? budget - usage : 0) * MemoryShare;
+        if (gpu.FreeOnCard() is { } onCard && onCard < bytes + CardMargin) bytes = onCard > CardMargin ? onCard - CardMargin : 0;
+        var blocks = (int)Math.Clamp((long)(bytes / MemoryTest.BlockBytes), 2, 8);
+
+        // Auto-contrôle : on ne cherche que la détection des erreurs injectées, pas à faire changer la carte d'état : cycle court
+        var quick = options.SelfCheck;
+        var test = new TransitionTest(kit, blocks)
+        {
+            InjectFault = options.SelfCheck,
+            IdleGap = quick ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(3),
+            PhaseLength = quick ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(3)
+        };
+        var trace = new TransitionTrace();
+        using var nvml = NvmlSampler.Open(gpu.Info.Nom);
+
+        var clock = Stopwatch.StartNew();
+        var stop = false;
+        var testing = true;
+        var failures = new List<string>();
+        bool KeepGoing() => !Volatile.Read(ref stop) && clock.Elapsed.TotalSeconds < seconds;
+
+        var worker = new Thread(() =>
+        {
+            try
+            {
+                test.Run(KeepGoing);
+            }
+            catch (Exception e) when (e is BenchException or SharpGenException)
+            {
+                var reason = e is SharpGenException s ? GpuDevice.Explain(s.HResult) : e.Message;
+                var removed = kit.RemovedReason();
+                lock (failures) failures.Add($"transitions : {reason}{(removed is not null && !reason.Contains(removed) ? $" ({removed})" : "")}");
+                Volatile.Write(ref stop, true);
+            }
+            finally
+            {
+                Volatile.Write(ref testing, false);
+            }
+        });
+        var sampler = new Thread(() =>
+        {
+            while (Volatile.Read(ref testing))
+            {
+                nvml!.Sample(trace);
+                Thread.Sleep(100);
+            }
+        });
+        worker.Start();
+        if (nvml is not null) sampler.Start();
+
+        var interrupted = false;
+        while (worker.IsAlive)
+        {
+            if (!window.PumpMessages())
+            {
+                interrupted = true;
+                Volatile.Write(ref stop, true);
+            }
+            Thread.Sleep(50);
+        }
+        worker.Join();
+        if (nvml is not null) sampler.Join();
+
+        var tested = test.ComputeRuns > 0 || test.Cycles > 0 || test.WrongWords > 0;
+        var report = StabilityReport.Conclude("transitions", options.SelfCheck, memoryTested: false, burnTested: false, [], 0, 0, 0, 0,
+            failures, null, seconds, clock.Elapsed.TotalSeconds,
+            transitionsTested: tested, transitionCycles: test.Cycles, transitionWrongWords: test.WrongWords,
+            transitionMismatches: test.Mismatches, stateChanges: nvml is null ? null : trace.Changes);
+        report.MemoireTesteeGio = Math.Round(test.TestedBytes / 1073741824.0, 1);
+        report.BitsFaux = test.FlippedBits;
+        report.IterationsCalcul = test.Iterations;
+        report.EtatsObserves = [.. trace.States.Select(s => "P" + s)];
+        report.PlageCoeurMHz = trace.CoreRange;
+        report.PlageMemoireMHz = trace.MemoryRange;
+        report.PhasesTransitions = [.. test.PhaseResults];
+        report.PremieresErreurs = test.FirstMemoryErrors;
+        report.PremiersEcartsCalcul = test.FirstComputeErrors;
+        log.Stabilite = report;
+        log.Remarques.Add(nvml is null
+            ? "Transitions : l'état de la carte n'a pas pu être relevé (nvml.dll indisponible)."
+            : $"Transitions : états observés {(trace.StatesText.Length > 0 ? trace.StatesText : "aucun")}, cœur {trace.CoreRange ?? "?"} MHz, " +
+              $"mémoire {trace.MemoryRange ?? "?"} MHz, {trace.Changes} changement(s) d'état ou de fréquence mémoire.");
+
+        var faults = options.SelfCheck ? (report.Statut == StabilityReport.Passed ? 0 : 1) : test.Mismatches + test.WrongWords;
+        log.Resultats.Add(new PassResult("Transitions repos/charge", $"{report.MemoireTesteeGio:0.0} Gio".Replace('.', ','), 0, 0,
+            (int)Math.Min(int.MaxValue, test.ComputeRuns), report.DureeS, 0, 0, 0, 0, 0, 0, 0,
+            (int)Math.Min(int.MaxValue, test.ComputeRuns + test.Cycles), (int)Math.Min(int.MaxValue, faults), test.WrongWords, null, null));
+        log.Remarques.Add(Summary(report));
+        if (failures.Count > 0) log.Erreurs.AddRange(failures);
+        return !interrupted;
+    }
+
     private static string Summary(StabilityReport r)
     {
         var parts = new List<string>();
+        if (r.Mode == "transitions")
+            parts.Add($"transitions : {r.CyclesTransitions} cycle(s), {r.MotsFauxTransitions} mot(s) de mémoire faux, " +
+                      $"{r.EcartsCalculTransitions} écart(s) de calcul");
         if (r.ExecutionsTenseurs > 0)
             parts.Add($"cœurs Tensor : {r.ExecutionsTenseurs} exécutions INT8 vérifiées, {r.EcartsTenseurs} résultat(s) faux" +
                       (r.DebitTenseursTops is { } tops ? $", {tops:0} TOPS" : ""));

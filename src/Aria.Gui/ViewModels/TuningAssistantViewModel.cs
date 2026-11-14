@@ -79,6 +79,8 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     public static readonly TimeSpan ValidationCheckDuration = TimeSpan.FromMinutes(2);
     /// <summary>Cœurs Tensor (calcul INT8 vérifié bit à bit, ce que sollicite une IA locale) : ajoutés à la validation des cartes RTX.</summary>
     public static readonly TimeSpan TensorCheckDuration = TimeSpan.FromMinutes(1);
+    /// <summary>Transitions repos/charge : quelques cycles complets (repos de 3 s, quatre phases de 3 s), ajoutés à chaque validation.</summary>
+    public static readonly TimeSpan TransitionCheckDuration = TimeSpan.FromMinutes(2);
     /// <summary>La carte a des cœurs Tensor (RTX 20 et plus récentes) : la validation les contrôle aussi.</summary>
     private bool _tensorCapable;
     private static string CheckOutput => Aria.Core.Backup.DataCache.PathFor("controle-calcul.json");
@@ -603,7 +605,9 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
             List<(BenchCheck Check, TimeSpan Duration)> late = _lastStable.MemoryOffsetMHz > 0
                 ? [(BenchCheck.Compute, ValidationCheckDuration), (BenchCheck.Memory, ValidationCheckDuration)]
                 : [(BenchCheck.Compute, ValidationCheckDuration)];
-            // Les cœurs Tensor d'abord : le dernier contrôle réuni au résultat (tuiles de fin) reste celui du calcul ou de la mémoire
+            // Les transitions et les cœurs Tensor d'abord : le dernier contrôle réuni au résultat (tuiles de fin) reste celui du
+            // calcul ou de la mémoire. Les transitions valent pour toutes les cartes : le décalage GPU touche aussi les basses tensions
+            late.Insert(0, (BenchCheck.Transitions, TransitionCheckDuration));
             if (_tensorCapable) late.Insert(0, (BenchCheck.Tensor, TensorCheckDuration));
             return late;
         }
@@ -636,14 +640,20 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                                      "puis toute la mémoire libre écrite et relue, avec sa bande passante. Laissez le PC travailler.",
                 BenchCheck.Tensor => $"{setting}. Contrôle des cœurs Tensor dans une petite fenêtre ({duration.TotalSeconds:0} s) : calcul INT8 à pleine puissance, " +
                                      "chaque résultat comparé au calcul exact, comme sous une IA locale. Laissez le PC travailler.",
+                BenchCheck.Transitions => $"{setting}. Contrôle des transitions dans une petite fenêtre ({duration.TotalSeconds:0} s) : la carte passe du repos à des " +
+                                          "rafales de calcul de plus en plus chargées, calculs et mémoire vérifiés à chaque changement d'état. Ne touchez à rien : le repos compte.",
                 _ => $"{setting}. Contrôle du calcul dans une petite fenêtre ({duration.TotalSeconds:0} s) : la carte à pleine puissance, " +
                      "chaque résultat vérifié, comme sous une IA locale. Laissez le PC travailler."
             });
             var previous = check == BenchCheck.Memory && !_validating && File.Exists(MemoryPrevious) ? MemoryPrevious : null;
-            var label = check switch { BenchCheck.Memory => "MÉMOIRE VIDÉO", BenchCheck.Tensor => "CŒURS TENSOR", _ => "CALCUL VÉRIFIÉ" };
+            var label = check switch
+            {
+                BenchCheck.Memory => "MÉMOIRE VIDÉO", BenchCheck.Tensor => "CŒURS TENSOR", BenchCheck.Transitions => "TRANSITIONS", _ => "CALCUL VÉRIFIÉ"
+            };
             var result = await CheckAsync(check, duration, label, previous);
             results.Add(result);
             if (check == BenchCheck.Tensor) NoteTensor(result);
+            if (check == BenchCheck.Transitions) NoteTransitions(result);
             if (_aborted || !result.Completed || result.Unstable) break;
         }
         // Contrôle arrêté (Échap, « Arrêter la mesure ») ou impossible : le palier ne sera pas jugé
@@ -673,6 +683,23 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
                     (s.DebitTenseursTops is { } tops ? $", {tops:0} TOPS" : ""));
                 break;
         }
+    }
+
+    /// <summary>
+    /// Ce que le contrôle des transitions laisse au rapport de fin : cycles, mots faux, écarts, et les états que la carte a
+    /// vraiment traversés (sans cette preuve, le test ne dirait rien des transitions). Un avertissement du banc (carte presque
+    /// immobile, état illisible) devient une note du rapport : le palier n'est pas jugé pour autant.
+    /// </summary>
+    private void NoteTransitions(BenchResult result)
+    {
+        if (result.Stabilite is not { } s) return;
+        var seen = s.EtatsObserves is { Count: > 0 } states
+            ? $", états {string.Join("/", states)}, cœur {s.PlageCoeurMHz} MHz, mémoire {s.PlageMemoireMHz} MHz, {s.ChangementsEtat} changement(s)"
+            : ", états de la carte non relevés";
+        Log(TuningPhase.Check, "Transitions", _lastStable, s.MotsFauxTransitions + s.EcartsCalculTransitions == 0 ? StepVerdict.Info : StepVerdict.Unstable,
+            $"{s.CyclesTransitions} cycle(s), {s.MotsFauxTransitions} mot(s) de mémoire faux, {s.EcartsCalculTransitions} écart(s) de calcul{seen}");
+        foreach (var warning in s.Avertissements ?? [])
+            if (warning.StartsWith("Transitions", StringComparison.Ordinal)) _notes.Add(warning);
     }
 
     /// <summary>
@@ -785,6 +812,7 @@ public sealed partial class TuningAssistantViewModel(Func<GpuTuner?> tuner, Func
     private static string StabilityTitle(BenchStability s) =>
         s.EcartsCalcul > 0 ? "Calculs faux à pleine puissance"
         : s.EcartsTenseurs > 0 ? "Calculs faux sur les cœurs Tensor (IA locale)"
+        : s.MotsFauxTransitions > 0 || s.EcartsCalculTransitions > 0 ? "Instable quand la carte change d'état (repos, charge)"
         : s.MotsFaux > 0 ? "Mémoire vidéo relue fausse" : "Le pilote a lâché pendant le contrôle";
 
     /// <summary>« , images et calculs vérifiés » : ce que le palier a passé (et sa bande passante pour un palier mémoire).</summary>
