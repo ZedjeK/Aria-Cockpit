@@ -5,7 +5,7 @@ using Microsoft.Win32;
 
 namespace Aria.Core.Cleanup;
 
-public enum CleanupKind { TempFiles, DeliveryOptimization, ComponentStore, ShaderCaches, CrashDumps, PreviousWindows, OldShaderCaches }
+public enum CleanupKind { TempFiles, DeliveryOptimization, ComponentStore, ShaderCaches, CrashDumps, PreviousWindows, OldShaderCaches, Thumbnails }
 
 /// <summary>Un élément de nettoyage, avec ce que l'analyse a trouvé.</summary>
 /// <param name="Bytes">Taille récupérable estimée, ou null si non estimable à l'avance.</param>
@@ -45,6 +45,9 @@ public sealed class CleanupPaths
     public required string PreviousWindows { get; init; }
     public required string SystemDrive { get; init; }
 
+    /// <summary>Dossier où l'Explorateur garde ses miniatures (fichiers « thumbcache_*.db »). Mesuré, jamais vidé à la main.</summary>
+    public required string ThumbnailCache { get; init; }
+
     public static CleanupPaths ForThisPc()
     {
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -77,7 +80,8 @@ public sealed class CleanupPaths
             DeliveryOptimizationCache = Path.Combine(windows, "ServiceProfiles", "NetworkService", "AppData", "Local",
                 "Microsoft", "Windows", "DeliveryOptimization", "Cache"),
             PreviousWindows = Path.Combine(drive, "Windows.old"),
-            SystemDrive = drive
+            SystemDrive = drive,
+            ThumbnailCache = Path.Combine(local, "Microsoft", "Windows", "Explorer")
         };
     }
 }
@@ -91,8 +95,9 @@ public static class CleanupService
     /// <summary>Âge à partir duquel un fichier de cache de shaders compte comme ancien (ni créé ni modifié depuis).</summary>
     public static readonly TimeSpan OldShaderAge = TimeSpan.FromDays(30);
 
-    private const string PreviousInstallationsHandler =
-        @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches\Previous Installations";
+    private const string VolumeCaches = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches";
+    private const string PreviousInstallationsHandler = "Previous Installations";
+    private const string ThumbnailHandler = "Thumbnail Cache";
     private const string StateFlags = "StateFlags6060"; // numéro de profil de Nettoyage de disque réservé à Aria
     private const int SageRun = 6060;
 
@@ -106,6 +111,7 @@ public static class CleanupService
         var oldShaders = Sum(paths.ShaderCaches.Select(p => SafeDelete.Measure(p, DateTime.Now - OldShaderAge)));
         var dumps = Sum(paths.CrashDumpFolders.Select(p => SafeDelete.Measure(p))).Add(MeasureFiles(paths.CrashDumpFiles));
         var delivery = SafeDelete.Measure(paths.DeliveryOptimizationCache);
+        var thumbnails = MeasureThumbnails(paths.ThumbnailCache);
         var items = new List<CleanupItem>
         {
             new(CleanupKind.TempFiles, "Fichiers temporaires",
@@ -131,6 +137,11 @@ public static class CleanupService
                 "Fichiers créés lors d'un écran bleu, du plantage d'une application ou d'un blocage du pilote graphique.",
                 false, dumps.Bytes, dumps.Files,
                 Warning: "Utiles pour diagnostiquer un écran bleu : à garder si le PC plante."),
+            new(CleanupKind.Thumbnails, "Miniatures de l'Explorateur",
+                "Aperçus d'images, de vidéos et de documents que l'Explorateur garde en cache. Vidées par l'outil officiel Nettoyage de disque.",
+                false, thumbnails.Bytes, thumbnails.Files,
+                Warning: "Les miniatures se reconstruisent à l'ouverture de chaque dossier : les dossiers d'images et de vidéos " +
+                         "s'afficheront plus lentement la première fois."),
         };
 
         if (Directory.Exists(paths.PreviousWindows))
@@ -156,6 +167,24 @@ public static class CleanupService
     }
 
     private static FolderTally Sum(IEnumerable<FolderTally> tallies) => tallies.Aggregate(FolderTally.Empty, (a, b) => a.Add(b));
+
+    /// <summary>
+    /// Taille des fichiers de miniatures (« thumbcache_*.db ») posés directement dans le dossier. Les autres fichiers du
+    /// dossier (cache d'icônes, journaux de l'Explorateur) ne sont pas comptés.
+    /// </summary>
+    internal static FolderTally MeasureThumbnails(string folder)
+    {
+        try
+        {
+            return Directory.Exists(folder)
+                ? MeasureFiles(Directory.EnumerateFiles(folder, "thumbcache_*.db", SearchOption.TopDirectoryOnly).ToList())
+                : FolderTally.Empty;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return FolderTally.Empty;
+        }
+    }
 
     private static FolderTally MeasureFiles(IEnumerable<string> files)
     {
@@ -190,6 +219,7 @@ public static class CleanupService
                     CleanupKind.ComponentStore => RunComponentCleanup(paths, item,
                         percent => progress?.Report(new CleanupStep(i, chosen.Count, $"{item.Title}… {percent:0} %"))),
                     CleanupKind.PreviousWindows => RunPreviousWindows(paths, item),
+                    CleanupKind.Thumbnails => RunThumbnails(paths, item),
                     _ => new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, "Élément inconnu")
                 });
             }
@@ -255,24 +285,56 @@ public static class CleanupService
     /// </summary>
     private static CleanupResult RunPreviousWindows(CleanupPaths paths, CleanupItem item)
     {
-        var cleanmgr = Path.Combine(Environment.SystemDirectory, "cleanmgr.exe");
-        if (!File.Exists(cleanmgr))
-            return new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, "Nettoyage de disque (cleanmgr.exe) est absent de ce Windows.");
-        if (!OperatingSystem.IsWindows())
-            return new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, "Réservé à Windows.");
-
         var before = FreeSpace(paths.SystemDrive);
-        using var root = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VolumeCaches", writable: true)
-                         ?? throw new InvalidOperationException("Réglages de Nettoyage de disque introuvables.");
+        if (RunDiskCleanup(PreviousInstallationsHandler, "Installations précédentes de Windows") is { } error)
+            return new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, error);
+
+        var freed = Math.Max(0, FreeSpace(paths.SystemDrive) - before);
+        return Directory.Exists(paths.PreviousWindows)
+            ? new CleanupResult(item, freed > 0 ? CleanupStatus.Partial : CleanupStatus.Failed, freed, 0, 0,
+                "Windows.old est toujours présent : relancez Nettoyage de disque après un redémarrage.")
+            : new CleanupResult(item, CleanupStatus.Done, freed, 0, 0);
+    }
+
+    /// <summary>
+    /// L'Explorateur garde ses fichiers de miniatures ouverts : c'est Nettoyage de disque qui les vide, avec un profil
+    /// réservé qui ne coche que « Miniatures ». Aria ne supprime elle-même aucun de ces fichiers.
+    /// </summary>
+    private static CleanupResult RunThumbnails(CleanupPaths paths, CleanupItem item)
+    {
+        var before = MeasureThumbnails(paths.ThumbnailCache).Bytes;
+        if (RunDiskCleanup(ThumbnailHandler, "Miniatures") is { } error)
+            return new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, error);
+
+        var freed = Math.Max(0, before - MeasureThumbnails(paths.ThumbnailCache).Bytes);
+        return freed > 0 || before == 0
+            ? new CleanupResult(item, CleanupStatus.Done, freed, 0, 0)
+            : new CleanupResult(item, CleanupStatus.Failed, 0, 0, 0, "Nettoyage de disque n'a rien libéré.");
+    }
+
+    /// <summary>
+    /// Lance Nettoyage de disque (cleanmgr.exe, l'outil officiel) avec un profil réservé à Aria où un seul élément est coché.
+    /// Le profil est remis à zéro avant, et la coche retirée après. Renvoie null si l'outil a tourné, sinon ce qui l'en a empêché.
+    /// </summary>
+    private static string? RunDiskCleanup(string handler, string handlerTitle)
+    {
+        var cleanmgr = Path.Combine(Environment.SystemDirectory, "cleanmgr.exe");
+        if (!File.Exists(cleanmgr)) return "Nettoyage de disque (cleanmgr.exe) est absent de ce Windows.";
+        if (!OperatingSystem.IsWindows()) return "Réservé à Windows.";
+
+        using var root = Registry.LocalMachine.OpenSubKey(VolumeCaches, writable: true);
+        if (root is null) return "Réglages de Nettoyage de disque introuvables.";
         // Profil propre : seul notre élément est coché
         foreach (var name in root.GetSubKeyNames())
         {
-            using var handler = root.OpenSubKey(name, writable: true);
-            handler?.DeleteValue(StateFlags, throwOnMissingValue: false);
+            using var other = root.OpenSubKey(name, writable: true);
+            other?.DeleteValue(StateFlags, throwOnMissingValue: false);
         }
-        using (var previous = Registry.LocalMachine.OpenSubKey(PreviousInstallationsHandler, writable: true)
-                              ?? throw new InvalidOperationException("Élément « Installations précédentes de Windows » introuvable."))
-            previous.SetValue(StateFlags, 2, RegistryValueKind.DWord);
+        using (var chosen = root.OpenSubKey(handler, writable: true))
+        {
+            if (chosen is null) return $"Élément « {handlerTitle} » introuvable dans Nettoyage de disque.";
+            chosen.SetValue(StateFlags, 2, RegistryValueKind.DWord);
+        }
 
         try
         {
@@ -280,15 +342,10 @@ public static class CleanupService
         }
         finally
         {
-            using var previous = Registry.LocalMachine.OpenSubKey(PreviousInstallationsHandler, writable: true);
-            previous?.DeleteValue(StateFlags, throwOnMissingValue: false);
+            using var chosen = root.OpenSubKey(handler, writable: true);
+            chosen?.DeleteValue(StateFlags, throwOnMissingValue: false);
         }
-
-        var freed = Math.Max(0, FreeSpace(paths.SystemDrive) - before);
-        return Directory.Exists(paths.PreviousWindows)
-            ? new CleanupResult(item, freed > 0 ? CleanupStatus.Partial : CleanupStatus.Failed, freed, 0, 0,
-                "Windows.old est toujours présent : relancez Nettoyage de disque après un redémarrage.")
-            : new CleanupResult(item, CleanupStatus.Done, freed, 0, 0);
+        return null;
     }
 
     // ---------------------------------------------------------------- Outils

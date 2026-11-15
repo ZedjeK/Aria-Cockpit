@@ -20,10 +20,13 @@ public static class PrivacySettings
     {
         yield return new DiagnosticDataSetting();
         yield return new FeedbackSetting();
+        yield return new TypingDataSetting();
         yield return new TailoredExperiencesSetting();
         yield return new AdvertisingIdSetting();
         yield return new ActivityHistorySetting();
         yield return new StartWebSearchSetting();
+        yield return new SearchHighlightsSetting();
+        yield return new CloudSearchSetting();
         yield return new StartRecommendationsSetting();
         yield return new WindowsSuggestionsSetting();
         yield return new SetupPromptsSetting();
@@ -33,6 +36,8 @@ public static class PrivacySettings
         yield return new LanguageListSetting();
         yield return new CopilotAppSetting();
         yield return new RecallSetting();
+        yield return new RemoteAssistanceSetting();
+        yield return new DeliveryOptimizationSetting();
 
         yield return new ServiceStartSetting("DiagTrack", "Service de télémétrie (Expériences utilisateur connectées)",
             selected: true, "Envoie les données de diagnostic à Microsoft. Le couper n'a aucun effet sur le fonctionnement de Windows.");
@@ -92,6 +97,23 @@ public sealed class FeedbackSetting() : PrivacyRegistrySetting(
         new(Value(1), "Plus de fenêtres « Que pensez-vous de… ? » de Windows.");
 }
 
+/// <summary>
+/// Envoi à Microsoft de ce qui est tapé ou écrit à la main, pour améliorer sa reconnaissance et ses suggestions.
+/// Stratégie « Améliorer la reconnaissance de l'écriture manuscrite et de la saisie » (Policy CSP
+/// TextInput/AllowLinguisticDataCollection, TextInput.admx) : 1 ou absente, autorisé ; 0, refusé.
+/// </summary>
+public sealed class TypingDataSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\TextInput", "AllowLinguisticDataCollection", valueWhenMissing: 1)
+{
+    public override string Id => "privacy.typingdata";
+    public override string DisplayName => "Envoi de votre frappe et de votre écriture manuscrite à Microsoft";
+    protected override string Describe(int value) => value == 0 ? "Refusé" : "Autorisé";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "Windows n'envoie plus à Microsoft ce que vous tapez ou écrivez à la main pour améliorer sa reconnaissance " +
+                      "et ses suggestions. La saisie et les suggestions continuent de fonctionner sur le PC.");
+}
+
 public sealed class TailoredExperiencesSetting() : PrivacyRegistrySetting(
     Registry.CurrentUser, @"Software\Policies\Microsoft\Windows\CloudContent", "DisableTailoredExperiencesWithDiagnosticData", valueWhenMissing: 0)
 {
@@ -136,6 +158,45 @@ public sealed class StartWebSearchSetting() : PrivacyRegistrySetting(
     public override SettingTarget ComputeTarget(HardwareProfile hw) =>
         new(Value(1), "La recherche du menu Démarrer reste sur le PC, sans résultats Bing. Effet secondaire : plus de recherches récentes " +
                       "dans la barre de recherche de l'Explorateur. Effet à la prochaine ouverture de session.");
+}
+
+/// <summary>
+/// Mises en avant de la recherche : illustrations et contenus du jour proposés par Microsoft dans la recherche.
+/// Stratégie « Autoriser les mises en avant de la recherche » (Policy CSP Search/AllowSearchHighlights, Search.admx,
+/// valeur EnableDynamicContentInWSB) : 1 ou absente, affichées ; 0, masquées.
+/// </summary>
+public sealed class SearchHighlightsSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, WindowsSearchPolicy, "EnableDynamicContentInWSB", valueWhenMissing: 1)
+{
+    internal const string WindowsSearchPolicy = @"SOFTWARE\Policies\Microsoft\Windows\Windows Search";
+
+    public override string Id => "privacy.searchhighlights";
+    public override string DisplayName => "Mises en avant de la recherche (illustrations et contenus du jour)";
+    protected override string Describe(int value) => value == 0 ? "Masquées" : "Affichées";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "Plus d'illustration ni de contenu du jour proposé par Microsoft dans la recherche du menu Démarrer.");
+}
+
+/// <summary>
+/// Recherche dans les contenus en ligne (OneDrive, SharePoint…). Stratégie « Autoriser la recherche dans le cloud »
+/// (Policy CSP Search/AllowCloudSearch, Search.admx) : 0, désactivée ; 1 ou absente, activée ; 2, au choix de l'utilisateur.
+/// </summary>
+public sealed class CloudSearchSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, SearchHighlightsSetting.WindowsSearchPolicy, "AllowCloudSearch", valueWhenMissing: 1)
+{
+    public override string Id => "privacy.cloudsearch";
+    public override string DisplayName => "Recherche dans vos contenus en ligne (OneDrive, SharePoint…)";
+    protected override string Describe(int value) => value switch
+    {
+        0 => "Désactivée",
+        2 => "Au choix de l'utilisateur",
+        _ => "Activée"
+    };
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "La recherche de Windows reste sur le PC : elle n'interroge plus vos contenus en ligne (OneDrive, SharePoint…). " +
+                      "À laisser tel quel si vous retrouvez vos fichiers en ligne par la recherche du menu Démarrer.");
 }
 
 public sealed class StartRecommendationsSetting() : PrivacyRegistrySetting(
@@ -186,6 +247,53 @@ public sealed class SilentAppInstallSetting() : PrivacyRegistrySetting(
     public override SettingTarget ComputeTarget(HardwareProfile hw) =>
         new(Value(0), "Windows n'installe plus de lui-même les applications que Microsoft met en avant : celles retirées dans " +
                       "« Applications » ne reviennent plus par ce biais. Une grosse mise à jour de Windows peut encore en réinstaller.");
+}
+
+/// <summary>
+/// Assistance à distance sollicitée : l'utilisateur envoie une invitation (fichier, e-mail) qui laisse quelqu'un voir ou
+/// piloter le PC. Stratégie « Configurer l'assistance à distance sollicitée » (Policy CSP
+/// RemoteAssistance/SolicitedRemoteAssistance, RemoteAssistance.admx) : 1, autorisée ; 0, interdite ; absente, au choix de
+/// l'utilisateur dans les Propriétés système.
+/// </summary>
+public sealed class RemoteAssistanceSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services", "fAllowToGetHelp", valueWhenMissing: null)
+{
+    public override string Id => "privacy.remoteassistance";
+    public override string DisplayName => "Assistance à distance (invitation à prendre la main sur ce PC)";
+    protected override string Describe(int value) => value == 0 ? "Interdite" : "Autorisée";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "Plus d'invitation d'Assistance à distance (fichier ou e-mail) permettant à quelqu'un de voir ou de piloter ce PC. " +
+                      "Tant que ce réglage est en place, la case correspondante des Propriétés système ne se change plus à la main.");
+}
+
+/// <summary>
+/// Optimisation de la distribution : d'où viennent les mises à jour de Windows et des applications du Store. Stratégie
+/// « Mode de téléchargement » (DODownloadMode, DeliveryOptimization.admx) : 0, serveurs seulement, sans échange entre PC ;
+/// 1, échange avec les PC du réseau local (le défaut de Windows) ; 2, dans un groupe ; 3, avec des PC d'Internet aussi ;
+/// 99 et 100, modes particuliers. Absente : le choix fait dans les Paramètres s'applique. Décoché : par défaut, l'échange
+/// ne sort pas du réseau local.
+/// </summary>
+public sealed class DeliveryOptimizationSetting() : PrivacyRegistrySetting(
+    Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization", "DODownloadMode", valueWhenMissing: null)
+{
+    public override string Id => "privacy.deliveryoptimization";
+    public override string DisplayName => "Échange de mises à jour avec d'autres PC (Optimisation de la distribution)";
+    public override bool SelectedByDefault => false;
+    protected override string Describe(int value) => value switch
+    {
+        0 => "Aucun échange (serveurs seulement)",
+        1 => "Avec les PC du réseau local",
+        2 => "Avec les PC d'un groupe",
+        3 => "Avec les PC du réseau local et d'Internet",
+        99 => "Mode simple (sans le service en ligne)",
+        100 => "Contournement (BITS)",
+        _ => $"Mode {value}"
+    };
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(0), "Windows ne récupère plus de morceaux de mises à jour auprès d'autres PC et ne leur en envoie plus : tout vient " +
+                      "des serveurs. Par défaut, cet échange se limite aux PC de votre réseau local.");
 }
 
 // ================================================================ Registre (plusieurs valeurs)

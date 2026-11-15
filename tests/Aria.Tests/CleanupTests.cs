@@ -38,7 +38,7 @@ public sealed class CleanupTests : IDisposable
         return path;
     }
 
-    private CleanupPaths Paths(string? shaders = null, string? dumps = null) => new()
+    private CleanupPaths Paths(string? shaders = null, string? dumps = null, string? thumbnails = null) => new()
     {
         Temp = [Folder("Temp")],
         ShaderCaches = [shaders ?? Folder("Shaders")],
@@ -46,7 +46,8 @@ public sealed class CleanupTests : IDisposable
         CrashDumpFiles = [],
         DeliveryOptimizationCache = Path.Combine(_root, "absent"),
         PreviousWindows = Path.Combine(_root, "Windows.old"),
-        SystemDrive = Path.GetPathRoot(_root)!
+        SystemDrive = Path.GetPathRoot(_root)!,
+        ThumbnailCache = thumbnails ?? Path.Combine(_root, "sans-miniatures")
     };
 
     private static CleanupItem Item(IEnumerable<CleanupItem> items, CleanupKind kind) => items.Single(i => i.Kind == kind);
@@ -137,6 +138,38 @@ public sealed class CleanupTests : IDisposable
     }
 
     // ---------------------------------------------------------------- Rapports de plantage
+
+    [Fact]
+    public void OnlyTheThumbnailFilesOfTheExplorerAreCounted()
+    {
+        var explorer = Folder("Explorer");
+        File(explorer, "thumbcache_256.db", 5, 5, bytes: 4_000);
+        File(explorer, "thumbcache_idx.db", 5, 5, bytes: 1_000);
+        File(explorer, "iconcache_48.db", 5, 5, bytes: 700);              // cache d'icônes : pas compté
+        File(explorer, "ExplorerStartupLog.etl", 5, 5, bytes: 300);       // journal de l'Explorateur : pas compté
+        File(Folder(Path.Combine("Explorer", "Autre")), "thumbcache_32.db", 5, 5, bytes: 9_000);   // pas dans un sous-dossier
+
+        var item = Item(CleanupService.Scan(Paths(thumbnails: explorer)), CleanupKind.Thumbnails);
+
+        Assert.Equal(5_000, item.Bytes);
+        Assert.Equal(2, item.Files);
+        Assert.False(item.SelectedByDefault);
+        Assert.NotNull(item.Warning);
+        Assert.Contains("Nettoyage de disque", item.Description);
+    }
+
+    [Fact]
+    public void WithoutAThumbnailFolderThereIsNothingToClean()
+    {
+        var item = Item(CleanupService.Scan(Paths()), CleanupKind.Thumbnails);
+
+        Assert.True(item.IsEmpty);
+        Assert.Equal(FolderTally.Empty, CleanupService.MeasureThumbnails(Path.Combine(_root, "absent")));
+    }
+
+    [Fact]
+    public void TheThumbnailFolderOfThisPcIsTheExplorerOne() =>
+        Assert.EndsWith(@"\Microsoft\Windows\Explorer", CleanupPaths.ForThisPc().ThumbnailCache);
 
     [Fact]
     public void GraphicsDriverHangReportsAreCrashDumps()
