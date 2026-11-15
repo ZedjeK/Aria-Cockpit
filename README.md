@@ -220,6 +220,11 @@ qui s'appuie sur elle, est coupé avec : « Arrêter » éteint alors vraiment W
 secondes de plus. La veille simple reste disponible. Restaurer le réglage réactive la veille prolongée et recrée le
 fichier. Jamais proposé sur un portable, où la veille prolongée sauve le travail en cours quand la batterie se vide.
 
+**Pilotes livrés par Windows Update** (décoché) : stratégie officielle « Ne pas inclure les pilotes avec les mises à
+jour Windows » (`ExcludeWUDriversInQualityUpdate`). Windows Update ne remplace plus tes pilotes de lui-même, dont celui
+de la carte graphique : un pilote changé sans toi peut défaire un réglage GPU validé. Contrepartie : les autres pilotes
+(réseau, audio, chipset…) ne sont plus mis à jour par Windows Update non plus, c'est à toi de les suivre.
+
 ### NVIDIA
 
 Aria Cockpit parle au pilote via NVAPI (`nvapi64.dll`, installé avec le pilote), avec les seuls identifiants publiés par
@@ -260,6 +265,11 @@ surface d'attaque.
   - données de diagnostic au minimum (niveau « Obligatoire » ; le niveau zéro est réservé à Entreprise et Éducation) ;
   - demandes de commentaires, expériences personnalisées, identifiant de publicité, historique d'activité ;
   - recherche Bing du menu Démarrer (effet secondaire : plus de recherches récentes dans l'Explorateur) ;
+  - mises en avant de la recherche (illustrations et contenus du jour), et recherche dans tes contenus en ligne
+    (OneDrive, SharePoint…) : à laisser telle quelle si tu retrouves tes fichiers en ligne par le menu Démarrer ;
+  - envoi à Microsoft de ce que tu tapes ou écris à la main (« Améliorer l'écriture manuscrite et la saisie ») ;
+  - assistance à distance : plus d'invitation permettant à quelqu'un de voir ou de piloter le PC ; tant que le
+    réglage est en place, la case des Propriétés système ne se change plus à la main ;
   - recommandations du menu Démarrer, suggestions et astuces (Paramètres, écran de verrouillage) ;
   - écrans « Terminons la configuration de votre appareil » et de bienvenue, qui reviennent après une mise à jour ;
   - rappels de compte Microsoft dans le menu Démarrer et bandeaux du fournisseur de synchronisation (OneDrive) dans
@@ -275,7 +285,11 @@ surface d'attaque.
   - application Copilot (désinstallée pour le compte ; la stratégie « Désactiver Copilot » ne concerne plus la nouvelle
     application ; la restauration ouvre le Microsoft Store) ;
   - services Xbox Live (seulement sans application Xbox ni Game Pass) ;
-  - géolocalisation (PC fixe).
+  - géolocalisation (PC fixe) ;
+  - échange de mises à jour avec d'autres PC (Optimisation de la distribution, mode « serveurs seulement ») : par
+    défaut, Windows n'échange qu'avec les PC de ton réseau local.
+- **Laissé de côté** : l'apprentissage automatique de la saisie et de l'écriture manuscrite. Sa stratégie officielle
+  supprime les mots déjà appris, et la Restauration ne les ramènerait pas.
 - **Jamais touchés** : Windows Search, SysMain, Windows Update, Defender, BITS, audio, Bluetooth, réseau, service des
   accessoires Xbox (manettes).
 - **Widgets** : non gérés. Leur stratégie officielle (`HKLM\SOFTWARE\Policies\Microsoft\Dsh`) est verrouillée par Windows,
@@ -623,6 +637,7 @@ de version.
 | Caches de shaders anciens (plus de 30 jours) | non | fichiers de cache ni créés ni modifiés depuis 30 jours ; les caches récents sont gardés |
 | Caches de shaders (NVIDIA, DirectX, AMD, Intel) | non | tous les caches ; à vider en cas de saccades après une mise à jour du pilote |
 | Rapports de plantage (minidumps, blocages du pilote graphique) | non | utiles pour diagnostiquer un écran bleu ou un blocage du pilote |
+| Miniatures de l'Explorateur | non | Nettoyage de disque (`cleanmgr /sagerun`) ; elles se reconstruisent à l'ouverture des dossiers |
 | Ancienne installation de Windows (`Windows.old`) | non | Nettoyage de disque (`cleanmgr /sagerun`) ; plus de retour à la version précédente |
 
 Garde-fous : seuls ces emplacements sont touchés ; aucun lien (jonction, lien symbolique) n'est suivi ; une racine
@@ -637,6 +652,11 @@ premières parties. Le cache de shaders NVIDIA grossit sans limite quand sa tail
 propose dans Optimisation) : c'est le prix de l'absence de recompilation. Les caches cochés ensemble ne sont comptés
 qu'une fois dans le total. Le fichier de la veille prolongée (`hiberfil.sys`) ne se supprime pas ici : il se libère par
 le réglage « Veille prolongée et démarrage rapide » d'Optimisation, qui se restaure.
+
+Les miniatures sont vidées par Nettoyage de disque, et non fichier par fichier : l'Explorateur garde ces fichiers
+ouverts. Deux éléments ne sont pas proposés : les journaux de l'installateur de composants (`Logs\CBS`), que Windows
+renouvelle lui-même (aucun fichier de plus de 30 jours sur le PC d'essai), et le cache de téléchargement de Windows
+Update, pour lequel Aria n'a pas trouvé de commande officielle.
 
 ## Fiche PC (HTML)
 

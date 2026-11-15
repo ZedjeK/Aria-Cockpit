@@ -121,6 +121,25 @@ public sealed class WindowedGamesOptimizationSetting() : DirectXGlobalSetting("S
         new(Enabled, "Réduit la latence des jeux DirectX 10/11 en fenêtré et sans bordure, et y permet le VRR.");
 }
 
+/// <summary>
+/// Pilotes livrés par Windows Update avec les mises à jour de qualité. Stratégie « Ne pas inclure les pilotes avec les
+/// mises à jour Windows » (Policy CSP Update/ExcludeWUDriversInQualityUpdate, WindowsUpdate.admx) : 0 ou absente,
+/// Windows Update livre aussi des pilotes ; 1, il n'en livre plus. Décoché : c'est un choix, pas un gain pour tous.
+/// </summary>
+public sealed class WindowsUpdateDriversSetting() : RegistryDwordSetting(
+    Registry.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "ExcludeWUDriversInQualityUpdate", valueWhenMissing: 0)
+{
+    public override string Id => "windows.wudrivers";
+    public override string DisplayName => "Pilotes livrés par Windows Update";
+    public override bool SelectedByDefault => false;
+    protected override string Describe(int value) => value == 1 ? "Exclus" : "Inclus";
+
+    public override SettingTarget ComputeTarget(HardwareProfile hw) =>
+        new(Value(1), "Windows Update ne remplace plus vos pilotes de lui-même, dont celui de la carte graphique : un pilote changé " +
+                      "sans vous peut défaire un réglage GPU validé. Contrepartie : les autres pilotes (réseau, audio, chipset…) " +
+                      "ne sont plus mis à jour par Windows Update non plus, c'est à vous de les suivre.");
+}
+
 public sealed class VariableRefreshRateSetting() : DirectXGlobalSetting("VRROptimizeEnable")
 {
     public override string Id => "windows.vrr";

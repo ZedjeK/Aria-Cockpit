@@ -5,6 +5,14 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Optimisation > Windows : réglage « Pilotes livrés par Windows Update », décoché. Stratégie officielle qui empêche
+  Windows Update de remplacer les pilotes, dont celui de la carte graphique ; les autres pilotes ne sont alors plus mis
+  à jour par Windows Update non plus.
+- Confidentialité : quatre réglages cochés (mises en avant de la recherche, recherche dans les contenus en ligne, envoi
+  de la frappe et de l'écriture manuscrite à Microsoft, assistance à distance) et un décoché (échange de mises à jour
+  avec d'autres PC). Tous écrivent des stratégies documentées par Microsoft et se restaurent. L'apprentissage
+  automatique de la saisie est laissé de côté : sa stratégie supprime les mots appris, sans retour possible.
+- Nettoyage : nouvel élément « Miniatures de l'Explorateur », décoché, vidé par Nettoyage de disque.
 - Démarrage : les applications du Microsoft Store qui se lancent à l'ouverture de session sont listées (par exemple
   « Intel® Graphics Software »), avec leur nom et leur éditeur, et se désactivent comme les autres. Windows note leur
   état à un emplacement du registre que Microsoft ne documente pas : Aria y écrit ce qu'y écrivent les Paramètres de
