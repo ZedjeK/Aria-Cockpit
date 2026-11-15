@@ -8,7 +8,10 @@ namespace Aria.Tests;
 /// Réglages de confidentialité faits de plusieurs valeurs du registre : lecture, cible, application, restauration, et les
 /// réglages contre les applications installées en silence, les écrans de configuration et les rappels de compte.
 /// Les écritures se font dans une clé d'essai de l'utilisateur, supprimée à la fin : aucun vrai réglage n'est touché.
+/// Même collection que les autres tests qui partagent cette clé : ils ne tournent pas en même temps, sinon l'un
+/// supprimerait la clé parente pendant que l'autre y écrit.
 /// </summary>
+[Collection("RegistreEssai")]
 public sealed class PrivacySettingsTests : IDisposable
 {
     private const string TestParent = @"Software\Aria-Cockpit-Tests";

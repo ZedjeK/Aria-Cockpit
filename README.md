@@ -288,7 +288,21 @@ même mécanisme : nom et éditeur, compte concerné, tout décoché par défaut
 réactive depuis Restauration ou le Gestionnaire des tâches. Ne sont jamais proposés : les composants de sécurité de
 Windows et ceux des pilotes (magasin de pilotes de Windows, audio Realtek et Waves). Un programme lancé par
 l'intermédiaire de Windows (rundll32) affiche son vrai nom et son éditeur, par exemple « Logitech Download Assistant »
-au lieu de « Processus hôte Windows (Rundll32) · Microsoft Corporation ».
+au lieu de « Processus hôte Windows (Rundll32) · Microsoft Corporation ». Même chose derrière un lanceur Squirrel
+(`Update.exe --processStart …`) : Discord s'affiche « Discord », et non « Update ».
+
+Les applications du Microsoft Store qui se lancent à l'ouverture de session y figurent aussi (par exemple « Intel®
+Graphics Software » ou « Terminal »), avec le nom et l'éditeur de leur manifeste. Windows note leur état pour ton
+compte avec les valeurs que Microsoft documente (`StartupTaskState`), mais à un emplacement du registre qu'il ne
+documente pas, et il n'existe aucun autre moyen de régler la tâche d'une autre application. Aria y lit et y écrit ce
+qu'y écrivent les Paramètres de Windows, relevé sur Windows 11 (build 26300) : l'état, et la date de désactivation.
+
+Une application notée « activée » mais jamais ouverte s'affiche « Désactivé », comme dans Windows : il ne lance une
+tâche de démarrage qu'une fois l'application ouverte au moins une fois, ou activée à la main dans Paramètres →
+Applications → Démarrage. Windows ne dit pas où il garde cette trace ; Aria lit la clé d'activité qu'il crée à la
+première ouverture. Une tâche imposée ou interdite par une stratégie n'est pas listée. Non vérifié à ce jour : qu'une
+tâche désactivée par Aria reste bien éteinte à l'ouverture de session suivante, et le cas d'une application activée
+dans les Paramètres sans jamais avoir été ouverte.
 
 ### Applications
 
