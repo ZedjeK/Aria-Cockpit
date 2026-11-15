@@ -5,6 +5,12 @@ Les versions jusqu'à la 0.26.0 sont décrites dans les
 
 ## Non publié
 
+- Démarrage : les applications du Microsoft Store qui se lancent à l'ouverture de session sont listées (par exemple
+  « Intel® Graphics Software »), avec leur nom et leur éditeur, et se désactivent comme les autres. Windows note leur
+  état à un emplacement du registre que Microsoft ne documente pas : Aria y écrit ce qu'y écrivent les Paramètres de
+  Windows. Une application notée « activée » mais jamais ouverte s'affiche « Désactivé », comme dans Windows, qui ne
+  la lance qu'après une première ouverture ; une tâche imposée par une stratégie n'est pas listée. Discord s'affiche
+  « Discord », et non plus « Update » : derrière un lanceur Squirrel, le nom et l'éditeur sont ceux du programme lancé.
 - Confidentialité : trois réglages de plus, cochés. « Installation automatique d'applications suggérées » empêche
   Windows de réinstaller de lui-même des applications retirées dans « Applications » ; « Écrans Terminons la
   configuration et de bienvenue » ; « Rappels de compte Microsoft (menu Démarrer) et bandeaux OneDrive (Explorateur) ».

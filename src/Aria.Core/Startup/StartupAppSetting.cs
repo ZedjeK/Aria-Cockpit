@@ -49,9 +49,10 @@ public sealed class StartupAppSetting(StartupEntry entry) : SettingBase
         StartupSource.MachineRun => "machine",
         StartupSource.MachineRun32 => "machine32",
         StartupSource.UserFolder => "userfolder",
+        StartupSource.StoreTask => "store",
         _ => "commonfolder"
     };
 
     private static string Where(StartupSource source) =>
-        source is StartupSource.UserRun or StartupSource.UserFolder ? "votre compte" : "tous les comptes";
+        source is StartupSource.UserRun or StartupSource.UserFolder or StartupSource.StoreTask ? "votre compte" : "tous les comptes";
 }

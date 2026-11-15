@@ -15,11 +15,13 @@ public enum StartupSource
     /// <summary>Dossier Démarrage de l'utilisateur.</summary>
     UserFolder,
     /// <summary>Dossier Démarrage commun à tous les utilisateurs.</summary>
-    CommonFolder
+    CommonFolder,
+    /// <summary>Tâche de démarrage d'une application empaquetée (Microsoft Store, MSIX), pour l'utilisateur courant.</summary>
+    StoreTask
 }
 
-/// <param name="Name">Nom de la valeur du registre, ou nom du fichier dans le dossier Démarrage.</param>
-/// <param name="Command">Commande lancée (registre) ou chemin du raccourci (dossier).</param>
+/// <param name="Name">Nom de la valeur du registre, nom du fichier dans le dossier Démarrage, ou « famille du paquet!tâche » (application du Store).</param>
+/// <param name="Command">Commande lancée (registre), chemin du raccourci (dossier) ou de l'exécutable (application du Store, vide s'il est inconnu).</param>
 /// <param name="DisplayName">Nom lisible : description de l'exécutable si disponible, sinon <paramref name="Name"/>.</param>
 /// <param name="Publisher">Éditeur inscrit dans l'exécutable (« Discord Inc. »), comme l'affiche Windows ; null s'il n'y en a pas.</param>
 public sealed record StartupEntry(StartupSource Source, string Name, string Command, string DisplayName, bool Enabled, string? Publisher = null)
@@ -32,6 +34,7 @@ public sealed record StartupEntry(StartupSource Source, string Name, string Comm
 /// Programmes lancés à l'ouverture de session et leur état, avec le mécanisme du Gestionnaire des tâches :
 /// la désactivation est notée dans Explorer\StartupApproved, sans toucher à l'entrée elle-même.
 /// Rien n'est supprimé : l'entrée reste en place et se réactive à tout moment.
+/// Les applications du Store ont leur propre mécanisme, voir <see cref="StoreStartupTasks"/>.
 /// </summary>
 public static class StartupApps
 {
@@ -48,7 +51,12 @@ public static class StartupApps
         {
             try
             {
-                entries.AddRange(source is StartupSource.UserFolder or StartupSource.CommonFolder ? ScanFolder(source) : ScanRun(source));
+                entries.AddRange(source switch
+                {
+                    StartupSource.UserFolder or StartupSource.CommonFolder => ScanFolder(source),
+                    StartupSource.StoreTask => StoreStartupTasks.Scan(),
+                    _ => ScanRun(source)
+                });
             }
             catch (Exception e) when (e is UnauthorizedAccessException or IOException or System.Security.SecurityException)
             {
@@ -61,6 +69,7 @@ public static class StartupApps
     /// <summary>État actuel d'une entrée (relu à chaque fois : la valeur a pu changer depuis l'analyse).</summary>
     public static bool IsEnabled(StartupSource source, string name)
     {
+        if (source == StartupSource.StoreTask) return StoreStartupTasks.IsEnabled(name);
         using var approved = Hive(source).OpenSubKey($@"{ApprovedKey}\{ApprovedSubKey(source)}");
         return IsEnabled(approved?.GetValue(name));
     }
@@ -68,6 +77,11 @@ public static class StartupApps
     /// <summary>Active ou désactive une entrée, comme le Gestionnaire des tâches.</summary>
     public static void SetEnabled(StartupSource source, string name, bool enabled)
     {
+        if (source == StartupSource.StoreTask)
+        {
+            StoreStartupTasks.SetEnabled(name, enabled);
+            return;
+        }
         using var approved = Hive(source).CreateSubKey($@"{ApprovedKey}\{ApprovedSubKey(source)}", writable: true)
                              ?? throw new InvalidOperationException("Clé StartupApproved inaccessible.");
         approved.SetValue(name, ApprovedValue(enabled, DateTime.UtcNow), RegistryValueKind.Binary);
@@ -164,6 +178,57 @@ public static class StartupApps
         return library.Length > 0 ? library : null;
     }
 
+    /// <summary>
+    /// Programme que lance un lanceur Squirrel (« Update.exe --processStart Discord.exe »), l'installateur de Discord
+    /// et d'autres applications : null pour toute autre commande, ou si le nom n'est pas un simple nom de fichier.
+    /// </summary>
+    internal static string? SquirrelProcessName(string command)
+    {
+        const string option = "--processStart", waiting = "AndWait";
+        if (ExecutablePath(command) is not { } launcher
+            || !Path.GetFileName(launcher).Equals("Update.exe", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var at = command.IndexOf(option, StringComparison.OrdinalIgnoreCase);
+        if (at < 0) return null;
+        var rest = command[(at + option.Length)..];
+        if (rest.StartsWith(waiting, StringComparison.OrdinalIgnoreCase)) rest = rest[waiting.Length..];   // « --processStartAndWait »
+        rest = rest.TrimStart(' ', '=');
+
+        string name;
+        if (rest.StartsWith('"'))
+        {
+            var end = rest.IndexOf('"', 1);
+            name = end > 1 ? rest[1..end] : "";
+        }
+        else name = rest.Split(' ', 2)[0];
+        name = name.Trim();
+        return name.Length > 0 && name == Path.GetFileName(name) && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
+            ? name
+            : null;
+    }
+
+    /// <summary>
+    /// Vrai programme derrière un lanceur Squirrel : il est rangé à côté du lanceur, dans un dossier « app-version ».
+    /// La version la plus récente l'emporte ; null si la commande n'est pas un lanceur Squirrel ou si le programme manque.
+    /// </summary>
+    internal static string? SquirrelTarget(string command)
+    {
+        if (SquirrelProcessName(command) is not { } name
+            || ExecutablePath(command) is not { } launcher
+            || Path.GetDirectoryName(launcher) is not { Length: > 0 } root
+            || !Directory.Exists(root))
+            return null;
+
+        return Directory.GetDirectories(root, "app-*")
+            .Select(folder => (File: Path.Combine(folder, name),
+                               Version: Version.TryParse(Path.GetFileName(folder)[4..], out var version) ? version : new Version(0, 0)))
+            .Where(candidate => File.Exists(candidate.File))
+            .OrderByDescending(candidate => candidate.Version)
+            .Select(candidate => candidate.File)
+            .FirstOrDefault();
+    }
+
     private static IEnumerable<StartupEntry> ScanRun(StartupSource source)
     {
         using var key = Hive(source).OpenSubKey(source == StartupSource.MachineRun32 ? Run32Key : RunKey);
@@ -196,18 +261,25 @@ public static class StartupApps
     /// Nom et éditeur, comme dans Paramètres → Applications → Démarrage : description de l'exécutable
     /// (à défaut, nom de la valeur) et société inscrite dans le fichier. Lancé par rundll32 : ceux de la DLL chargée,
     /// sinon tous ces programmes s'afficheraient « Processus hôte Windows (Rundll32) · Microsoft Corporation ».
+    /// Lancé par un lanceur Squirrel : ceux du programme qu'il démarre, sinon Discord s'afficherait « Update ».
     /// </summary>
     private static (string Display, string? Publisher) Describe(string name, string command)
     {
         try
         {
             var hosted = HostedLibraryPath(command);
-            if ((hosted is not null && File.Exists(hosted) ? hosted : ExecutablePath(command)) is { } exe && File.Exists(exe))
+            var launcher = ExecutablePath(command);
+            var behindLauncher = SquirrelProcessName(command) is not null;
+            var target = hosted is not null && File.Exists(hosted) ? hosted : SquirrelTarget(command) ?? launcher;
+            if (target is { } exe && File.Exists(exe))
             {
                 var info = FileVersionInfo.GetVersionInfo(exe);
                 var description = (info.FileDescription ?? "").Trim();
                 var publisher = (info.CompanyName ?? "").Trim();
-                var display = description.Length >= 3 && !description.Equals(Path.GetFileName(exe), StringComparison.OrdinalIgnoreCase)
+                // Programme introuvable derrière le lanceur : la description du lanceur (« Update ») ne dit rien, on garde le nom
+                var launcherOnly = behindLauncher && exe == launcher;
+                var display = !launcherOnly && description.Length >= 3
+                              && !description.Equals(Path.GetFileName(exe), StringComparison.OrdinalIgnoreCase)
                     ? description
                     : name;
                 return (display, publisher.Length > 0 ? publisher : null);
