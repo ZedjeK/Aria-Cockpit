@@ -18,7 +18,7 @@
     <!-- Charge du processeur par cœur (analyse de performance) -->
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.15" />
     <!-- Journal Système : plantages du pilote graphique après un réglage GPU -->
-    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.15" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="11.0.0" />
   </ItemGroup>
 
   <ItemGroup>
