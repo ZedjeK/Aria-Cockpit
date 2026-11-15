@@ -16,7 +16,7 @@
     <!-- Requêtes WMI (inventaire matériel). Incompatible avec le "trimming" : ne pas activer PublishTrimmed. -->
     <PackageReference Include="System.Management" Version="10.0.15" />
     <!-- Charge du processeur par cœur (analyse de performance) -->
-    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.15" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="11.0.0" />
     <!-- Journal Système : plantages du pilote graphique après un réglage GPU -->
     <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.15" />
   </ItemGroup>
